@@ -1,0 +1,174 @@
+{
+  "qaEmail": "qa+1789744461819@example.com qa+1789744602183@example.com qa+1789744768493@example.com qa+1789745098738@example.com qa+1789745424144@example.com qa+1789745538348@example.com qa+1789745955360@example.com qa+1789746112536@example.com qa+1789746265888@example.com qa+1789746425129@example.com qa+1789746696707@example.com",
+  "consoleErrors": [],
+  "consoleWarnings": [],
+  "exceptions": [],
+  "failedRequests": [],
+  "results": [
+    {
+      "id": "A1",
+      "status": "PASS",
+      "evidence": "16 buttons in order Dollhouse, Exterior, Garage, Balcony, Lounge, Dining, Kitchen, Rumpus, Study Nook, Master Bedroom, Room 1, Room 2, Room 3, Ensuite, Bathroom, Laundry; groups: Overview · Outside · Living · Bedrooms · Wet areas; missing=[] extra=[] patioLabels=0"
+    },
+    {
+      "id": "A2",
+      "status": "PASS",
+      "evidence": "16 anchors clicked; min camera move=0.73m (noMove=[]); hashWrong=[]; pressedWrong=[]; pillObscured=[]; screenshots tests/qa/anchor-*.png"
+    },
+    {
+      "id": "A5",
+      "status": "PASS",
+      "evidence": "Tab reached 16/16 pills (unreached=[]); last focused=laundry :focus-visible=true outline=\"1px auto rgb(0, 95, 204)\" (focus-ring.png); Enter on laundry: moved 56.56m hash #room=dollhouse→#room=laundry aria-pressed=true; Space on kitchen: moved 3.52m → #room=kitchen"
+    },
+    {
+      "id": "A4-dining",
+      "status": "PASS",
+      "evidence": "no click needed (poster hidden on load=true); camera=-4.80,1.22,-0.50 anchor=-4.8,1.224,-0.5 dist=0.000m hash=#room=dining"
+    },
+    {
+      "id": "A4-master-bedroom",
+      "status": "PASS",
+      "evidence": "no click needed (poster hidden on load=true); camera=9.60,1.22,3.30 anchor=9.6,1.224,3.3 dist=0.000m hash=#room=master-bedroom"
+    },
+    {
+      "id": "B1",
+      "status": "PASS",
+      "evidence": "nativeFullscreen=true fullscreenElement=tour pseudoFallback=false tourRect=[0,0,1440,900] canvas=1440x900 viewport=1440x900 label=\"Exit fullscreen\""
+    },
+    {
+      "id": "B2",
+      "status": "PASS",
+      "evidence": "anchorBarVisible=true exitBtnVisible=true label=\"Exit fullscreen\" creditVisible=true · click ensuite (15.0m away) moved 15.01m (pillCovered=false) · fullscreen.png"
+    },
+    {
+      "id": "B3",
+      "status": "PARTIAL",
+      "evidence": "exitByButton={fs:false,pseudo:false} reentered={fs:true,pseudo:false} exitByEsc={fs:false,pseudo:false} canvas=1182x664 expected=1182x664 (±2) scroll: before=1421 inFs=1261 afterBtnExit=1261 afterEscExit=1261 (Δ-160 vs ±50; docHeight 5502→5502)"
+    },
+    {
+      "id": "C1-desktop",
+      "status": "PASS",
+      "evidence": "CTA rect={\"x\":1149,\"y\":13,\"w\":163,\"h\":37} insideFold=true; after click form top=313 bottom=807 inView=true"
+    },
+    {
+      "id": "C2-desktop",
+      "status": "PASS",
+      "evidence": "position=sticky; after scrollY=2000 header CTA rect={\"x\":1149,\"y\":13,\"w\":163,\"h\":37}"
+    },
+    {
+      "id": "C3",
+      "status": "PASS",
+      "evidence": "POSTs during submit=0; name: invalid=true msg=\"Please enter your full name.\" | email: invalid=true msg=\"Please enter a valid email address.\" | phone: invalid=true msg=\"Phone: 7–20 characters (digits, spaces, + ( ) -).\" | date: invalid=true msg=\"Please pick a preferred date.\" | time: invalid=true msg=\"Please choose a time window.\"; focus=f-name; status=\"Please correct the highlighted fields.\""
+    },
+    {
+      "id": "C4",
+      "status": "PASS",
+      "evidence": "POSTs=0; email error=\"Please enter a valid email address.\" aria-invalid=true; date(2026-09-13) error=\"Please choose tomorrow or later.\" aria-invalid=true; focus=f-email"
+    },
+    {
+      "id": "C5",
+      "status": "PASS",
+      "evidence": "POSTs=1 status=201; email=qa+1789746425129@example.com; date=2026-09-24; confirmation=\"Request received Thank you, QA Verifier. We’ve pencilled you in for 2026-09-24 · Afternoon (12–4) · In-person and will confirm by email at qa+1789746425129@example.com. [Response-time promise, e.g. \"W\"; formHidden=true; statusLine=\"Your tour request was sent successfully.\""
+    },
+    {
+      "id": "C1-mobile",
+      "status": "PASS",
+      "evidence": "3 \"Schedule a tour\" CTAs, 3 fully above the 390x844 fold; after click form top=264 inView=true"
+    },
+    {
+      "id": "C2-mobile",
+      "status": "PASS",
+      "evidence": "bottom bar display=flex top=785 height=59 hiddenAtTop=false; hiddenWhenFormInView=true"
+    },
+    {
+      "id": "D2-1440",
+      "status": "PASS",
+      "evidence": "documentElement scrollWidth=1440 clientWidth=1440; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=[\"p.hp\"]"
+    },
+    {
+      "id": "E1",
+      "status": "FAIL",
+      "evidence": ".glb requests on initial load without scrolling=1 (#tour at y=1725px, lazy IO rootMargin '0px 0px 100% 0px' → fires once the section is within one viewport); after scrolling to y=925: 1 request(s) [\"modular_house_cube_3_by_swanbuild_australia.glb\"]"
+    },
+    {
+      "id": "E2",
+      "status": "PASS",
+      "evidence": "click hit #renderCanvas; wheel over canvas (not captured) scrollY 1421→1721; click → captured=true pointerLock=renderCanvas badge=\"Walk mode — WASD move · mouse look · Shift run · V dollhouse · Esc rel\"; wheel while captured 1638→1938; Esc → captured=false lock=null badge=\"Walk mode — click the view to take control\"; wheel after release 1938→2238"
+    },
+    {
+      "id": "E4",
+      "status": "PASS",
+      "evidence": "#credit 640x15 display=block insideTour=true; in fullscreen 640x15 visible=true; text=\"Model: “Modular House Cube 3 by Swanbuild Australia” by EDSAHERGOM STUDIO (Sketchfab) · CC BY 4.0 · Built with Babylon.js\"; links=[\"sketchfab.com\",\"sketchfab.com\"]"
+    },
+    {
+      "id": "E6",
+      "status": "PASS",
+      "evidence": "matches=true; 200ms after pill click camera already 0.000m from anchor (settled 0.000m) → instant; html scroll-behavior=auto; .reveal transition-duration=0s opacity=1"
+    },
+    {
+      "id": "D3",
+      "status": "PARTIAL",
+      "evidence": "body bg=rgb(251, 250, 248) ink=rgb(17, 17, 17); h1 96px/700/letter-spacing -1.92px family=\"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif\" (wordmark uses \"\"Inter Tight\", Inter, sans-serif\"); label 11px uppercase=uppercase tracking=1.54px; primary btn bg=rgb(17, 17, 17) radius=2px shadow=none uppercase=uppercase; section margin=144px; elements with box-shadow=0; header border-bottom=1px"
+    },
+    {
+      "id": "D4",
+      "status": "PASS",
+      "evidence": "7 <img>: broken=[] emptyAlt=[] externalHotlinks=[]; srcs=/assets/hero.webp /assets/gallery-lounge.webp /assets/gallery-kitchen.webp /assets/gallery-dining.webp /assets/gallery-master-bedroom.webp /assets/gallery-balcony.webp /assets/gallery-garage.webp"
+    },
+    {
+      "id": "D5",
+      "status": "PARTIAL",
+      "evidence": "body rgb(17, 17, 17) on rgb(251, 250, 248) = 18.10:1; muted label rgb(107, 107, 107) on rgb(251, 250, 248) = 5.11:1; hero title rgb(255, 255, 255) over sampled scrim rgb(40,40,24) = 14.93:1 (96px/700 → ≥3:1); hero eyebrow rgba(255, 255, 255, 0.72) over rgb(56,72,72) = 5.91:1; hero facts rgba(255, 255, 255, 0.78) over rgb(40,40,24) = 9.65:1; pill label over sampled rgb(8,24,24) = 15.37:1; model credit over sampled rgb(104,104,104) = 3.18:1; below 4.5:1 → [\"credit 3.18:1\"]"
+    },
+    {
+      "id": "D2-768",
+      "status": "PASS",
+      "evidence": "documentElement scrollWidth=768 clientWidth=768; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=[\"p.hp\"]"
+    },
+    {
+      "id": "D2-390",
+      "status": "PASS",
+      "evidence": "documentElement scrollWidth=390 clientWidth=390; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=[\"p.hp\"]"
+    },
+    {
+      "id": "A3",
+      "status": "PARTIAL",
+      "evidence": "HUMAN visual check BLOCKED (no image display in this verifier environment; all 15 PNGs were still captured to tests/qa/ and analysed). Programmatic: black=[] embeddedInSolid=[] offFloor=[] centreWallUnder0.5m=[] anyRayUnder0.5m=[] noHits=[]; frameDiff vs pre-refactor reference (informational, different aspect 16:9 vs 16:10)=[\"exterior:76.6\",\"garage:76.9\",\"balcony:75.8\",\"lounge:61.2\",\"dining:60.6\",\"kitchen:66.9\",\"rumpus:56.6\",\"study-nook:38.2\",\"master-bedroom:59.9\",\"room-1:51\",\"room-2:50.2\",\"room-3:50.7\",\"ensuite:70.2\",\"bathroom:58\",\"laundry:45.2\"]; per-anchor visible materials in tests/qa/a3-report.json"
+    },
+    {
+      "id": "E5",
+      "status": "FAIL",
+      "evidence": "placeholders present 7/7 (missing=[]); facts {\"beds\":true,\"baths\":true,\"deck\":true,\"carport\":true,\"raised\":true} (bedroom pills=4); unsupported claims → [\"layout claims wings the model doesn't have: \\\"four wings\\\"\",\"bedrooms described as a separate wing: \\\"their own wing\\\"\"]"
+    },
+    {
+      "id": "D1-1440",
+      "status": "PARTIAL",
+      "evidence": "tests/qa/page-1440.png 1440x5502 mean=189 sd=94.4 black=0.2% (painted, not a blank frame); document order [\"site-header:0+65\",\"hero:65+828\",\"intro:1037+346\",\"tour-section:1527+863\",\"residence:2535+835\",\"floor-plan:3514+831\",\"contact:4489+631\",\"site-footer:5264+238\"]; HUMAN visual review BLOCKED — this verifier environment cannot display images"
+    },
+    {
+      "id": "D6",
+      "status": "FAIL",
+      "evidence": "heading=\"One level, four wings\" (mentions wings: true); drawn bands {\"middle\":[\"lounge=A(south)\",\"dining=A(south)\",\"rumpus=A(south)\"],\"bottom\":[\"kitchen=B(north)\",\"room-3=B(north)\",\"room-2=B(north)\",\"room-1=B(north)\",\"master-bedroom=B(north)\"],\"top\":[\"laundry=A(south)\",\"study-nook=A(south)\",\"bathroom=A(south)\",\"ensuite=A(south)\"]}; real Row A drawn across [\"middle\",\"top\"] bands, Row B across [\"bottom\"]; empty corridor band=null; anchor rooms missing from the schematic=[] (exterior/garage/balcony drawn as outside cells: [\"balcony\",\"garage\"]); static labels=[\"nook\",\"freestanding\",\"Hall\",\"Walk-in robe\"]"
+    },
+    {
+      "id": "D1-768",
+      "status": "PARTIAL",
+      "evidence": "tests/qa/page-768.png 768x5001 mean=180.3 sd=96 black=0.3% (painted, not a blank frame); document order [\"site-header:0+65\",\"hero:65+942\",\"intro:1084+453\",\"tour-section:1614+558\",\"residence:2249+1086\",\"floor-plan:3412+528\",\"contact:4017+587\",\"site-footer:4680+245\"]; HUMAN visual review BLOCKED — this verifier environment cannot display images"
+    },
+    {
+      "id": "D1-390",
+      "status": "PARTIAL",
+      "evidence": "tests/qa/page-390.png 390x6456 mean=194.8 sd=87.4 black=0.4% (painted, not a blank frame); document order [\"site-header:0+65\",\"hero:65+692\",\"intro:829+712\",\"tour-section:1613+435\",\"residence:2120+2105\",\"floor-plan:4296+516\",\"contact:4884+926\",\"site-footer:5882+497\"]; HUMAN visual review BLOCKED — this verifier environment cannot display images"
+    },
+    {
+      "id": "C6",
+      "status": "PASS",
+      "evidence": "curl POST /api/tour-requests: malformed JSON → 400 {\"ok\":false,\"errors\":{\"form\":\"Invalid JSON.\"}}; 20,163-byte body → 413 {\"form\":\"Request body too large.\"}; GET → 405 (Allow: POST); Content-Type: text/plain → 400 {\"form\":\"Expected JSON body.\"}; honeypot company=\"SPAM CO\" → 200 {\"ok\":true} and data/tour-requests.json unchanged ([]); GET / → 200 afterwards"
+    },
+    {
+      "id": "E3",
+      "status": "PASS",
+      "evidence": "Whole run (all tabs, Runtime+Log+Network enabled): console errors 0, uncaught exceptions 0, failed/4xx/5xx requests 0, console warnings 0 — see run.log/final.log/run-de.log tails and results.json arrays (all empty)"
+    }
+  ]
+}

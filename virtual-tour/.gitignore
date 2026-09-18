@@ -1,0 +1,7 @@
+node_modules/
+data/
+.tmp/
+.DS_Store
+# regenerable test screenshots (npm run test:anchors, tests/qa/qa.mjs)
+tests/shots/
+tests/qa/*.png

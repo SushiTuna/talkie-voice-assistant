@@ -1,0 +1,178 @@
+[
+  {
+    "id": "exterior",
+    "moved": 17.37948640996293,
+    "hash": "#room=exterior",
+    "on": [
+      "exterior"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-exterior.png"
+  },
+  {
+    "id": "garage",
+    "moved": 21.148595694293956,
+    "hash": "#room=garage",
+    "on": [
+      "garage"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-garage.png"
+  },
+  {
+    "id": "balcony",
+    "moved": 11.074771705245483,
+    "hash": "#room=balcony",
+    "on": [
+      "balcony"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-balcony.png"
+  },
+  {
+    "id": "lounge",
+    "moved": 1.8601075237738276,
+    "hash": "#room=lounge",
+    "on": [
+      "lounge"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-lounge.png"
+  },
+  {
+    "id": "dining",
+    "moved": 4.701063709417263,
+    "hash": "#room=dining",
+    "on": [
+      "dining"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-dining.png"
+  },
+  {
+    "id": "kitchen",
+    "moved": 0.7280109889280518,
+    "hash": "#room=kitchen",
+    "on": [
+      "kitchen"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-kitchen.png"
+  },
+  {
+    "id": "rumpus",
+    "moved": 9.226592003551474,
+    "hash": "#room=rumpus",
+    "on": [
+      "rumpus"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-rumpus.png"
+  },
+  {
+    "id": "study-nook",
+    "moved": 3.801315561749643,
+    "hash": "#room=study-nook",
+    "on": [
+      "study-nook"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-study-nook.png"
+  },
+  {
+    "id": "master-bedroom",
+    "moved": 10.377379245262263,
+    "hash": "#room=master-bedroom",
+    "on": [
+      "master-bedroom"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-master-bedroom.png"
+  },
+  {
+    "id": "room-1",
+    "moved": 4.46542271235322,
+    "hash": "#room=room-1",
+    "on": [
+      "room-1"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-room-1.png"
+  },
+  {
+    "id": "room-2",
+    "moved": 1.5524174696260022,
+    "hash": "#room=room-2",
+    "on": [
+      "room-2"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-room-2.png"
+  },
+  {
+    "id": "room-3",
+    "moved": 4.800000000000001,
+    "hash": "#room=room-3",
+    "on": [
+      "room-3"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-room-3.png"
+  },
+  {
+    "id": "ensuite",
+    "moved": 10.492378186092989,
+    "hash": "#room=ensuite",
+    "on": [
+      "ensuite"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-ensuite.png"
+  },
+  {
+    "id": "bathroom",
+    "moved": 2.901723625709382,
+    "hash": "#room=bathroom",
+    "on": [
+      "bathroom"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-bathroom.png"
+  },
+  {
+    "id": "laundry",
+    "moved": 11.200892821556682,
+    "hash": "#room=laundry",
+    "on": [
+      "laundry"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-laundry.png"
+  },
+  {
+    "id": "dollhouse",
+    "moved": 56.55693438216938,
+    "hash": "#room=dollhouse",
+    "on": [
+      "dollhouse"
+    ],
+    "covered": false,
+    "coveredBy": "pill",
+    "file": "anchor-dollhouse.png"
+  }
+]

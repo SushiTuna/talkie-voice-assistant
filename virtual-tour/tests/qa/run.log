@@ -1,0 +1,81 @@
+[PASS] A1 — 16 buttons in order Dollhouse, Exterior, Garage, Balcony, Lounge, Dining, Kitchen, Rumpus, Study Nook, Master Bedroom, Room 1, Room 2, Room 3, Ensuite, Bathroom, Laundry; groups: Overview · Outside · Living · Bedrooms · Wet areas; missing=[] extra=[] patioLabels=0
+    exterior: moved=17.379m hash=#room=exterior pressed=["exterior"] covered=false
+    garage: moved=21.149m hash=#room=garage pressed=["garage"] covered=false
+    balcony: moved=11.075m hash=#room=balcony pressed=["balcony"] covered=false
+    lounge: moved=1.860m hash=#room=lounge pressed=["lounge"] covered=false
+    dining: moved=4.701m hash=#room=dining pressed=["dining"] covered=false
+    kitchen: moved=0.728m hash=#room=kitchen pressed=["kitchen"] covered=false
+    rumpus: moved=9.227m hash=#room=rumpus pressed=["rumpus"] covered=false
+    study-nook: moved=3.801m hash=#room=study-nook pressed=["study-nook"] covered=false
+    master-bedroom: moved=10.377m hash=#room=master-bedroom pressed=["master-bedroom"] covered=false
+    room-1: moved=4.465m hash=#room=room-1 pressed=["room-1"] covered=false
+    room-2: moved=1.552m hash=#room=room-2 pressed=["room-2"] covered=false
+    room-3: moved=4.800m hash=#room=room-3 pressed=["room-3"] covered=false
+    ensuite: moved=10.492m hash=#room=ensuite pressed=["ensuite"] covered=false
+    bathroom: moved=2.902m hash=#room=bathroom pressed=["bathroom"] covered=false
+    laundry: moved=11.201m hash=#room=laundry pressed=["laundry"] covered=false
+    dollhouse: moved=56.557m hash=#room=dollhouse pressed=["dollhouse"] covered=false
+[PASS] A2 — 16 anchors clicked; min camera move=0.73m (noMove=[]); hashWrong=[]; pressedWrong=[]; pillObscured=[]; screenshots tests/qa/anchor-*.png
+[PASS] A5 — Tab reached 16/16 pills (unreached=[]); last focused=laundry :focus-visible=true outline="1px auto rgb(0, 95, 204)" (focus-ring.png); Enter on laundry: moved 56.56m hash #room=dollhouse→#room=laundry aria-pressed=true; Space on kitchen: moved 3.52m → #room=kitchen
+[PASS] A4-dining — no click needed (poster hidden on load=true); camera=-4.80,1.22,-0.50 anchor=-4.8,1.224,-0.5 dist=0.000m hash=#room=dining
+[PASS] A4-master-bedroom — no click needed (poster hidden on load=true); camera=9.60,1.22,3.30 anchor=9.6,1.224,3.3 dist=0.000m hash=#room=master-bedroom
+[PASS] B1 — nativeFullscreen=true fullscreenElement=tour pseudoFallback=false tourRect=[0,0,1440,900] canvas=1440x900 viewport=1440x900 label="Exit fullscreen"
+[PASS] B2 — anchorBarVisible=true exitBtnVisible=true label="Exit fullscreen" creditVisible=true · click ensuite (15.0m away) moved 15.01m (pillCovered=false) · fullscreen.png
+[PARTIAL] B3 — exitByButton={fs:false,pseudo:false} reentered={fs:true,pseudo:false} exitByEsc={fs:false,pseudo:false} canvas=1182x664 expected=1182x664 (±2) scroll: before=1421 inFs=1261 afterBtnExit=1261 afterEscExit=1261 (Δ-160 vs ±50; docHeight 5502→5502)
+[PASS] C1-desktop — CTA rect={"x":1149,"y":13,"w":163,"h":37} insideFold=true; after click form top=313 bottom=807 inView=true
+[PASS] C2-desktop — position=sticky; after scrollY=2000 header CTA rect={"x":1149,"y":13,"w":163,"h":37}
+[PASS] C3 — POSTs during submit=0; name: invalid=true msg="Please enter your full name." | email: invalid=true msg="Please enter a valid email address." | phone: invalid=true msg="Phone: 7–20 characters (digits, spaces, + ( ) -)." | date: invalid=true msg="Please pick a preferred date." | time: invalid=true msg="Please choose a time window."; focus=f-name; status="Please correct the highlighted fields."
+[PASS] C4 — POSTs=0; email error="Please enter a valid email address." aria-invalid=true; date(2026-09-13) error="Please choose tomorrow or later." aria-invalid=true; focus=f-email
+[PASS] C5 — POSTs=1 status=201; email=qa+1789745098738@example.com; date=2026-09-24; confirmation="Request received Thank you, QA Verifier. We’ve pencilled you in for 2026-09-24 · Afternoon (12–4) · In-person and will confirm by email at qa+1789745098738@example.com. [Response-time promise, e.g. "W"; formHidden=true; statusLine="Your tour request was sent successfully."
+[PASS] C1-mobile — 3 "Schedule a tour" CTAs, 3 fully above the 390x844 fold; after click form top=264 inView=true
+[PASS] C2-mobile — bottom bar display=flex top=785 height=59 hiddenAtTop=false; hiddenWhenFormInView=true
+    mobile header CTA @scrollY=2000: {"x":211.921875,"y":6.8125,"w":154.078125,"h":50.375,"cx":288.9609375,"cy":32}
+[PASS] D2-1440 — documentElement scrollWidth=1440 clientWidth=1440; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+    --sec = clamp(72px, 10vw, 160px)|
+    computed: [{"sel":"body","backgroundColor":"rgb(251, 250, 248)","color":"rgb(17, 17, 17)","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","fontSize":"16px","lineHeight":"25.6px"},{"sel":".hero h1","fontSize":"96px","fontWeight":"700","letterSpacing":"-1.92px","lineHeight":"103.68px","color":"rgb(255, 255, 255)","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","textTransform":"none"},{"sel":".field label","fontSize":"11px","letterSpacing":"1.54px","textTransform":"uppercase","color":"rgb(107, 107, 107)","fontWeight":"600"},{"sel":".btn-primary","backgroundColor":"rgb(17, 17, 17)","color":"rgb(255, 255, 255)","borderRadius":"2px","boxShadow":"none","textTransform":"uppercase","letterSpacing":"1.32px","fontSize":"11px","border":"0px none rgb(255, 255, 255)","backgroundImage":"none"},{"sel":".site-header","position":"sticky","boxShadow":"none","borderBottomWidth":"1px"},{"sel":".wm-a","fontFamily":"\"Inter Tight\", Inter, sans-serif"},{"sel":".lede","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","fontSize":"21px","lineHeight":"34.65px","color":"rgb(17, 17, 17)"},{"sel":".card","boxShadow":"none","border":"1px solid rgb(230, 227, 222)","borderRadius":"2px"},{"sel":"section","marginTop":"0px","marginBottom":"0px"},{"sel":"#residence","marginTop":"144px","marginBottom":"144px"},{"sel":".plan-wrap","border":"1px solid rgb(230, 227, 222)","boxShadow":"none","backgroundColor":"rgb(255, 255, 255)"}]
+    elements with box-shadow: []
+[PARTIAL] D3 — body bg=rgb(251, 250, 248) ink=rgb(17, 17, 17); h1 96px/700/letter-spacing -1.92px family="Inter, -apple-system, "system-ui", "Segoe UI", Roboto, Helvetica, Arial, sans-serif" (wordmark uses ""Inter Tight", Inter, sans-serif"); label 11px uppercase=uppercase tracking=1.54px; primary btn bg=rgb(17, 17, 17) radius=2px shadow=none uppercase=uppercase; section margin=144px; elements with box-shadow=0; header border-bottom=1px
+[PASS] D4 — 7 <img>: broken=[] emptyAlt=[] externalHotlinks=[]; srcs=/assets/hero.webp /assets/gallery-lounge.webp /assets/gallery-kitchen.webp /assets/gallery-dining.webp /assets/gallery-master-bedroom.webp /assets/gallery-balcony.webp /assets/gallery-garage.webp
+[FAIL] D5 — body rgb(17, 17, 17) on rgb(251, 250, 248) = 18.10:1; muted label rgba(255, 255, 255, 0.72) on rgb(251, 250, 248) = 1.04:1; hero title rgb(255, 255, 255) over sampled scrim rgb(24,40,24) = 15.49:1 (large text ≥3:1); hero facts (α.78 white) ≈ 9.93:1
+    plan h2: One level, four wings | sub: Schematic layout — click any room to jump to it in the 3D tour. | notes: ["Carport · 2 cars (under home)","Hall","Walk-in robe","Schematic layout · not to scale"]
+    plan rooms: [{"id":"lounge","text":"Lounge","x":98,"y":49,"w":208,"h":416},{"id":"dining","text":"Dining","x":306,"y":184,"w":220,"h":147},{"id":"kitchen","text":"Kitchen","x":306,"y":331,"w":220,"h":135},{"id":"laundry","text":"Laundry","x":306,"y":49,"w":135,"h":135},{"id":"study-nook","text":"Studynook","x":441,"y":49,"w":135,"h":135},{"id":"rumpus","text":"Rumpus","x":527,"y":184,"w":233,"h":147},{"id":"room-3","text":"Room 3","x":527,"y":331,"w":122,"h":135},{"id":"room-2","text":"Room 2","x":649,"y":331,"w":122,"h":135},{"id":"room-1","text":"Room 1","x":771,"y":331,"w":110,"h":135},{"id":"bathroom","text":"Bathfreestanding","x":575,"y":49,"w":135,"h":135},{"id":"ensuite","text":"Ensuite","x":882,"y":49,"w":147,"h":135},{"id":"master-bedroom","text":"Master","x":882,"y":282,"w":147,"h":184},{"id":"balcony","text":"","x":15,"y":147,"w":83,"h":220},{"id":"garage","text":"","x":367,"y":480,"w":367,"h":76}]
+[PASS] D2-768 — documentElement scrollWidth=768 clientWidth=768; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+[PASS] D2-390 — documentElement scrollWidth=390 clientWidth=390; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+    #tour document y=1725px (viewport 900, IO rootMargin bottom=+100% → triggers when within 900px); glb reqs after 5s idle=1; poster={"hidden":true,"cls":"tour-poster loading","msg":"Preparing walkthrough…"}
+[FAIL] E1 — .glb requests on initial load without scrolling=1 (#tour at y=1725px, lazy IO rootMargin '0px 0px 100% 0px' → fires once the section is within one viewport); after scrolling to y=925: 1 request(s) ["modular_house_cube_3_by_swanbuild_australia.glb"]
+[PASS] E2 — click hit #renderCanvas; wheel over canvas (not captured) scrollY 1421→1721; click → captured=true pointerLock=renderCanvas badge="Walk mode — WASD move · mouse look · Shift run · V dollhouse · Esc rel"; wheel while captured 1638→1938; Esc → captured=false lock=null badge="Walk mode — click the view to take control"; wheel after release 1938→2238
+[PASS] E4 — #credit 640x15 display=block insideTour=true; in fullscreen 640x15 visible=true; text="Model: “Modular House Cube 3 by Swanbuild Australia” by EDSAHERGOM STUDIO (Sketchfab) · CC BY 4.0 · Built with Babylon.js"; links=["sketchfab.com","sketchfab.com"]
+[PASS] E6 — matches=true; 200ms after pill click camera already 0.000m from anchor (settled 0.000m) → instant; html scroll-behavior=auto; .reveal transition-duration=0s opacity=1
+
+=== console errors: 0 ===
+=== uncaught exceptions: 0 ===
+=== failed / 4xx / 5xx requests: 0 ===
+=== console warnings: 0 ===
+
+--- results ---
+PASS     A1
+PASS     A2
+PASS     A5
+PASS     A4-dining
+PASS     A4-master-bedroom
+PASS     B1
+PASS     B2
+PARTIAL  B3
+PASS     C1-desktop
+PASS     C2-desktop
+PASS     C3
+PASS     C4
+PASS     C5
+PASS     C1-mobile
+PASS     C2-mobile
+PASS     D2-1440
+BLOCKED  D-stage
+FAIL     E1
+PASS     E2
+PASS     E4
+PASS     E6
+PARTIAL  D3
+PASS     D4
+FAIL     D5
+PASS     D2-768
+PASS     D2-390

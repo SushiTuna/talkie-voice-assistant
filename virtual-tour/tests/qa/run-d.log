@@ -1,0 +1,43 @@
+[PASS] D2-1440 — documentElement scrollWidth=1440 clientWidth=1440; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+    --sec = clamp(72px, 10vw, 160px)|
+    computed: [{"sel":"body","backgroundColor":"rgb(251, 250, 248)","color":"rgb(17, 17, 17)","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","fontSize":"16px","lineHeight":"25.6px"},{"sel":".hero h1","fontSize":"96px","fontWeight":"700","letterSpacing":"-1.92px","lineHeight":"103.68px","color":"rgb(255, 255, 255)","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","textTransform":"none"},{"sel":".field label","fontSize":"11px","letterSpacing":"1.54px","textTransform":"uppercase","color":"rgb(107, 107, 107)","fontWeight":"600"},{"sel":".btn-primary","backgroundColor":"rgb(17, 17, 17)","color":"rgb(255, 255, 255)","borderRadius":"2px","boxShadow":"none","textTransform":"uppercase","letterSpacing":"1.32px","fontSize":"11px","border":"0px none rgb(255, 255, 255)","backgroundImage":"none"},{"sel":".site-header","position":"sticky","boxShadow":"none","borderBottomWidth":"1px"},{"sel":".wm-a","fontFamily":"\"Inter Tight\", Inter, sans-serif"},{"sel":".lede","fontFamily":"Inter, -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif","fontSize":"21px","lineHeight":"34.65px","color":"rgb(17, 17, 17)"},{"sel":".card","boxShadow":"none","border":"1px solid rgb(230, 227, 222)","borderRadius":"2px"},{"sel":"section","marginTop":"0px","marginBottom":"0px"},{"sel":"#residence","marginTop":"144px","marginBottom":"144px"},{"sel":".plan-wrap","border":"1px solid rgb(230, 227, 222)","boxShadow":"none","backgroundColor":"rgb(255, 255, 255)"}]
+    elements with box-shadow: []
+[PARTIAL] D3 — body bg=rgb(251, 250, 248) ink=rgb(17, 17, 17); h1 96px/700/letter-spacing -1.92px family="Inter, -apple-system, "system-ui", "Segoe UI", Roboto, Helvetica, Arial, sans-serif" (wordmark uses ""Inter Tight", Inter, sans-serif"); label 11px uppercase=uppercase tracking=1.54px; primary btn bg=rgb(17, 17, 17) radius=2px shadow=none uppercase=uppercase; section margin=144px; elements with box-shadow=0; header border-bottom=1px
+[PASS] D4 — 7 <img>: broken=[] emptyAlt=[] externalHotlinks=[]; srcs=/assets/hero.webp /assets/gallery-lounge.webp /assets/gallery-kitchen.webp /assets/gallery-dining.webp /assets/gallery-master-bedroom.webp /assets/gallery-balcony.webp /assets/gallery-garage.webp
+[FAIL] D5 — body rgb(17, 17, 17) on rgb(251, 250, 248) = 18.10:1; muted label rgb(107, 107, 107) on rgb(251, 250, 248) = 5.11:1; hero title rgb(255, 255, 255) over sampled scrim rgb(248,248,248) = 1.06:1 (96px/700 → ≥3:1); hero eyebrow rgba(255, 255, 255, 0.72) over rgb(136,136,136) = 2.63:1; hero facts rgba(255, 255, 255, 0.78) over rgb(40,40,40) = 9.56:1; pill label over sampled rgb(8,24,24) = 15.37:1; model credit over sampled rgb(104,104,104) = 3.18:1; below 4.5:1 → ["credit 3.18:1","hero eyebrow 2.63:1"]
+    plan h2: One level, four wings | sub: Schematic layout — click any room to jump to it in the 3D tour. | notes: ["Carport · 2 cars (under home)","Hall","Walk-in robe","Schematic layout · not to scale"]
+    plan rooms: [{"id":"lounge","text":"Lounge","x":98,"y":49,"w":208,"h":416},{"id":"dining","text":"Dining","x":306,"y":184,"w":220,"h":147},{"id":"kitchen","text":"Kitchen","x":306,"y":331,"w":220,"h":135},{"id":"laundry","text":"Laundry","x":306,"y":49,"w":135,"h":135},{"id":"study-nook","text":"Studynook","x":441,"y":49,"w":135,"h":135},{"id":"rumpus","text":"Rumpus","x":527,"y":184,"w":233,"h":147},{"id":"room-3","text":"Room 3","x":527,"y":331,"w":122,"h":135},{"id":"room-2","text":"Room 2","x":649,"y":331,"w":122,"h":135},{"id":"room-1","text":"Room 1","x":771,"y":331,"w":110,"h":135},{"id":"bathroom","text":"Bathfreestanding","x":575,"y":49,"w":135,"h":135},{"id":"ensuite","text":"Ensuite","x":882,"y":49,"w":147,"h":135},{"id":"master-bedroom","text":"Master","x":882,"y":282,"w":147,"h":184},{"id":"balcony","text":"","x":15,"y":147,"w":83,"h":220},{"id":"garage","text":"","x":367,"y":480,"w":367,"h":76}]
+[PASS] D2-768 — documentElement scrollWidth=768 clientWidth=768; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+[PASS] D2-390 — documentElement scrollWidth=390 clientWidth=390; wider-than-viewport offenders=[]; off-screen-left positioned (intentional, no overflow)=["p.hp"]
+
+=== console errors: 0 ===
+=== uncaught exceptions: 0 ===
+=== failed / 4xx / 5xx requests: 0 ===
+=== console warnings: 0 ===
+
+--- results ---
+PASS     A1
+PASS     A2
+PASS     A5
+PASS     A4-dining
+PASS     A4-master-bedroom
+PASS     B1
+PASS     B2
+PARTIAL  B3
+PASS     C1-desktop
+PASS     C2-desktop
+PASS     C3
+PASS     C4
+PASS     C5
+PASS     C1-mobile
+PASS     C2-mobile
+PASS     D2-1440
+FAIL     E1
+PASS     E2
+PASS     E4
+PASS     E6
+PARTIAL  D3
+PASS     D4
+FAIL     D5
+PASS     D2-768
+PASS     D2-390

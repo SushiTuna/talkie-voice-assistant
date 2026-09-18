@@ -1,0 +1,20 @@
+{
+  "name": "virtual-tour",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "smoke": "node tests/smoke.mjs",
+    "test:api": "node tests/api.mjs",
+    "test:anchors": "node tests/anchor-shots.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@babylonjs/core": "^9.27.0",
+    "@babylonjs/loaders": "^9.27.0"
+  }
+}

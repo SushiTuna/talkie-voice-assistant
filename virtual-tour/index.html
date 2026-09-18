@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="Modular House Cube 3 — single-level modular home with 4 bedrooms. Explore in 3D and schedule a tour." />
+<link rel="icon" href="data:," />
+<title>Modular House Cube 3 — Explore in 3D &amp; Book a Tour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/styles.css" />
+<script type="importmap">
+{
+  "imports": {
+    "@babylonjs/core": "/node_modules/@babylonjs/core/index.js",
+    "@babylonjs/core/": "/node_modules/@babylonjs/core/",
+    "@babylonjs/loaders": "/node_modules/@babylonjs/loaders/index.js",
+    "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/"
+  }
+}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <a class="wordmark" href="#top" aria-label="Modular House Cube 3 — back to top">
+      <span class="wm-a">Modular House</span><span class="wm-b">Cube&nbsp;3</span>
+    </a>
+    <nav class="main-nav" aria-label="Primary">
+      <a href="#tour-section">Tour</a>
+      <a href="#residence">Residence</a>
+      <a href="#floor-plan">Floor plan</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <a class="btn btn-primary btn-header" href="#contact">Schedule a tour</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- ============ HERO ============ -->
+  <section class="hero" aria-label="Listing overview">
+    <picture>
+      <source type="image/webp" srcset="/assets/hero.webp" />
+      <img class="hero-img" src="/assets/hero.jpg" width="2400" height="1350"
+           alt="The raised modular home seen from the lawn" fetchpriority="high" />
+    </picture>
+    <div class="hero-scrim" aria-hidden="true"></div>
+    <div class="hero-content container">
+      <p class="eyebrow hero-eyebrow" data-bind="eyebrow"></p>
+      <h1 data-bind="name"></h1>
+      <p class="hero-tagline" data-bind="tagline"></p>
+      <p class="hero-facts" data-bind="factsLine"></p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#contact">Schedule a tour</a>
+        <a class="btn btn-secondary btn-on-dark" href="#tour-section">Explore in 3D</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INTRO / HIGHLIGHTS ============ -->
+  <section class="intro" aria-label="About this home">
+    <div class="container">
+      <div class="intro-grid">
+        <p class="lede reveal" data-bind="intro"></p>
+        <ul class="highlights" id="highlights"></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3D TOUR (Phase 2 shell — ids are load-bearing for main.js) ============ -->
+  <section class="tour-section" id="tour-section" aria-label="Interactive 3D tour">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">Interactive 3D tour</p>
+        <h2>Walk the home, room by room</h2>
+        <p class="section-sub">Real-time walkthrough of the actual model — 15 viewpoints, dollhouse orbit, no app required.</p>
+      </header>
+    </div>
+    <div class="container">
+    <div id="tour">
+      <canvas id="renderCanvas" tabindex="1" aria-label="3D tour viewport — click to take control"></canvas>
+
+      <div class="tour-poster" id="tourPoster">
+        <div class="poster-inner">
+          <h2>Step inside in 3D</h2>
+          <p>First-person walkthrough · dollhouse orbit view · 15 room viewpoints</p>
+          <button class="btn btn-light" id="startBtn">Start tour</button>
+          <div class="bar" id="loadWrap" role="progressbar" aria-label="Tour loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <i id="loadBar"></i>
+          </div>
+          <p class="load-msg" id="loadMsg"></p>
+        </div>
+      </div>
+
+      <div id="crosshair" hidden></div>
+      <p id="tourHint" hidden>Click the view to take control</p>
+      <div id="badge" role="status"></div>
+
+      <button id="fsBtn" type="button" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+        <span id="fsLabel">Fullscreen</span>
+      </button>
+
+      <nav id="anchorBar" aria-label="Room viewpoints"></nav>
+
+      <p id="credit">Model: <a href="https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0" target="_blank" rel="noopener">“Modular House Cube 3 by Swanbuild Australia”</a> by <a href="https://sketchfab.com/edsahergom" target="_blank" rel="noopener">EDSAHERGOM STUDIO</a> (Sketchfab) · CC BY 4.0 · Built with Babylon.js</p>
+
+      <div class="tour-error" id="noModel" hidden>
+        <h2>No 3D model found</h2>
+        <p>Place a model file in <code>virtual-tour/models/</code> and reload.</p>
+        <button class="btn btn-light" id="retryBtn">I’ve added it — reload</button>
+      </div>
+    </div>
+    </div>
+  </section>
+
+  <!-- ============ RESIDENCE GALLERY ============ -->
+  <section id="residence" class="residence">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">Residence</p>
+        <h2>The rooms, rendered from the model</h2>
+        <p class="section-sub">Every image is a real frame of the walkthrough. Open any room in 3D.</p>
+      </header>
+      <div class="gallery" id="gallery"><!-- built by page.js from anchors.js --></div>
+    </div>
+  </section>
+
+  <!-- ============ FLOOR PLAN ============ -->
+  <section id="floor-plan" class="floor-plan">
+    <div class="container">
+      <header class="section-head reveal">
+        <p class="eyebrow">Floor plan</p>
+        <h2>One level, four wings</h2>
+        <p class="section-sub">Schematic layout — click any room to jump to it in the 3D tour.</p>
+      </header>
+      <div class="plan-wrap reveal">
+        <svg class="plan" viewBox="0 0 900 470" role="group" aria-label="Clickable schematic floor plan">
+          <!-- shell -->
+          <rect class="plan-wall" x="80" y="40" width="760" height="340" />
+          <rect class="plan-deck" x="12" y="120" width="68" height="180" />
+          <rect class="plan-deck" x="300" y="392" width="300" height="62" />
+          <text class="plan-note" x="450" y="428">Carport · 2 cars (under home)</text>
+
+          <!-- interactive rooms (data-anchor = id in anchors.js) -->
+          <g class="plan-room" data-anchor="lounge" tabindex="0" role="button" aria-label="View Lounge in the 3D tour">
+            <rect x="80" y="40" width="170" height="340" /><text x="165" y="215">Lounge</text>
+          </g>
+          <g class="plan-room" data-anchor="dining" tabindex="0" role="button" aria-label="View Dining in the 3D tour">
+            <rect x="250" y="150" width="180" height="120" /><text x="340" y="215">Dining</text>
+          </g>
+          <g class="plan-room" data-anchor="kitchen" tabindex="0" role="button" aria-label="View Kitchen in the 3D tour">
+            <rect x="250" y="270" width="180" height="110" /><text x="340" y="330">Kitchen</text>
+          </g>
+          <g class="plan-room" data-anchor="laundry" tabindex="0" role="button" aria-label="View Laundry in the 3D tour">
+            <rect x="250" y="40" width="110" height="110" /><text x="305" y="100">Laundry</text>
+          </g>
+          <g class="plan-room" data-anchor="study-nook" tabindex="0" role="button" aria-label="View Study Nook in the 3D tour">
+            <rect x="360" y="40" width="110" height="110" /><text x="415" y="94">Study</text><text class="plan-sub" x="415" y="110">nook</text>
+          </g>
+          <g class="plan-room" data-anchor="rumpus" tabindex="0" role="button" aria-label="View Rumpus in the 3D tour">
+            <rect x="430" y="150" width="190" height="120" /><text x="525" y="215">Rumpus</text>
+          </g>
+          <g class="plan-room" data-anchor="room-3" tabindex="0" role="button" aria-label="View Room 3 in the 3D tour">
+            <rect x="430" y="270" width="100" height="110" /><text x="480" y="330">Room 3</text>
+          </g>
+          <g class="plan-room" data-anchor="room-2" tabindex="0" role="button" aria-label="View Room 2 in the 3D tour">
+            <rect x="530" y="270" width="100" height="110" /><text x="580" y="330">Room 2</text>
+          </g>
+          <g class="plan-room" data-anchor="room-1" tabindex="0" role="button" aria-label="View Room 1 in the 3D tour">
+            <rect x="630" y="270" width="90" height="110" /><text x="675" y="330">Room 1</text>
+          </g>
+          <g class="plan-room" data-anchor="bathroom" tabindex="0" role="button" aria-label="View Bathroom in the 3D tour">
+            <rect x="470" y="40" width="110" height="110" /><text x="525" y="94">Bath</text><text class="plan-sub" x="525" y="110">freestanding</text>
+          </g>
+          <g class="plan-room" data-anchor="ensuite" tabindex="0" role="button" aria-label="View Ensuite in the 3D tour">
+            <rect x="720" y="40" width="120" height="110" /><text x="780" y="100">Ensuite</text>
+          </g>
+          <g class="plan-room" data-anchor="master-bedroom" tabindex="0" role="button" aria-label="View Master Bedroom in the 3D tour">
+            <rect x="720" y="230" width="120" height="150" /><text x="780" y="310">Master</text>
+          </g>
+          <g class="plan-room" data-anchor="balcony" tabindex="0" role="button" aria-label="View Balcony in the 3D tour">
+            <rect x="12" y="120" width="68" height="180" />
+          </g>
+          <g class="plan-room" data-anchor="garage" tabindex="0" role="button" aria-label="View the carport in the 3D tour">
+            <rect x="300" y="392" width="300" height="62" />
+          </g>
+
+          <!-- static bits -->
+          <rect class="plan-static" x="580" y="40" width="140" height="230" />
+          <text class="plan-sub" x="650" y="160">Hall</text>
+          <rect class="plan-static" x="720" y="150" width="120" height="80" />
+          <text class="plan-sub" x="780" y="195">Walk-in robe</text>
+          <text class="plan-note" x="450" y="26">Schematic layout · not to scale</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCHEDULE A TOUR ============ -->
+  <section id="contact" class="contact">
+    <div class="container narrow">
+      <header class="section-head reveal">
+        <p class="eyebrow">Schedule a tour</p>
+        <h2>Book a time to visit</h2>
+      </header>
+
+      <form id="tourForm" novalidate class="reveal">
+        <div class="form-grid">
+          <p class="field">
+            <label for="f-name">Full name</label>
+            <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="err-name" />
+            <span class="field-error" id="err-name"></span>
+          </p>
+          <p class="field">
+            <label for="f-email">Email</label>
+            <input id="f-email" name="email" type="email" autocomplete="email" required aria-describedby="err-email" />
+            <span class="field-error" id="err-email"></span>
+          </p>
+          <p class="field">
+            <label for="f-phone">Phone</label>
+            <input id="f-phone" name="phone" type="tel" autocomplete="tel" required aria-describedby="err-phone" />
+            <span class="field-error" id="err-phone"></span>
+          </p>
+          <p class="field">
+            <label for="f-date">Preferred date</label>
+            <input id="f-date" name="date" type="date" required aria-describedby="err-date" />
+            <span class="field-error" id="err-date"></span>
+          </p>
+          <p class="field">
+            <label for="f-time">Time window</label>
+            <select id="f-time" name="timeWindow" required aria-describedby="err-time">
+              <option value="">Select a window…</option>
+              <option value="morning">Morning (9–12)</option>
+              <option value="afternoon">Afternoon (12–4)</option>
+              <option value="evening">Evening (4–7)</option>
+            </select>
+            <span class="field-error" id="err-time"></span>
+          </p>
+          <fieldset class="field field-radios">
+            <legend>Tour type</legend>
+            <label class="radio"><input type="radio" name="tourType" value="in-person" checked /> In-person</label>
+            <label class="radio"><input type="radio" name="tourType" value="video" /> Video call</label>
+          </fieldset>
+          <p class="field field-full">
+            <label for="f-message">Message <span class="optional">(optional)</span></label>
+            <textarea id="f-message" name="message" rows="4" maxlength="1000" aria-describedby="err-message"></textarea>
+            <span class="field-error" id="err-message"></span>
+          </p>
+        </div>
+        <!-- honeypot: humans never see or fill this -->
+        <p class="hp" aria-hidden="true">
+          <label for="f-company">Company</label>
+          <input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+        </p>
+        <div class="form-foot">
+          <button class="btn btn-primary" id="submitBtn" type="submit">Request a tour</button>
+          <p class="reassurance" data-bind="reassurance"></p>
+        </div>
+      </form>
+      <div id="formStatus" role="status" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div>
+      <p class="eyebrow">Agent</p>
+      <p class="foot-strong" data-bind="agent.name"></p>
+      <p data-bind="agent.phone"></p>
+      <p><a id="agentEmail" href="#contact"></a></p>
+    </div>
+    <div>
+      <p class="eyebrow">Property</p>
+      <p data-bind="name"></p>
+      <p data-bind="address"></p>
+      <p data-bind="price"></p>
+    </div>
+    <div>
+      <p class="eyebrow">About this page</p>
+      <p>3D model: <a href="https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0" target="_blank" rel="noopener">“Modular House Cube 3 by Swanbuild Australia”</a> by <a href="https://sketchfab.com/edsahergom" target="_blank" rel="noopener">EDSAHERGOM STUDIO</a> · CC BY 4.0</p>
+      <p>Built with Babylon.js.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- mobile sticky conversion bar (hidden when the form is in view) -->
+<div class="mobile-cta" id="mobileCta">
+  <p class="mobile-cta-price"><span data-bind="name"></span> · <span data-bind="price"></span></p>
+  <a class="btn btn-primary" href="#contact">Schedule a tour</a>
+</div>
+
+<script type="module" src="/page.js"></script>
+<script type="module" src="/main.js"></script>
+</body>
+</html>

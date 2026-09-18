@@ -1,0 +1,95 @@
+[PASS] A1 — 16 buttons in order Dollhouse, Exterior, Garage, Balcony, Lounge, Dining, Kitchen, Rumpus, Study Nook, Master Bedroom, Room 1, Room 2, Room 3, Ensuite, Bathroom, Laundry; groups: Overview · Outside · Living · Bedrooms · Wet areas; missing=[] extra=[] patioLabels=0
+    exterior: moved=17.379m hash=#room=exterior pressed=["exterior"] covered=false
+    garage: moved=21.149m hash=#room=garage pressed=["garage"] covered=false
+    balcony: moved=11.075m hash=#room=balcony pressed=["balcony"] covered=false
+    lounge: moved=1.860m hash=#room=lounge pressed=["lounge"] covered=false
+    dining: moved=4.701m hash=#room=dining pressed=["dining"] covered=false
+    kitchen: moved=0.728m hash=#room=kitchen pressed=["kitchen"] covered=false
+    rumpus: moved=9.227m hash=#room=rumpus pressed=["rumpus"] covered=false
+    study-nook: moved=3.801m hash=#room=study-nook pressed=["study-nook"] covered=false
+    master-bedroom: moved=10.377m hash=#room=master-bedroom pressed=["master-bedroom"] covered=false
+    room-1: moved=4.465m hash=#room=room-1 pressed=["room-1"] covered=false
+    room-2: moved=1.552m hash=#room=room-2 pressed=["room-2"] covered=false
+    room-3: moved=4.800m hash=#room=room-3 pressed=["room-3"] covered=false
+    ensuite: moved=10.492m hash=#room=ensuite pressed=["ensuite"] covered=false
+    bathroom: moved=2.902m hash=#room=bathroom pressed=["bathroom"] covered=false
+    laundry: moved=11.201m hash=#room=laundry pressed=["laundry"] covered=false
+    dollhouse: moved=56.557m hash=#room=dollhouse pressed=["dollhouse"] covered=false
+[PASS] A2 — 16 anchors clicked; min camera move=0.73m (noMove=[]); hashWrong=[]; pressedWrong=[]; pillObscured=[]; screenshots tests/qa/anchor-*.png
+[PASS] A5 — Tab reached 16/16 pills (unreached=[]); last focused=laundry :focus-visible=true outline="1px auto rgb(0, 95, 204)" (focus-ring.png); Enter on laundry: moved 56.56m hash #room=dollhouse→#room=laundry aria-pressed=true; Space on kitchen: moved 3.52m → #room=kitchen
+    exterior: centre 18.88m on GF_ED_CONCRETE_0 (ED_CONCRETE); 15/15 rays min=5.91m floor=1.6m embedded=0 mats=["Paint_-_Anthracitex6","Land_Texturex5","TreeMat3D_from_Converted_Object_2x2","ED_CONCRETEx2"] | mine mean=68.8 sd=46.7 black=0.4% ref mean=108.8 diff=76.6
+    garage: centre nullm on open sky; 13/15 rays min=5.3m floor=1.6m embedded=0 mats=["Paint_-_Anthracitex5","ED_CONCRETEx4","Glass_-_Bluex2","Metal_-_Stainless_Steelx2"] | mine mean=78.7 sd=51.4 black=0.8% ref mean=116.5 diff=76.9
+    balcony: centre nullm on open sky; 4/15 rays min=3.21m floor=1.6m embedded=0 mats=["Glass_-_Clear_Fastx3","Foliage_-_Leaves_Tree_Smallx1"] | mine mean=108.5 sd=75 black=0.4% ref mean=139.8 diff=75.8
+    lounge: centre 4.73m on GF_Glass - Clear Fast_0 (Glass_-_Clear_Fast); 15/15 rays min=3.53m floor=1.6m embedded=0 mats=["Glass_-_Clear_Fastx9","Paint_-_Glossy_Whitex3","Paint_-_Anthracitex1","Stucco_-_Yellow_Roughx1","Textile_-_01x1"] | mine mean=102.6 sd=70.9 black=6.4% ref mean=134.9 diff=61.2
+    dining: centre 5.16m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=2.83m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex6","Textile_-_01x4","Glass_-_Clear_Fastx4","Paint_-_Titanium_Whitex1"] | mine mean=118.7 sd=63.9 black=0.8% ref mean=147.4 diff=60.6
+    kitchen: centre 4.94m on FF_WOOD_0 (WOOD); 15/15 rays min=1.35m floor=1.6m embedded=0 mats=["Paint_-_Anthracitex5","Glass_-_Clear_Fastx3","WOODx3","Paint_-_Glossy_Whitex2","Metal_-_Stainless_Steelx1","Paint_-_Titanium_Whitex1"] | mine mean=118.4 sd=62.9 black=1% ref mean=147.3 diff=66.9
+    rumpus: centre 5.95m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=3.82m floor=1.6m embedded=0 mats=["Glass_-_Clear_Fastx4","Textile_-_01x4","Paint_-_Glossy_Whitex4","Glass_-_Bluex1","GDLM68_mlambert2SGx1","Paint_-_Titanium_Whitex1"] | mine mean=131.2 sd=60.5 black=0.5% ref mean=157 diff=56.6
+    study-nook: centre 3.77m on FF_Office Board_0 (Office_Board); 15/15 rays min=1.88m floor=1.6m embedded=0 mats=["Paint_-_Titanium_Whitex7","Paint_-_Glossy_Whitex6","Office_Boardx2"] | mine mean=165.6 sd=46.2 black=0% ref mean=183.4 diff=38.2
+    master-bedroom: centre 4.85m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=1.33m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex10","GDLM64_Mat_1x2","Paint_-_Anthracitex1","Paint_-_Titanium_Whitex1","GDLM63_mlambert2SGx1"] | mine mean=125.7 sd=65.8 black=5.6% ref mean=152.6 diff=59.9
+    room-1: centre 4.15m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=3.38m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex7","Glass_-_Clear_Fastx3","Textile_-_01x3","Wood_-_Pine_Grained_Verticalx2"] | mine mean=138 sd=54.7 black=0.4% ref mean=161.8 diff=51
+    room-2: centre 3.59m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=3.14m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex10","Textile_-_01x3","Paint_-_Light_Grayx2"] | mine mean=158.4 sd=54.2 black=0.1% ref mean=177.5 diff=50.2
+    room-3: centre 3.86m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=3.12m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex11","Glass_-_Clear_Fastx2","Paint_-_Cobalt_Bluex1","Paint_-_Anthracitex1"] | mine mean=151 sd=61 black=0.2% ref mean=171.8 diff=50.7
+    ensuite: centre 2.18m on GF_Tiles - Lino_0 (Tiles_-_Lino); 15/15 rays min=2.05m floor=1.6m embedded=0 mats=["Tiles_-_Linox8","Paint_-_Glossy_Whitex6","Metal_-_Stainless_Steelx1"] | mine mean=75.2 sd=65.6 black=9.6% ref mean=113.4 diff=70.2
+    bathroom: centre 2.16m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=0.58m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex8","Glass_-_Clear_Fastx6","Ceramic_-_Porcelainx1"] | mine mean=124 sd=58.5 black=1.2% ref mean=151 diff=58
+    laundry: centre 2.1m on GF_Paint - Glossy White_0 (Paint_-_Glossy_White); 15/15 rays min=1.42m floor=1.6m embedded=0 mats=["Paint_-_Glossy_Whitex14","Metal_-_Stainless_Steelx1"] | mine mean=146.5 sd=55.9 black=0% ref mean=168.4 diff=45.2
+[PARTIAL] A3 — HUMAN visual check BLOCKED (no image display in this verifier environment; all 15 PNGs were still captured to tests/qa/ and analysed). Programmatic: black=[] embeddedInSolid=[] offFloor=[] centreWallUnder0.5m=[] anyRayUnder0.5m=[] noHits=[]; frameDiff vs pre-refactor reference (informational, different aspect 16:9 vs 16:10)=["exterior:76.6","garage:76.9","balcony:75.8","lounge:61.2","dining:60.6","kitchen:66.9","rumpus:56.6","study-nook:38.2","master-bedroom:59.9","room-1:51","room-2:50.2","room-3:50.7","ensuite:70.2","bathroom:58","laundry:45.2"]; per-anchor visible materials in tests/qa/a3-report.json
+[PASS] A4-dining — no click needed (poster hidden on load=true); camera=-4.80,1.22,-0.50 anchor=-4.8,1.224,-0.5 dist=0.000m hash=#room=dining
+[PASS] A4-master-bedroom — no click needed (poster hidden on load=true); camera=9.60,1.22,3.30 anchor=9.6,1.224,3.3 dist=0.000m hash=#room=master-bedroom
+[PASS] B1 — nativeFullscreen=true fullscreenElement=tour pseudoFallback=false tourRect=[0,0,1440,900] canvas=1440x900 viewport=1440x900 label="Exit fullscreen"
+[PASS] B2 — anchorBarVisible=true exitBtnVisible=true label="Exit fullscreen" creditVisible=true · click ensuite (15.0m away) moved 15.01m (pillCovered=false) · fullscreen.png
+[PARTIAL] B3 — exitByButton={fs:false,pseudo:false} reentered={fs:true,pseudo:false} exitByEsc={fs:false,pseudo:false} canvas=1182x664 expected=1182x664 (±2) scroll: before=1421 inFs=1261 afterBtnExit=1261 afterEscExit=1261 (Δ-160 vs ±50; docHeight 5502→5502)
+[PASS] C1-desktop — CTA rect={"x":1149,"y":13,"w":163,"h":37} insideFold=true; after click form top=313 bottom=807 inView=true
+[PASS] C2-desktop — position=sticky; after scrollY=2000 header CTA rect={"x":1149,"y":13,"w":163,"h":37}
+[PASS] C3 — POSTs during submit=0; name: invalid=true msg="Please enter your full name." | email: invalid=true msg="Please enter a valid email address." | phone: invalid=true msg="Phone: 7–20 characters (digits, spaces, + ( ) -)." | date: invalid=true msg="Please pick a preferred date." | time: invalid=true msg="Please choose a time window."; focus=f-name; status="Please correct the highlighted fields."
+[PASS] C4 — POSTs=0; email error="Please enter a valid email address." aria-invalid=true; date(2026-09-13) error="Please choose tomorrow or later." aria-invalid=true; focus=f-email
+[PASS] C5 — POSTs=1 status=201; email=qa+1789746425129@example.com; date=2026-09-24; confirmation="Request received Thank you, QA Verifier. We’ve pencilled you in for 2026-09-24 · Afternoon (12–4) · In-person and will confirm by email at qa+1789746425129@example.com. [Response-time promise, e.g. "W"; formHidden=true; statusLine="Your tour request was sent successfully."
+[PASS] C1-mobile — 3 "Schedule a tour" CTAs, 3 fully above the 390x844 fold; after click form top=264 inView=true
+[PASS] C2-mobile — bottom bar display=flex top=785 height=59 hiddenAtTop=false; hiddenWhenFormInView=true
+    mobile header CTA @scrollY=2000: {"x":211.921875,"y":6.8125,"w":154.078125,"h":50.375,"cx":288.9609375,"cy":32}
+STAGE D failed: Error: SyntaxError: Unexpected token ')'
+    at t.ev (file:///Users/cjlubosana/Develop/experiment/hackathon/01-assembly-ai/talkie-voice-assistant/virtual-tour/tests/qa/qa.mjs:89:35)
+    at async stageD (file:///Users/cjlubosana/Develop/experiment/hackathon/01-assembly-ai/talkie-voice-assistant/virtual-tour/tests/qa/qa.mjs:626:29)
+    at async guard (file:///Users/cjlubosana/Develop/experiment/hackathon/01-assembly-ai/talkie-voice-assistant/virtual-tour/tests/qa/qa.mjs:930:9)
+    at async main (file:///Users/cjlubosana/Develop/experiment/hackathon/01-assembly-ai/talkie-voice-assistant/virtual-tour/tests/qa/qa.mjs:892:20)
+[BLOCKED] D-stage — driver threw: SyntaxError: Unexpected token ')'
+    #tour document y=1725px (viewport 900, IO rootMargin bottom=+100% → triggers when within 900px); glb reqs after 5s idle=1; poster={"hidden":true,"cls":"tour-poster loading","msg":"Preparing walkthrough…"}
+[FAIL] E1 — .glb requests on initial load without scrolling=1 (#tour at y=1725px, lazy IO rootMargin '0px 0px 100% 0px' → fires once the section is within one viewport); after scrolling to y=925: 1 request(s) ["modular_house_cube_3_by_swanbuild_australia.glb"]
+[PASS] E2 — click hit #renderCanvas; wheel over canvas (not captured) scrollY 1421→1721; click → captured=true pointerLock=renderCanvas badge="Walk mode — WASD move · mouse look · Shift run · V dollhouse · Esc rel"; wheel while captured 1638→1938; Esc → captured=false lock=null badge="Walk mode — click the view to take control"; wheel after release 1938→2238
+[FAIL] E5 — placeholders present 6/7; facts {"beds":false,"baths":false,"deck":true,"carport":true,"raised":true} (bedroom pills=4); unsupported claims → ["layout claims wings the model doesn't have: \"four wings\"","bedrooms described as a separate wing: \"their own wing\""]
+[PASS] E4 — #credit 640x15 display=block insideTour=true; in fullscreen 640x15 visible=true; text="Model: “Modular House Cube 3 by Swanbuild Australia” by EDSAHERGOM STUDIO (Sketchfab) · CC BY 4.0 · Built with Babylon.js"; links=["sketchfab.com","sketchfab.com"]
+[PASS] E6 — matches=true; 200ms after pill click camera already 0.000m from anchor (settled 0.000m) → instant; html scroll-behavior=auto; .reveal transition-duration=0s opacity=1
+
+=== console errors: 0 ===
+=== uncaught exceptions: 0 ===
+=== failed / 4xx / 5xx requests: 0 ===
+=== console warnings: 0 ===
+
+--- results ---
+PASS     A1
+PASS     A2
+PASS     A5
+PASS     A4-dining
+PASS     A4-master-bedroom
+PASS     B1
+PASS     B2
+PARTIAL  B3
+PASS     C1-desktop
+PASS     C2-desktop
+PASS     C3
+PASS     C4
+PASS     C5
+PASS     C1-mobile
+PASS     C2-mobile
+PASS     D2-1440
+FAIL     E1
+PASS     E2
+PASS     E4
+PASS     E6
+PARTIAL  D3
+PASS     D4
+PARTIAL  D5
+PASS     D2-768
+PASS     D2-390
+PARTIAL  A3
+BLOCKED  D-stage
+FAIL     E5

@@ -1,0 +1,282 @@
+meshes: 572 materials: 106
+GF_Paint - Alizarin Carmine_0 | mat=Paint_-_Alizarin_Carmine | v=1612 | centre=(-6.9,-2.2) y=0.41..0.53
+GF_Foliage - Leaves Tree Small_0 | mat=Foliage_-_Leaves_Tree_Small | v=18248 | centre=(-10,0.7) y=0.08..0.78
+GF_tv screen_0 | mat=tv_screen | v=24 | centre=(9.4,1.2) y=0.13..1.07
+GF_Glass - Mirror_0 | mat=Glass_-_Mirror | v=36 | centre=(9.1,-0.3) y=-0.36..1.65
+GF_TreeMat3D (from Converted Object)_0 | mat=TreeMat3D_from_Converted_Object | v=16 | centre=(11,8.5) y=-3.32..6.3
+GF_TreeMat3D (from Converted Object) (2)_0 | mat=TreeMat3D_from_Converted_Object_2 | v=32 | centre=(-6.6,0.1) y=-3.33..-2.23
+GF_TreeMat3D (from Converted Object) (1)_0 | mat=TreeMat3D_from_Converted_Object_1 | v=32 | centre=(-6.5,-0.4) y=-3.28..-2.13
+GF_TreeMat3D (from Converted Object) (4)_0 | mat=TreeMat3D_from_Converted_Object_4 | v=16 | centre=(-9.5,-6.9) y=-3.34..2.44
+GF_TreeMat3D (from Converted Object) (5)_0 | mat=TreeMat3D_from_Converted_Object_5 | v=16 | centre=(-10.3,3.5) y=-3.27..-2.31
+GF_Carpet - Kids_0 | mat=Carpet_-_Kids | v=4 | centre=(7.5,2) y=-0.37..-0.37
+GF_Glass - Lamp_0 | mat=Glass_-_Lamp | v=392 | centre=(-4.4,3.9) y=-2.97..-2.39
+GF_Carpet - 03_0 | mat=Carpet_-_03 | v=8 | centre=(5.2,0) y=-0.38..-0.38
+FF_Glass - Mirror_0 | mat=Glass_-_Mirror | v=52 | centre=(4.2,-1.4) y=0.64..2.22
+FF_Roof - Corrugated Sheet Matte_0 | mat=Roof_-_Corrugated_Sheet_Matte | v=8 | centre=(-0.6,0) y=2.51..2.51
+treeTpl0 | mat=treeTpl0Mat | v=16 | centre=(0,0) y=0..9.63
+treeTpl1 | mat=treeTpl1Mat | v=16 | centre=(0,0) y=0..5.78
+tree0 | mat=treeTpl1Mat | v=16 | centre=(26.1,80.5) y=-3.35..1.79
+tree1 | mat=treeTpl1Mat | v=16 | centre=(-33.2,-79.3) y=-3.35..3.63
+tree2 | mat=treeTpl1Mat | v=16 | centre=(-43,91.8) y=-3.35..3.48
+tree3 | mat=treeTpl1Mat | v=16 | centre=(83.7,-67.4) y=-3.35..2.72
+tree4 | mat=treeTpl1Mat | v=16 | centre=(-108.8,-22.5) y=-3.35..1.32
+tree5 | mat=treeTpl1Mat | v=16 | centre=(76.5,-43.4) y=-3.35..1.8
+tree6 | mat=treeTpl0Mat | v=16 | centre=(106.6,-21.1) y=-3.35..7.1
+tree7 | mat=treeTpl0Mat | v=16 | centre=(68.6,-60) y=-3.35..5.07
+tree8 | mat=treeTpl1Mat | v=16 | centre=(-140.7,-36) y=-3.35..1.81
+tree9 | mat=treeTpl0Mat | v=16 | centre=(90.4,-17.1) y=-3.35..8.39
+tree10 | mat=treeTpl1Mat | v=16 | centre=(97.9,75.3) y=-3.35..2.29
+tree11 | mat=treeTpl0Mat | v=16 | centre=(5.2,-79.2) y=-3.35..6.81
+tree12 | mat=treeTpl1Mat | v=16 | centre=(59.9,-113.7) y=-3.35..2.36
+tree13 | mat=treeTpl1Mat | v=16 | centre=(51,72.8) y=-3.35..1.21
+tree14 | mat=treeTpl0Mat | v=16 | centre=(-115.3,-70.9) y=-3.35..7.7
+tree15 | mat=treeTpl0Mat | v=16 | centre=(98.7,-94.9) y=-3.35..6.23
+tree16 | mat=treeTpl1Mat | v=16 | centre=(138.8,51.7) y=-3.35..2.76
+tree17 | mat=treeTpl0Mat | v=16 | centre=(-44.2,90.2) y=-3.35..8.09
+tree18 | mat=treeTpl1Mat | v=16 | centre=(140.6,-30.5) y=-3.35..3.33
+tree19 | mat=treeTpl1Mat | v=16 | centre=(-122.1,-42) y=-3.35..1.7
+tree20 | mat=treeTpl1Mat | v=16 | centre=(-96.3,-23.5) y=-3.35..1.23
+tree21 | mat=treeTpl0Mat | v=16 | centre=(-3.4,-68.5) y=-3.35..6.26
+tree22 | mat=treeTpl1Mat | v=16 | centre=(-19.3,-89.4) y=-3.35..1.76
+tree23 | mat=treeTpl1Mat | v=16 | centre=(36.7,-47.7) y=-3.35..2.72
+tree24 | mat=treeTpl1Mat | v=16 | centre=(108.8,-10.6) y=-3.35..1.01
+tree25 | mat=treeTpl0Mat | v=16 | centre=(62.8,80.3) y=-3.35..7.9
+tree26 | mat=treeTpl1Mat | v=16 | centre=(30.5,-39.7) y=-3.35..3.82
+tree27 | mat=treeTpl0Mat | v=16 | centre=(47.9,138.3) y=-3.35..8.48
+tree28 | mat=treeTpl0Mat | v=16 | centre=(-3,-128.4) y=-3.35..7.32
+tree29 | mat=treeTpl0Mat | v=16 | centre=(38.3,-29.7) y=-3.35..5.15
+tree30 | mat=treeTpl0Mat | v=16 | centre=(-80.3,-109.9) y=-3.35..6.44
+tree31 | mat=treeTpl1Mat | v=16 | centre=(28.4,-45.1) y=-3.35..3.86
+tree32 | mat=treeTpl1Mat | v=16 | centre=(51.7,-84.9) y=-3.35..3.75
+tree33 | mat=treeTpl1Mat | v=16 | centre=(-67.5,-42.3) y=-3.35..2.03
+tree34 | mat=treeTpl1Mat | v=16 | centre=(45.6,71.4) y=-3.35..2.01
+tree35 | mat=treeTpl0Mat | v=16 | centre=(-97.1,28.3) y=-3.35..7.63
+tree36 | mat=treeTpl1Mat | v=16 | centre=(-60.2,-53.3) y=-3.35..3.83
+tree37 | mat=treeTpl1Mat | v=16 | centre=(-18.5,30.5) y=-3.35..1.95
+tree38 | mat=treeTpl0Mat | v=16 | centre=(-7.8,28.6) y=-3.35..4.3
+tree39 | mat=treeTpl0Mat | v=16 | centre=(-27,49.9) y=-3.35..6.93
+tree40 | mat=treeTpl1Mat | v=16 | centre=(-60.9,89.9) y=-3.35..3.35
+tree41 | mat=treeTpl1Mat | v=16 | centre=(-24.7,-137.9) y=-3.35..2.08
+tree42 | mat=treeTpl1Mat | v=16 | centre=(124.5,79.4) y=-3.35..1.88
+tree43 | mat=treeTpl0Mat | v=16 | centre=(-108.6,77.4) y=-3.35..6.94
+tree44 | mat=treeTpl1Mat | v=16 | centre=(81.9,-66.8) y=-3.35..2.14
+tree45 | mat=treeTpl1Mat | v=16 | centre=(-71.4,96.3) y=-3.35..1.06
+tree46 | mat=treeTpl0Mat | v=16 | centre=(113.9,-90.6) y=-3.35..6.1
+tree47 | mat=treeTpl1Mat | v=16 | centre=(-24.1,53.2) y=-3.35..1.07
+tree48 | mat=treeTpl1Mat | v=16 | centre=(85,-39.7) y=-3.35..1.95
+tree49 | mat=treeTpl0Mat | v=16 | centre=(-62.4,124.8) y=-3.35..6.18
+tree50 | mat=treeTpl1Mat | v=16 | centre=(-3.3,-53.1) y=-3.35..1.07
+tree51 | mat=treeTpl0Mat | v=16 | centre=(-117.4,-52.6) y=-3.35..4.74
+tree52 | mat=treeTpl1Mat | v=16 | centre=(-44.6,54.6) y=-3.35..1.94
+tree53 | mat=treeTpl1Mat | v=16 | centre=(33.7,-100.2) y=-3.35..3.57
+tree54 | mat=treeTpl1Mat | v=16 | centre=(6.9,96.7) y=-3.35..1.08
+tree55 | mat=treeTpl0Mat | v=16 | centre=(24.9,110.7) y=-3.35..7.31
+tree56 | mat=treeTpl1Mat | v=16 | centre=(-40.9,-43.2) y=-3.35..2.94
+tree57 | mat=treeTpl0Mat | v=16 | centre=(33.5,40.4) y=-3.35..8.44
+tree58 | mat=treeTpl0Mat | v=16 | centre=(56.9,-127.2) y=-3.35..8.45
+tree59 | mat=treeTpl0Mat | v=16 | centre=(82.4,-98.9) y=-3.35..6.54
+tree60 | mat=treeTpl0Mat | v=16 | centre=(90.2,-52) y=-3.35..8.43
+tree61 | mat=treeTpl1Mat | v=16 | centre=(44.6,109.8) y=-3.35..2.98
+tree62 | mat=treeTpl1Mat | v=16 | centre=(-12.8,69.3) y=-3.35..2.98
+tree63 | mat=treeTpl0Mat | v=16 | centre=(-94.3,90.7) y=-3.35..6.02
+tree64 | mat=treeTpl0Mat | v=16 | centre=(106.3,-21.5) y=-3.35..4.51
+tree65 | mat=treeTpl0Mat | v=16 | centre=(29.9,-139.6) y=-3.35..6.4
+tree66 | mat=treeTpl0Mat | v=16 | centre=(15.7,-34.5) y=-3.35..6.59
+tree67 | mat=treeTpl0Mat | v=16 | centre=(50.6,83.5) y=-3.35..4.32
+tree68 | mat=treeTpl1Mat | v=16 | centre=(-93.6,-63.5) y=-3.35..2.4
+tree69 | mat=treeTpl1Mat | v=16 | centre=(-78.7,-41.1) y=-3.35..2.68
+tree70 | mat=treeTpl0Mat | v=16 | centre=(-39.4,-18.4) y=-3.35..6.1
+tree71 | mat=treeTpl1Mat | v=16 | centre=(-60.8,56.8) y=-3.35..1.22
+tree72 | mat=treeTpl0Mat | v=16 | centre=(26.7,-88) y=-3.35..3.99
+tree73 | mat=treeTpl0Mat | v=16 | centre=(-96.8,33.4) y=-3.35..5.9
+tree74 | mat=treeTpl0Mat | v=16 | centre=(-81.6,75) y=-3.35..4.07
+tree75 | mat=treeTpl1Mat | v=16 | centre=(-54.1,-86.7) y=-3.35..1.09
+tree76 | mat=treeTpl1Mat | v=16 | centre=(-23.9,56.9) y=-3.35..2.66
+tree77 | mat=treeTpl0Mat | v=16 | centre=(-100.9,-7.4) y=-3.35..6.39
+tree78 | mat=treeTpl1Mat | v=16 | centre=(44.3,12) y=-3.35..1.24
+tree79 | mat=treeTpl0Mat | v=16 | centre=(6,145.2) y=-3.35..7.52
+tree80 | mat=treeTpl0Mat | v=16 | centre=(86,-36.3) y=-3.35..8.65
+tree81 | mat=treeTpl1Mat | v=16 | centre=(5.6,80.6) y=-3.35..1.81
+tree82 | mat=treeTpl0Mat | v=16 | centre=(53.5,-66.1) y=-3.35..4.41
+tree83 | mat=treeTpl1Mat | v=16 | centre=(-56.8,98.1) y=-3.35..2.85
+tree84 | mat=treeTpl0Mat | v=16 | centre=(-42.6,121.4) y=-3.35..8.67
+tree85 | mat=treeTpl1Mat | v=16 | centre=(86.8,-123.8) y=-3.35..1.04
+tree86 | mat=treeTpl1Mat | v=16 | centre=(-9.7,-75.2) y=-3.35..3.79
+tree87 | mat=treeTpl0Mat | v=16 | centre=(91.6,93.5) y=-3.35..6.4
+tree88 | mat=treeTpl1Mat | v=16 | centre=(134.9,-58.9) y=-3.35..3.04
+tree89 | mat=treeTpl0Mat | v=16 | centre=(7.5,94.7) y=-3.35..5.06
+tree90 | mat=treeTpl0Mat | v=16 | centre=(-117.7,70.1) y=-3.35..8.67
+tree91 | mat=treeTpl1Mat | v=16 | centre=(0.5,-31.3) y=-3.35..3.04
+tree92 | mat=treeTpl0Mat | v=16 | centre=(60.5,76.8) y=-3.35..4.27
+tree93 | mat=treeTpl0Mat | v=16 | centre=(-133.2,-56.9) y=-3.35..8.24
+tree94 | mat=treeTpl1Mat | v=16 | centre=(27.1,96) y=-3.35..3.62
+tree95 | mat=treeTpl0Mat | v=16 | centre=(7.6,-36.6) y=-3.35..5.44
+tree96 | mat=treeTpl0Mat | v=16 | centre=(-93.6,69.5) y=-3.35..5.52
+tree97 | mat=treeTpl0Mat | v=16 | centre=(32.3,-10.8) y=-3.35..5.87
+tree98 | mat=treeTpl1Mat | v=16 | centre=(126.3,-21.3) y=-3.35..1.52
+tree99 | mat=treeTpl1Mat | v=16 | centre=(-67.9,-53.2) y=-3.35..2.85
+tree100 | mat=treeTpl0Mat | v=16 | centre=(117.3,63.4) y=-3.35..6.24
+tree101 | mat=treeTpl0Mat | v=16 | centre=(-118.7,90.1) y=-3.35..7.23
+tree102 | mat=treeTpl1Mat | v=16 | centre=(-72.5,102) y=-3.35..3.6
+tree103 | mat=treeTpl0Mat | v=16 | centre=(-40.6,-75) y=-3.35..7.29
+tree104 | mat=treeTpl1Mat | v=16 | centre=(88.9,-107.1) y=-3.35..3.69
+tree105 | mat=treeTpl0Mat | v=16 | centre=(21.2,-25.4) y=-3.35..5
+tree106 | mat=treeTpl1Mat | v=16 | centre=(57,-36.2) y=-3.35..1.76
+tree107 | mat=treeTpl0Mat | v=16 | centre=(60.9,121.2) y=-3.35..4.29
+tree108 | mat=treeTpl1Mat | v=16 | centre=(-30.8,-69.9) y=-3.35..2.94
+tree109 | mat=treeTpl0Mat | v=16 | centre=(152.2,-9.2) y=-3.35..8.51
+tree110 | mat=treeTpl1Mat | v=16 | centre=(-5.2,-82.1) y=-3.35..1.79
+tree111 | mat=treeTpl0Mat | v=16 | centre=(51.6,-14.9) y=-3.35..8.42
+tree112 | mat=treeTpl0Mat | v=16 | centre=(-20,-125.6) y=-3.35..7.43
+tree113 | mat=treeTpl1Mat | v=16 | centre=(-115,-30.5) y=-3.35..2.51
+tree114 | mat=treeTpl0Mat | v=16 | centre=(-22.2,94.4) y=-3.35..6.13
+tree115 | mat=treeTpl0Mat | v=16 | centre=(-46,-23.8) y=-3.35..8.67
+tree116 | mat=treeTpl0Mat | v=16 | centre=(-1.6,58) y=-3.35..4.55
+tree117 | mat=treeTpl1Mat | v=16 | centre=(90.9,53.2) y=-3.35..2.65
+tree118 | mat=treeTpl0Mat | v=16 | centre=(15.3,-69.4) y=-3.35..7.91
+tree119 | mat=treeTpl1Mat | v=16 | centre=(109.5,-19.6) y=-3.35..3
+tree120 | mat=treeTpl1Mat | v=16 | centre=(-7.4,64.5) y=-3.35..1.64
+tree121 | mat=treeTpl0Mat | v=16 | centre=(65.2,-60.4) y=-3.35..8.54
+tree122 | mat=treeTpl0Mat | v=16 | centre=(39.9,130.7) y=-3.35..6.53
+tree123 | mat=treeTpl0Mat | v=16 | centre=(-8.3,-39.9) y=-3.35..5.09
+tree124 | mat=treeTpl0Mat | v=16 | centre=(-142.7,-26.8) y=-3.35..4.1
+tree125 | mat=treeTpl0Mat | v=16 | centre=(-47,-9.8) y=-3.35..6.64
+tree126 | mat=treeTpl0Mat | v=16 | centre=(-54.5,-88.3) y=-3.35..5.58
+tree127 | mat=treeTpl0Mat | v=16 | centre=(-3.5,56.1) y=-3.35..6.59
+tree128 | mat=treeTpl1Mat | v=16 | centre=(105.5,11.7) y=-3.35..3.5
+tree129 | mat=treeTpl0Mat | v=16 | centre=(-31,-97.5) y=-3.35..7.95
+tree130 | mat=treeTpl1Mat | v=16 | centre=(79.5,-10) y=-3.35..2.59
+tree131 | mat=treeTpl1Mat | v=16 | centre=(-23.4,-17.5) y=-3.35..2.05
+tree132 | mat=treeTpl0Mat | v=16 | centre=(26.8,-101.9) y=-3.35..3.93
+tree133 | mat=treeTpl0Mat | v=16 | centre=(86,8.3) y=-3.35..5.69
+tree134 | mat=treeTpl1Mat | v=16 | centre=(119.4,-26) y=-3.35..3.63
+tree135 | mat=treeTpl0Mat | v=16 | centre=(-55.6,78.4) y=-3.35..4.1
+tree136 | mat=treeTpl1Mat | v=16 | centre=(37,-37.6) y=-3.35..1.58
+tree137 | mat=treeTpl0Mat | v=16 | centre=(53.3,-108) y=-3.35..7.93
+tree138 | mat=treeTpl1Mat | v=16 | centre=(-65.4,-28.1) y=-3.35..2.57
+tree139 | mat=treeTpl1Mat | v=16 | centre=(-25.4,-42.2) y=-3.35..3.43
+tree140 | mat=treeTpl1Mat | v=16 | centre=(-63.4,64.6) y=-3.35..3.06
+tree141 | mat=treeTpl1Mat | v=16 | centre=(-11.5,28.1) y=-3.35..1.66
+tree142 | mat=treeTpl1Mat | v=16 | centre=(-9.2,28.9) y=-3.35..3.73
+tree143 | mat=treeTpl1Mat | v=16 | centre=(-99.3,-96.3) y=-3.35..1.21
+tree144 | mat=treeTpl1Mat | v=16 | centre=(121.2,-4.9) y=-3.35..2.85
+tree145 | mat=treeTpl1Mat | v=16 | centre=(14.7,50.5) y=-3.35..2.13
+tree146 | mat=treeTpl0Mat | v=16 | centre=(-95.1,-109.6) y=-3.35..5.99
+tree147 | mat=treeTpl1Mat | v=16 | centre=(-69.6,91.5) y=-3.35..3.09
+tree148 | mat=treeTpl1Mat | v=16 | centre=(-75.4,73.2) y=-3.35..3.08
+tree149 | mat=treeTpl1Mat | v=16 | centre=(-108.8,57.2) y=-3.35..2.36
+tree150 | mat=treeTpl1Mat | v=16 | centre=(68.3,134.4) y=-3.35..3.83
+tree151 | mat=treeTpl1Mat | v=16 | centre=(145.2,-19.8) y=-3.35..3.45
+tree152 | mat=treeTpl1Mat | v=16 | centre=(-124.7,79.4) y=-3.35..2.53
+tree153 | mat=treeTpl1Mat | v=16 | centre=(-126.5,-33.8) y=-3.35..1.52
+tree154 | mat=treeTpl0Mat | v=16 | centre=(65.5,82.2) y=-3.35..7.21
+tree155 | mat=treeTpl1Mat | v=16 | centre=(9.2,115.6) y=-3.35..1.38
+tree156 | mat=treeTpl1Mat | v=16 | centre=(-44.5,-88.5) y=-3.35..2.87
+tree157 | mat=treeTpl1Mat | v=16 | centre=(-55.8,-125.4) y=-3.35..2.8
+tree158 | mat=treeTpl0Mat | v=16 | centre=(-56.6,-41.2) y=-3.35..4.26
+tree159 | mat=treeTpl1Mat | v=16 | centre=(-98.9,84.4) y=-3.35..2.23
+tree160 | mat=treeTpl0Mat | v=16 | centre=(65.5,-51.8) y=-3.35..7.65
+tree161 | mat=treeTpl1Mat | v=16 | centre=(-23.7,-95.9) y=-3.35..2.75
+tree162 | mat=treeTpl1Mat | v=16 | centre=(-84.6,118.4) y=-3.35..1.93
+tree163 | mat=treeTpl0Mat | v=16 | centre=(-91.8,-28.9) y=-3.35..8.5
+tree164 | mat=treeTpl1Mat | v=16 | centre=(-57.5,86) y=-3.35..3.44
+tree165 | mat=treeTpl1Mat | v=16 | centre=(-63.5,-23.7) y=-3.35..1.65
+tree166 | mat=treeTpl1Mat | v=16 | centre=(-68.7,51) y=-3.35..3.42
+tree167 | mat=treeTpl1Mat | v=16 | centre=(92.4,94.5) y=-3.35..1.92
+tree168 | mat=treeTpl1Mat | v=16 | centre=(51.9,115.4) y=-3.35..3.55
+tree169 | mat=treeTpl0Mat | v=16 | centre=(-64.7,5.2) y=-3.35..8.2
+tree170 | mat=treeTpl0Mat | v=16 | centre=(-9.9,-146.9) y=-3.35..6.36
+tree171 | mat=treeTpl0Mat | v=16 | centre=(98.1,-55.8) y=-3.35..6.69
+tree172 | mat=treeTpl0Mat | v=16 | centre=(87.1,-98.3) y=-3.35..6.63
+tree173 | mat=treeTpl1Mat | v=16 | centre=(-50.6,-69.9) y=-3.35..1.86
+tree174 | mat=treeTpl0Mat | v=16 | centre=(15.1,152.4) y=-3.35..5.4
+tree175 | mat=treeTpl1Mat | v=16 | centre=(1.1,59.8) y=-3.35..2.23
+tree176 | mat=treeTpl0Mat | v=16 | centre=(86.6,-92.9) y=-3.35..7.03
+tree177 | mat=treeTpl0Mat | v=16 | centre=(44.1,-40.1) y=-3.35..5.85
+tree178 | mat=treeTpl1Mat | v=16 | centre=(-107.3,-20.5) y=-3.35..1.91
+tree179 | mat=treeTpl0Mat | v=16 | centre=(-140.4,-10.8) y=-3.35..4.7
+tree180 | mat=treeTpl1Mat | v=16 | centre=(-36.9,-90.6) y=-3.35..1.84
+tree181 | mat=treeTpl0Mat | v=16 | centre=(17.3,-71.4) y=-3.35..6.5
+tree182 | mat=treeTpl1Mat | v=16 | centre=(4.8,111.5) y=-3.35..3.59
+tree183 | mat=treeTpl1Mat | v=16 | centre=(-58.8,-40.6) y=-3.35..2.89
+tree184 | mat=treeTpl1Mat | v=16 | centre=(111.4,-20.7) y=-3.35..2.96
+tree185 | mat=treeTpl1Mat | v=16 | centre=(-72.5,58.5) y=-3.35..2.27
+tree186 | mat=treeTpl0Mat | v=16 | centre=(-35.7,123.3) y=-3.35..4.2
+tree187 | mat=treeTpl0Mat | v=16 | centre=(-27.7,-65) y=-3.35..5.72
+tree188 | mat=treeTpl0Mat | v=16 | centre=(-21.9,-33.1) y=-3.35..6.69
+tree189 | mat=treeTpl1Mat | v=16 | centre=(33.9,110.6) y=-3.35..1.57
+tree190 | mat=treeTpl1Mat | v=16 | centre=(-90,-12.1) y=-3.35..2.85
+tree191 | mat=treeTpl1Mat | v=16 | centre=(-45.5,49.1) y=-3.35..1.53
+tree192 | mat=treeTpl1Mat | v=16 | centre=(-2.5,-50.7) y=-3.35..1.22
+tree193 | mat=treeTpl0Mat | v=16 | centre=(-4,-90.9) y=-3.35..7.73
+tree194 | mat=treeTpl1Mat | v=16 | centre=(-15.8,-111.8) y=-3.35..1.55
+tree195 | mat=treeTpl1Mat | v=16 | centre=(92,-114.1) y=-3.35..2.21
+tree196 | mat=treeTpl1Mat | v=16 | centre=(85,-11.7) y=-3.35..3.84
+tree197 | mat=treeTpl1Mat | v=16 | centre=(-80.2,-34.3) y=-3.35..1.58
+tree198 | mat=treeTpl0Mat | v=16 | centre=(-22.6,115.6) y=-3.35..7.7
+tree199 | mat=treeTpl1Mat | v=16 | centre=(94.1,-102.2) y=-3.35..3.34
+tree200 | mat=treeTpl0Mat | v=16 | centre=(97.8,-18.3) y=-3.35..4.33
+tree201 | mat=treeTpl1Mat | v=16 | centre=(15.4,97.1) y=-3.35..2.98
+tree202 | mat=treeTpl1Mat | v=16 | centre=(-18.5,-104.6) y=-3.35..3.38
+tree203 | mat=treeTpl0Mat | v=16 | centre=(80.1,-119.9) y=-3.35..4.23
+--- other meshes ---
+sky | mat=skyMat | v=703 | centre=(2.1,4.9)
+__root__ | mat=null | v=0 | centre=(0,0)
+GF_GDLM55_mlambert3SG_0 | mat=GDLM55_mlambert3SG | v=1341 | centre=(0.1,1.1)
+GF_Land_Texture_0 | mat=Land_Texture | v=417 | centre=(0.7,1.3)
+GF_Metal - Stainless Steel_0 | mat=Metal_-_Stainless_Steel | v=40642 | centre=(0,0.3)
+GF_Wood - Walnut Vertical_0 | mat=Wood_-_Walnut_Vertical | v=3380 | centre=(-4.2,-0.4)
+GF_Paint - Yellow Ochre_0 | mat=Paint_-_Yellow_Ochre | v=1758 | centre=(0.2,0.6)
+GF_Glass - Blue_0 | mat=Glass_-_Blue | v=1350 | centre=(-0.8,0.1)
+GF_Paint - Titanium White_0 | mat=Paint_-_Titanium_White | v=15820 | centre=(0.1,0)
+GF_Paint - Anthracite_0 | mat=Paint_-_Anthracite | v=15817 | centre=(-0.6,0.2)
+GF_Glass - Clear Fast_0 | mat=Glass_-_Clear_Fast | v=449 | centre=(-0.6,0)
+GF_GDLM60_mED_Woman_Child__0 | mat=GDLM60_mED_Woman_Child | v=5287 | centre=(-6.8,2.5)
+GF_GDLM65_mlambert2SG_0 | mat=GDLM65_mlambert2SG | v=6158 | centre=(-8.6,-0.8)
+GF_GDLM68_mlambert2SG_0 | mat=GDLM68_mlambert2SG | v=9261 | centre=(0.2,-1.9)
+GF_GDLM69_mGirl_with_Towel_0 | mat=GDLM69_mGirl_with_Towel | v=3808 | centre=(7.8,-1.9)
+GF_GDLM62_mED_Guy_Walking__0 | mat=GDLM62_mED_Guy_Walking | v=3556 | centre=(-5.3,-0.3)
+GF_Paint - Vermilion_0 | mat=Paint_-_Vermilion | v=156 | centre=(0.2,2.6)
+GF_Paint - Yellow Ochre.1_0 | mat=Paint_-_Yellow_Ochre.1 | v=49 | centre=(-5.8,3.5)
+GF_GDLM66_Mat_2_0 | mat=GDLM66_Mat_2 | v=5335 | centre=(3.5,2.1)
+GF_GDLM67_Mat_1_0 | mat=GDLM67_Mat_1 | v=25306 | centre=(3.5,2.1)
+GF_ED_PHOTO4_0 | mat=ED_PHOTO4 | v=4 | centre=(2.6,3.4)
+GF_Metal - Iron_0 | mat=Metal_-_Iron | v=72 | centre=(9.4,0.6)
+GF_GDLM64_Mat_1_0 | mat=GDLM64_Mat_1 | v=8706 | centre=(10.8,2.5)
+GF_GDLM63_mlambert2SG_0 | mat=GDLM63_mlambert2SG | v=8175 | centre=(11.6,1)
+GF_Paint - Cobalt Blue_0 | mat=Paint_-_Cobalt_Blue | v=1530 | centre=(2.3,0.3)
+GF_Paint - Cadmium Yellow_0 | mat=Paint_-_Cadmium_Yellow | v=66 | centre=(6.6,1.7)
+GF_Paint - Forest Green_0 | mat=Paint_-_Forest_Green | v=66 | centre=(6.6,1.7)
+GF_GDLM52_mTexture_0 | mat=GDLM52_mTexture | v=726 | centre=(7.8,2.7)
+GF_ED_PHOTO2_0 | mat=ED_PHOTO2 | v=4 | centre=(5.8,1.8)
+GF_Tiles - White Matte 15x15_0 | mat=Tiles_-_White_Matte_15x15 | v=260 | centre=(2.2,0)
+GF_Tiles - Lino_0 | mat=Tiles_-_Lino | v=157 | centre=(0.7,0)
+GF_Floorboards - 01_0 | mat=Floorboards_-_01 | v=278 | centre=(0,0.1)
+GF_Textile - 01_0 | mat=Textile_-_01 | v=11753 | centre=(-2.8,0)
+GF_Metal - Gold_0 | mat=Metal_-_Gold | v=156 | centre=(13.3,2.4)
+GF_Small Bush_0 | mat=Small_Bush | v=16 | centre=(-2.3,-3.3)
+GF_Small Bush copy_0 | mat=Small_Bush_copy | v=16 | centre=(-9.5,6.4)
+GF_Paint - Light Gray_0 | mat=Paint_-_Light_Gray | v=1437 | centre=(1,0.1)
+GF_Metal - Iron.1_0 | mat=Metal_-_Iron.1 | v=54 | centre=(-2,3.2)
+GF_Metal - Iron_0 | mat=Metal_-_Iron_0 | v=1227 | centre=(-4.4,1.9)
+GF_Metal - Chrome 01_0 | mat=Metal_-_Chrome_01 | v=934 | centre=(-4.4,0.9)
+GF_Paint - Cadmium Orange_0 | mat=Paint_-_Cadmium_Orange | v=300 | centre=(-4.4,1.3)
+GF_WOOD_0 | mat=WOOD | v=8547 | centre=(2.2,0)
+GF_Ceramic - Porcelain_0 | mat=Ceramic_-_Porcelain | v=1538 | centre=(6.6,-2.6)
+GF_Wood - Pine Grained Vertical_0 | mat=Wood_-_Pine_Grained_Vertical | v=1208 | centre=(8.7,2)
+GF_Timber Cladding Alpha_0 | mat=Timber_Cladding_Alpha | v=132 | centre=(-9.2,1.3)
+GF_Timber Cladding_0 | mat=Timber_Cladding | v=104 | centre=(-0.6,0)
+GF_Paint - Glossy White_0 | mat=Paint_-_Glossy_White | v=926 | centre=(0,0)
+GF_Paint - Sand Beige_0 | mat=Paint_-_Sand_Beige | v=74 | centre=(-0.8,0)
+GF_Stucco - Yellow Rough_0 | mat=Stucco_-_Yellow_Rough | v=1184 | centre=(-4.6,-2.3)
+GF_ED_CONCRETE_0 | mat=ED_CONCRETE | v=9 | centre=(2.5,2.5)
+FF_Metal - Stainless Steel_0 | mat=Metal_-_Stainless_Steel | v=2432 | centre=(4,0)
+FF_GDLM84_custPict_0 | mat=GDLM84_custPict | v=24 | centre=(3.9,-2.4)
+FF_WOOD_0 | mat=WOOD | v=304 | centre=(-2.6,-0.2)
+FF_Paint - Anthracite_0 | mat=Paint_-_Anthracite | v=2948 | centre=(-0.6,0)
+FF_GDLM61_mTowel_0 | mat=GDLM61_mTowel | v=246 | centre=(8.1,-2.3)
+FF_Textile - 01_0 | mat=Textile_-_01 | v=1532 | centre=(5.1,3.5)
+FF_Paint - Titanium White_0 | mat=Paint_-_Titanium_White | v=1753 | centre=(2.2,0)
+FF_Office Board_0 | mat=Office_Board | v=4 | centre=(-2.9,-2.5)
+FF_Painting_0 | mat=Painting | v=4 | centre=(2.4,-0.1)
+FF_pictmat (from Converted Object)_0 | mat=pictmat_from_Converted_Object | v=4 | centre=(-11.8,-3.6)
