@@ -185,6 +185,30 @@ function wireMobileCta() {
 
 const TIME_WINDOWS = { morning: "Morning (9–12)", afternoon: "Afternoon (12–4)", evening: "Evening (4–7)" };
 
+/* ------------------------------------------------------------------ light / dark theme */
+// index.html's <head> already set html[data-theme] before first paint; this keeps it in sync.
+// An explicit choice is saved; until then the page follows the system setting live.
+
+function wireTheme() {
+  const btn = byId("themeToggle");
+  const root = document.documentElement;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const system = matchMedia("(prefers-color-scheme: light)");
+  const saved = () => { try { return localStorage.getItem("theme"); } catch { return null; } };
+  const apply = (theme) => {
+    root.dataset.theme = theme;
+    if (meta) meta.content = theme === "light" ? "#f5f2ec" : "#0f1011";
+    btn.setAttribute("aria-label", theme === "light" ? "Switch to dark mode" : "Switch to light mode");
+  };
+  apply(root.dataset.theme === "light" ? "light" : "dark");
+  btn.addEventListener("click", () => {
+    const next = root.dataset.theme === "light" ? "dark" : "light";
+    apply(next);
+    try { localStorage.setItem("theme", next); } catch { /* private mode: still switches, just not remembered */ }
+  });
+  system.addEventListener("change", (e) => { if (!saved()) apply(e.matches ? "light" : "dark"); });
+}
+
 function tomorrowLocal() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
@@ -336,3 +360,4 @@ wireReveal();
 wireScrollFx();
 wireMobileCta();
 wireForm();
+wireTheme();

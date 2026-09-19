@@ -13,6 +13,11 @@
 <link rel="stylesheet" href="/styles.css" />
 <!-- scroll animations (styles.css "html.fx", page.js) — set before first paint, skipped under reduced motion -->
 <script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("fx");</script>
+<!-- theme (styles.css html[data-theme], page.js toggle) — saved choice, else the system setting; set before first paint -->
+<script>(function () { var t; try { t = localStorage.getItem("theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#f5f2ec" : "#0f1011"; })();</script>
 <script type="importmap">
 {
   "imports": {
@@ -36,6 +41,15 @@
       <a href="#residence">Residence</a>
       <a href="#contact">Contact</a>
     </nav>
+    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">
+      <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
+      </svg>
+      <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>
+      </svg>
+    </button>
     <a class="btn btn-primary btn-header" href="#contact">Schedule a tour</a>
   </div>
 </header>

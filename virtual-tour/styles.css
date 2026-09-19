@@ -1,6 +1,10 @@
 /* Funnel page + 3D tour styles. Mood: a dark villa in the sunny mountains — charcoal
-   surfaces, warm off-white type, brushed-bronze accents, hairline lines, square corners. */
-:root {
+   surfaces, warm off-white type, brushed-bronze accents, hairline lines, square corners.
+   Two themes: dark (default) and light, picked by html[data-theme] (set in index.html's <head>
+   from the saved choice or the system preference; toggled by #themeToggle, page.js). The hero
+   and the 3D tour sit on photos/renders, so they keep the dark palette in both themes. */
+:root,
+:root[data-theme="light"] :is(.hero, #tour) {
   color-scheme: dark;
   --bg: #0f1011;
   --surface: #16181a;
@@ -13,6 +17,29 @@
   --on-accent: #14120f;
   --warm: #c9a877;
   --danger: #e8907a;
+  --header-bg: rgba(15, 16, 17, .8);
+  --header-bg-solid: rgba(15, 16, 17, .93);
+  --bar-bg: rgba(15, 16, 17, .96);
+}
+/* Light: warm paper and charcoal ink; bronze darkened so text and buttons keep ≥ 4.5:1. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f5f2ec;
+  --surface: #fdfbf7;
+  --surface-2: #ebe6dd;
+  --ink: #1c1b19;
+  --muted: #5e5950;
+  --line: rgba(28, 27, 25, .13);
+  --accent: #83643a;
+  --accent-hover: #6f5330;
+  --on-accent: #ffffff;
+  --warm: #80602f;
+  --danger: #a63d26;
+  --header-bg: rgba(245, 242, 236, .82);
+  --header-bg-solid: rgba(245, 242, 236, .95);
+  --bar-bg: rgba(245, 242, 236, .97);
+}
+:root {
   /* Hanken Grotesk (OFL, Google Fonts): open-source stand-in for Typodermic's Movatif — round,
      tightly spaced neo-grotesque; headings use its light weight like Movatif's display cuts. */
   --sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -157,7 +184,7 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 /* ---------- header ---------- */
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: rgba(15, 16, 17, .8); backdrop-filter: blur(10px);
+  background: var(--header-bg); backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
 .header-inner {
@@ -174,6 +201,16 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 }
 .main-nav a:hover { color: var(--ink); }
 .btn-header { padding: 12px 20px; font-size: 11px; }
+.theme-toggle {
+  flex: 0 0 auto; display: inline-grid; place-items: center; width: 38px; height: 38px; margin-right: -16px;
+  background: none; border: 1px solid var(--line); border-radius: 2px; color: var(--ink); cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.theme-toggle:hover { border-color: var(--warm); color: var(--warm); }
+.theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.theme-toggle svg { width: 17px; height: 17px; }
+/* Show the mode you'd switch to: a moon while dark, a sun while light. */
+:root[data-theme="light"] .theme-toggle .i-moon, :root:not([data-theme="light"]) .theme-toggle .i-sun { display: none; }
 @media (max-width: 760px) { .main-nav { display: none; } }
 
 /* ---------- hero ---------- */
@@ -233,17 +270,17 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 .plan-wrap { border: 1px solid var(--line); background: var(--surface); border-radius: 2px; padding: clamp(16px, 3vw, 40px); }
 .plan { width: 100%; height: auto; display: block; }
 .plan-wall { fill: none; stroke: var(--ink); stroke-width: 2; pointer-events: none; }
-.plan-deck { fill: rgba(184, 152, 106, .07); stroke: rgba(236, 232, 225, .22); stroke-width: 1.5; stroke-dasharray: 5 4; }
-.plan-static { fill: rgba(236, 232, 225, .03); stroke: var(--line); stroke-width: 1; }
-.plan-room rect { fill: var(--surface); stroke: rgba(236, 232, 225, .18); stroke-width: 1; transition: fill .15s, stroke .15s; }
+.plan-deck { fill: color-mix(in srgb, var(--accent) 7%, transparent); stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.plan-static { fill: color-mix(in srgb, var(--ink) 3%, transparent); stroke: var(--line); stroke-width: 1; }
+.plan-room rect { fill: var(--surface); stroke: color-mix(in srgb, var(--ink) 18%, transparent); stroke-width: 1; transition: fill .15s, stroke .15s; }
 .plan-room text {
   font: 600 13px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase;
   fill: var(--ink); text-anchor: middle; pointer-events: none;
 }
 .plan-room { cursor: pointer; }
-.plan-room:hover rect, .plan-room:focus-visible rect { fill: rgba(184, 152, 106, .14); stroke: var(--warm); }
+.plan-room:hover rect, .plan-room:focus-visible rect { fill: color-mix(in srgb, var(--accent) 14%, transparent); stroke: var(--warm); }
 .plan-room:focus-visible { outline: none; }
-.plan-room.active rect { fill: rgba(184, 152, 106, .24); stroke: var(--warm); stroke-width: 2; }
+.plan-room.active rect { fill: color-mix(in srgb, var(--accent) 24%, transparent); stroke: var(--warm); stroke-width: 2; }
 .plan-sub { font: 500 10.5px/1 var(--sans); letter-spacing: .08em; fill: var(--muted); text-anchor: middle; }
 .plan-room text.plan-sub { font: 500 10.5px/1 var(--sans); letter-spacing: .08em; text-transform: none; fill: var(--muted); }
 .plan-hint { display: none; margin-top: 10px; color: var(--muted); font-size: 12.5px; }
@@ -265,7 +302,7 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 .optional { text-transform: none; letter-spacing: 0; font-weight: 400; }
 .field input, .field select, .field textarea {
   font: 400 15px/1.4 var(--sans); color: var(--ink); background: var(--surface);
-  border: 1px solid rgba(236, 232, 225, .18); border-radius: 2px; padding: 12px 14px; width: 100%;
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); border-radius: 2px; padding: 12px 14px; width: 100%;
   transition: border-color .15s;
 }
 .field textarea { resize: vertical; }
@@ -303,7 +340,7 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 .mobile-cta {
   display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
   align-items: center; justify-content: space-between; gap: 16px;
-  background: rgba(15, 16, 17, .96); border-top: 1px solid var(--line); backdrop-filter: blur(10px);
+  background: var(--bar-bg); border-top: 1px solid var(--line); backdrop-filter: blur(10px);
   padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
   transform: translateY(0); transition: transform .2s ease;
 }
@@ -323,7 +360,7 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 
 /* ---------- header: scrolled state, scroll-progress hairline, current section ---------- */
 .site-header { transition: background .3s ease; }
-.site-header.scrolled { background: rgba(15, 16, 17, .93); }
+.site-header.scrolled { background: var(--header-bg-solid); }
 .site-header::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
   background: var(--accent); transform: scaleX(var(--progress, 0)); transform-origin: left;
