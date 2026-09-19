@@ -11,6 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
 <meta name="theme-color" content="#0f1011" />
 <link rel="stylesheet" href="/styles.css" />
+<!-- scroll animations (styles.css "html.fx", page.js) — set before first paint, skipped under reduced motion -->
+<script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("fx");</script>
 <script type="importmap">
 {
   "imports": {
@@ -62,7 +64,7 @@
   <!-- ============ FLOOR PLAN ============ -->
   <section id="floor-plan" class="floor-plan">
     <div class="container">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Floor plan</p>
         <h2>One level, four wings</h2>
         <p class="section-sub">Schematic layout — click any room to jump to it in the 3D tour.</p>
@@ -143,13 +145,13 @@
   <!-- ============ 3D TOUR (Phase 2 shell — ids are load-bearing for main.js) ============ -->
   <section class="tour-section" id="tour-section" aria-label="Interactive 3D tour">
     <div class="container">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Interactive 3D tour</p>
         <h2>Walk the home, room by room</h2>
         <p class="section-sub">Real-time walkthrough of the actual model — 15 viewpoints, dollhouse orbit, no app required.</p>
       </header>
     </div>
-    <div class="container">
+    <div class="container tour-frame">
     <div id="tour">
       <canvas id="renderCanvas" tabindex="1" aria-label="3D tour viewport — click to take control"></canvas>
 
@@ -199,7 +201,7 @@
   <!-- ============ RESIDENCE GALLERY ============ -->
   <section id="residence" class="residence">
     <div class="container">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Residence</p>
         <h2>The rooms, rendered from the model</h2>
         <p class="section-sub">Every image is a real frame of the walkthrough. Open any room in 3D.</p>
@@ -211,13 +213,13 @@
   <!-- ============ SCHEDULE A TOUR ============ -->
   <section id="contact" class="contact">
     <div class="container narrow">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Schedule a tour</p>
         <h2>Book a time to visit</h2>
       </header>
 
       <form id="tourForm" novalidate class="reveal">
-        <div class="form-grid">
+        <div class="form-grid" data-stagger>
           <p class="field">
             <label for="f-name">Full name</label>
             <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="err-name" />
@@ -276,7 +278,7 @@
 
 <!-- ============ FOOTER ============ -->
 <footer class="site-footer">
-  <div class="container footer-grid">
+  <div class="container footer-grid" data-stagger>
     <div>
       <p class="eyebrow">Agent</p>
       <p class="foot-strong" data-bind="agent.name"></p>

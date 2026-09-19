@@ -287,7 +287,8 @@ export function wetSurface(scene, name, { metres, uvMetresPerUnit = 1, darken = 
 export function restyleModel(scene, { modelMeshes, anchors, groundY }) {
   const slab = modelMeshes.find((m) => MAT.slab.test(m.material?.name || ""));
   const paveY = slab ? slab.getBoundingInfo().boundingBox.maximumWorld.y : groundY;
-  const mirror = new MirrorTexture("wetMirror", 1024, scene, true);
+  // 512 px: the reflection is blurred (rain-rippled) anyway; 1024 cost ~2 ms more GPU per frame.
+  const mirror = new MirrorTexture("wetMirror", 512, scene, true);
   mirror.mirrorPlane = new Plane(0, -1, 0, paveY); // -y + d = 0 → reflect across y = paveY
   mirror.adaptiveBlurKernel = 20; // rain-rippled water, not a polished floor
   mirror.level = 0.9;

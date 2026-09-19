@@ -33,7 +33,7 @@ const B = {}; // Babylon namespace, filled by loadBabylon()
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let engine = null, scene = null, fpCam = null, arcCam = null, sun = null, hemi = null;
-let modelMeshes = [], rain = null;
+let modelMeshes = [], rain = null, shadowMap = null, ssaoPipe = null;
 let spawnPoint = null, mode = "walk", jogging = false, fallSpeed = 0;
 let captured = false, ready = false, animating = false, pseudoFs = false;
 let loadPromise = null;
@@ -124,7 +124,7 @@ async function loadTour() {
 function buildWorld() {
   engine = new B.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true }, true);
   // Sharp on Retina, but cap the resolution so SSAO stays affordable.
-  engine.setHardwareScalingLevel(1 / Math.min(window.devicePixelRatio || 1, 1.5));
+  engine.setHardwareScalingLevel(FULL_SCALE);
   scene = new B.Scene(engine);
   window.__engine = engine; // debugging hooks (also used by tests)
   window.__scene = scene;
@@ -138,22 +138,123 @@ function buildWorld() {
   // Overcast HDRI sky + image-based light, misty mountains, fog and the colour grade (mood.js);
   // the gradient dome shows until the HDRI has loaded.
   B.mood.setupAtmosphere(scene, { hemi, sun, fallbackSky: buildSky() });
-  engine.runRenderLoop(() => {
-    // Never let an exception escape: Babylon stops re-scheduling RAF if a frame throws.
-    try {
-      if (mode === "walk" && fpCam && !animating) {
-        fpCam.speed = jogging ? JOG_SPEED : WALK_SPEED;
-        followGround(Math.min(engine.getDeltaTime(), 50) / 1000);
-        if (spawnPoint && fpCam.position.y < spawnPoint.y - 10) {
-          fpCam.position.copyFrom(spawnPoint).addInPlace(new B.Vector3(0, EYE_HEIGHT + 0.05, 0));
-        }
+  // New meshes (streamed trees and cars) and textures (HDR sky, maps) need frames to show up.
+  scene.onNewMeshAddedObservable.add(() => wake());
+  scene.onNewTextureAddedObservable.add(() => wake());
+  wake();
+}
+
+/* ------------------------------------------------------------------ frame scheduling */
+// One frame of this scene costs tens of milliseconds of main-thread time, which is what made the
+// page stutter while scrolling. So a frame is only rendered when it could look different:
+//   - never while #tour is off screen or the tab is hidden;
+//   - at full rate while the view moves, input arrives, goTo() animates or data is loading;
+//   - at IDLE_RAIN_FPS while standing still in the rain (the only thing moving then);
+//   - otherwise not at all: the canvas keeps showing the last frame.
+// Babylon only measures frame time for frames it renders (engine.maxFPS skips beginFrame), so
+// the rain keeps its real-world speed at the lower rate.
+//
+// Frames are GPU-bound (~45–60 ms of GPU time on an M2 at Retina, CPU ~7 ms), so while the view
+// moves they render in FAST quality: canvas at CSS resolution instead of up to 1.5×, and 8-sample
+// SSAO with the cheap blur — about half the GPU time, and motion hides the difference. When the
+// view comes to rest, one last frame renders in FULL quality, so a still view looks as before.
+// Standing still in the rain keeps FAST (20 fps of FULL would keep the GPU ~90% busy).
+const IDLE_RAIN_FPS = 20;
+const FULL_SCALE = 1 / Math.min(window.devicePixelRatio || 1, 1.5); // sharp on Retina, capped for SSAO
+const WAKE_MS = 1200; // full rate this long after the last change (camera inertia, shader compiles)
+
+let onScreen = false, looping = false, wakeUntil = 0, resuming = false, readyChecked = false, fast = false;
+const lastView = new Float64Array(16).fill(NaN);
+
+/** Render at full rate for at least `ms` from now (restarts the loop if it was idle). */
+function wake(ms = WAKE_MS) {
+  wakeUntil = Math.max(wakeUntil, performance.now() + ms);
+  readyChecked = false;
+  // The IntersectionObserver can miss a crossing (seen when the viewport is resized for a moment);
+  // a stale "off screen" would freeze the tour, so double-check against the actual layout.
+  if (!onScreen) {
+    const r = tourEl.getBoundingClientRect();
+    onScreen = r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth;
+  }
+  if (looping || !engine || !onScreen || document.hidden) return;
+  looping = true;
+  resuming = true;
+  engine.runRenderLoop(renderFrame);
+}
+
+function sleep() {
+  if (!looping) return;
+  looping = false;
+  engine.stopRenderLoop(renderFrame);
+}
+
+/** True if the active camera's view matrix differs from the previous call's. */
+function viewChanged() {
+  const m = scene.activeCamera?.getViewMatrix().m;
+  if (!m) return false;
+  let changed = false;
+  for (let i = 0; i < 16; i++) {
+    if (!(Math.abs(m[i] - lastView[i]) <= 1e-6)) { changed = true; lastView[i] = m[i]; }
+  }
+  return changed;
+}
+
+function renderFrame() {
+  // Never let an exception escape: Babylon stops re-scheduling RAF if a frame throws.
+  try {
+    // First frame after a pause: advance the rain by one frame, not by the length of the pause.
+    scene.useConstantAnimationDeltaTime = resuming;
+    resuming = false;
+    if (mode === "walk" && fpCam && !animating) {
+      fpCam.speed = jogging ? JOG_SPEED : WALK_SPEED;
+      followGround(Math.min(engine.getDeltaTime(), 50) / 1000);
+      if (spawnPoint && fpCam.position.y < spawnPoint.y - 10) {
+        fpCam.position.copyFrom(spawnPoint).addInPlace(new B.Vector3(0, EYE_HEIGHT + 0.05, 0));
       }
-      if (scene.activeCamera) scene.render();
-      trackNearbyAnchor();
-    } catch (err) {
-      console.error("render frame error:", err);
     }
-  });
+    if (scene.activeCamera) scene.render();
+    trackNearbyAnchor();
+  } catch (err) {
+    console.error("render frame error:", err);
+  }
+  scheduleNext();
+}
+
+function scheduleNext() {
+  const moving = viewChanged() || animating;
+  if (moving || scene.isLoading) wake();
+  if (performance.now() < wakeUntil) {
+    engine.maxFPS = undefined;
+    if (moving && ready) setFast(true);
+    return;
+  }
+  // Coming to rest. Make sure nothing is still compiling (a mesh would stay invisible until the
+  // next wake), then render one more frame: settled quality and a fresh shadow map.
+  if (!readyChecked) {
+    if (!scene.isReady(false)) { wake(300); return; }
+    readyChecked = true;
+    shadowMap?.resetRefreshCounter();
+    setFast(!!rain?.isEnabled());
+    return;
+  }
+  if (rain?.isEnabled()) engine.maxFPS = IDLE_RAIN_FPS;
+  else sleep();
+}
+
+function setFast(on) {
+  if (on === fast || !engine) return;
+  fast = on;
+  engine.setHardwareScalingLevel(on ? Math.max(FULL_SCALE, 1) : FULL_SCALE);
+  if (ssaoPipe) {
+    ssaoPipe.samples = on ? 8 : 16;
+    ssaoPipe.expensiveBlur = !on;
+  }
+}
+
+function resizeEngine() {
+  if (!engine) return;
+  engine.resize(); // resizing clears the canvas, so it needs a fresh frame
+  wake();
 }
 
 async function findModelFile() {
@@ -287,7 +388,7 @@ function buildCameras() {
   const groundY = spawnPoint.y - 0.08;
   buildSurroundingGround(groundY);
   // Dark bronze facade, clear glass, wet pavers with planar reflections, warm interior light.
-  const { mirror } = B.mood.restyleModel(scene, { modelMeshes, anchors: ROOM_ANCHORS, groundY });
+  const { mirror, lights: warmLights } = B.mood.restyleModel(scene, { modelMeshes, anchors: ROOM_ANCHORS, groundY });
   // Lane on the side of the lot where the tour starts; pine forest all around; the model's shrubs as understorey.
   const forest = B.buildForest(scene, min, max, groundY, spawnPoint.z >= center.z ? 1 : -1, findModelFoliage(), { mirror });
   // Soft sky occlusion on the ground under the raised house and under each tree (the sun's
@@ -296,7 +397,14 @@ function buildCameras() {
   const rb = roof?.getBoundingInfo().boundingBox;
   const slab = modelMeshes.find((m) => /ED_CONCRETE/.test(m.name)); // by mesh name: restyleModel swapped its material
   const decalY = Math.max(groundY, slab ? slab.getBoundingInfo().boundingBox.maximumWorld.y : groundY) + 0.02;
-  const occlude = () => B.addGroundOcclusion(scene, { y: groundY + 0.02 });
+  // The warm interior lights only reach a few metres, but Babylon evaluates every light a mesh is
+  // assigned to on each of its pixels (range only fades it out in the shader). Keep them off the
+  // forest templates (instances share their source's lights): hundreds of overlapping needle cards.
+  const unlightForest = () => {
+    const templates = scene.meshes.filter((m) => m.metadata?.perimeter && !m.isAnInstance && m.instances?.length);
+    for (const l of warmLights) for (const t of templates) if (!l.excludedMeshes.includes(t)) l.excludedMeshes.push(t);
+  };
+  const occlude = () => { B.addGroundOcclusion(scene, { y: groundY + 0.02 }); unlightForest(); };
   occlude(); // conifers first, at grass height; the house call below then finds no new trees
   B.addGroundOcclusion(scene, { footprint: rb && { min: rb.minimumWorld, max: rb.maximumWorld }, y: decalY });
   // Broadleaf trees for the mid/far forest stream in after the tour is ready (5 MB); conifers if that fails.
@@ -370,6 +478,10 @@ function setupRenderQuality(cameras) {
   // Soft sun shadows (PCF). The light's shadow frustum is fitted to the casters automatically.
   sun.autoCalcShadowZBounds = true;
   const shadows = new B.ShadowGenerator(2048, sun);
+  // Sun and casters never move, so the map is drawn once (RenderTargetTexture.REFRESHRATE_RENDER_ONCE)
+  // and redrawn by scheduleNext() whenever the scene settles (e.g. after the cars stream in).
+  shadowMap = shadows.getShadowMap();
+  shadowMap.refreshRate = 0;
   shadows.usePercentageCloserFiltering = true;
   shadows.filteringQuality = B.ShadowGenerator.QUALITY_HIGH;
   shadows.bias = 0.0005;
@@ -383,7 +495,7 @@ function setupRenderQuality(cameras) {
 
   // Ambient occlusion: darkens corners and contact points so rooms read as 3D.
   if (B.SSAO2RenderingPipeline.IsSupported) {
-    const ssao = new B.SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: 0.5, blurRatio: 1 }, cameras);
+    const ssao = ssaoPipe = new B.SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: 0.5, blurRatio: 1 }, cameras);
     ssao.radius = 0.8;          // metres (the model is at real scale)
     ssao.totalStrength = 1.1;
     ssao.samples = 16;
@@ -656,6 +768,7 @@ function updateHud() {
 function toggleRain() {
   if (!rain) return;
   rain.setEnabled(!rain.isEnabled());
+  wake();
   updateRainBtn();
 }
 
@@ -667,6 +780,7 @@ function updateRainBtn() {
 function setMode(next) {
   if (!fpCam || !arcCam || next === mode) return;
   mode = next;
+  wake();
   tourEl.classList.toggle("dollhouse", mode === "dollhouse");
   if (mode === "dollhouse") {
     if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -696,6 +810,7 @@ function animateTo(a, instant) {
     const dyaw = Math.atan2(Math.sin(a.yaw - r0.y), Math.cos(a.yaw - r0.y)); // shortest arc
     const dpitch = a.pitch - r0.x;
     animating = true;
+    wake();
     const t0 = performance.now();
     const step = (now) => {
       const k = Math.min(1, (now - t0) / GO_TO_MS);
@@ -722,6 +837,7 @@ function scrollTourIntoView() {
 async function goTo(id, { instant = false } = {}) {
   await ensureTour();
   if (!scene) return;
+  wake();
   const dollhouse = id === DOLLHOUSE.id;
   const anchor = ROOM_ANCHORS.find((a) => a.id === id);
   if (!dollhouse && !anchor) return;
@@ -817,7 +933,7 @@ function setPseudoFs(on) {
 }
 
 function onFsChange() {
-  engine?.resize();
+  resizeEngine();
   const on = fsActive();
   tourEl.classList.toggle("is-fullscreen", on);
   if (fsLabelEl) fsLabelEl.textContent = on ? "Exit fullscreen" : "Fullscreen";
@@ -849,8 +965,23 @@ function wireTour() {
   });
   document.addEventListener("fullscreenchange", onFsChange);
   document.addEventListener("webkitfullscreenchange", onFsChange);
-  window.addEventListener("resize", () => engine?.resize());
-  new ResizeObserver(() => engine?.resize()).observe(tourEl);
+  window.addEventListener("resize", resizeEngine);
+  new ResizeObserver(resizeEngine).observe(tourEl);
+
+  // Frame scheduling (see "frame scheduling"): render only while #tour is on screen, and wake
+  // the loop on any input — Babylon applies camera input inside scene.render().
+  new IntersectionObserver(([en]) => {
+    onScreen = en.isIntersecting;
+    if (onScreen) wake(); else sleep();
+  }).observe(tourEl);
+  document.addEventListener("visibilitychange", () => (document.hidden ? sleep() : wake()));
+  for (const type of ["pointerdown", "pointerup", "keydown", "keyup"]) {
+    tourEl.addEventListener(type, () => wake(), { passive: true });
+  }
+  // Mouse look / orbit / zoom only reach the cameras while captured; hovering alone changes nothing.
+  for (const type of ["pointermove", "wheel"]) {
+    tourEl.addEventListener(type, () => { if (captured) wake(); }, { passive: true });
+  }
 }
 
 // Public API used by the page UI, gallery cards, floor plan and the QA tests.
@@ -866,7 +997,8 @@ window.tour = {
   },
   isReady: () => ready,
   whenReady: () => ensureTour(),
-  __dbg: () => ({ spawn: spawnPoint?.asArray(), surY: scene?.getMeshByName("surroundings")?.position.y, cam: fpCam?.position.asArray() }),
+  __dbg: () => ({ spawn: spawnPoint?.asArray(), surY: scene?.getMeshByName("surroundings")?.position.y, cam: fpCam?.position.asArray(),
+    sched: { onScreen, looping, awakeMs: Math.round(wakeUntil - performance.now()), readyChecked, fast } }),
 };
 
 wireTour();

@@ -5,7 +5,6 @@ import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
 
 const byId = (id) => document.getElementById(id);
-const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 /* ------------------------------------------------------------------ copy binding */
 
@@ -89,20 +88,86 @@ function wireFloorPlan() {
   }).observe(byId("anchorBar"), { subtree: true, attributes: true, attributeFilter: ["aria-pressed"] });
 }
 
-/* ------------------------------------------------------------------ scroll reveal */
+/* ------------------------------------------------------------------ scroll animations */
+
+// html.fx is set by an inline script in index.html unless prefers-reduced-motion is on; the
+// styles for everything below are gated on it (styles.css "scroll animations").
+const fx = document.documentElement.classList.contains("fx");
 
 function wireReveal() {
-  const els = document.querySelectorAll(".reveal");
-  if (reduceMotion.matches || !("IntersectionObserver" in window)) {
+  const els = document.querySelectorAll(".reveal, [data-stagger], .tour-frame");
+  for (const box of document.querySelectorAll("[data-stagger]")) {
+    [...box.children].forEach((c, i) => c.style.setProperty("--i", i));
+  }
+  // Floor-plan pieces sweep in from left to right: index by horizontal position.
+  for (const el of document.querySelectorAll(".plan-room, .plan-static, .plan-deck, .plan > text")) {
+    el.style.setProperty("--i", Math.round(el.getBBox().x / 70));
+  }
+  if (!fx || !("IntersectionObserver" in window)) {
     els.forEach((el) => el.classList.add("in"));
     return;
   }
+  const frame = document.querySelector(".tour-frame");
+  const settle = () => frame.classList.add("settled");
+  frame.addEventListener("transitionend", (e) => { if (e.target === frame && e.propertyName === "transform") settle(); });
+
   const io = new IntersectionObserver((entries) => {
-    for (const en of entries) {
-      if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
-    }
-  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+    // Elements that enter together (gallery rows, highlight tiles) are staggered in reading order.
+    const shown = entries.filter((en) => en.isIntersecting).map((en) => en.target);
+    const pos = new Map(shown.map((el) => [el, el.getBoundingClientRect()]));
+    shown.sort((x, y) => pos.get(x).top - pos.get(y).top || pos.get(x).left - pos.get(y).left);
+    shown.forEach((el, n) => {
+      el.style.setProperty("--d", `${n * 110}ms`);
+      el.classList.add("in");
+      io.unobserve(el);
+      if (el === frame) setTimeout(settle, 1600); // in case transitionend never fires
+    });
+  }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
   els.forEach((el) => io.observe(el));
+}
+
+function wireScrollFx() {
+  const root = document.documentElement;
+  const header = document.querySelector(".site-header");
+  const hero = document.querySelector(".hero");
+  const pics = [...document.querySelectorAll(".card-media picture")];
+
+  // Current section → nav link (a thin band across the middle of the viewport).
+  const links = new Map([...document.querySelectorAll(".main-nav a")].map((a) => [a.hash.slice(1), a]));
+  const navIO = new IntersectionObserver((entries) => {
+    entries.sort((x, y) => x.isIntersecting - y.isIntersecting); // leaving before entering
+    for (const en of entries) {
+      const a = links.get(en.target.id);
+      if (en.isIntersecting) {
+        links.forEach((l) => l.removeAttribute("aria-current"));
+        a.setAttribute("aria-current", "true");
+      } else a.removeAttribute("aria-current");
+    }
+  }, { rootMargin: "-45% 0px -54% 0px" });
+  links.forEach((_, id) => { const sec = byId(id); if (sec) navIO.observe(sec); });
+
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const y = window.scrollY, vh = window.innerHeight;
+    const max = root.scrollHeight - vh;
+    header.style.setProperty("--progress", max > 0 ? Math.min(1, y / max).toFixed(4) : "0");
+    header.classList.toggle("scrolled", y > 8);
+    if (!fx) return;
+    hero.style.setProperty("--hp", Math.min(1, y / hero.offsetHeight).toFixed(4));
+    // Gallery parallax: read every rect first, then write, so the loop doesn't force layouts.
+    const offs = pics.map((p) => {
+      const r = p.parentElement.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > vh) return null;
+      const t = Math.max(-0.5, Math.min(0.5, (r.top + r.height / 2) / vh - 0.5));
+      return `${(t * -0.06 * r.height).toFixed(1)}px`; // within the img's 1.08 scale headroom
+    });
+    offs.forEach((o, i) => { if (o) pics[i].style.setProperty("--py", o); });
+  };
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
+  window.addEventListener("scroll", queue, { passive: true });
+  window.addEventListener("resize", queue);
+  update();
 }
 
 /* ------------------------------------------------------------------ mobile sticky CTA */
@@ -268,5 +333,6 @@ bindCopy();
 buildGallery();
 wireFloorPlan();
 wireReveal();
+wireScrollFx();
 wireMobileCta();
 wireForm();

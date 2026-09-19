@@ -105,6 +105,19 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 - **Setup raycasts** (spawn search, storey height, rain height map, ~9 000 rays) run against
   temporary 64-triangle submeshes (`splitForPicking()` in `main.js`). Same triangles, same hits,
   ~10× faster; the original submeshes are restored before the first frame.
+- **Render on demand** ("frame scheduling" in `main.js`): no frames while the tour is off screen or
+  the tab is hidden; full rate only while the view moves, input arrives, a `goTo()` animates or
+  data loads (plus 1.2 s after); 20 fps while standing still in the rain; otherwise none — the
+  canvas keeps the last frame. Anything that changes the scene from outside the render loop must
+  call `wake()`.
+- **Motion quality**: frames are GPU-bound (M2, Retina: ~45–60 ms GPU vs ~7 ms CPU). While the view
+  moves, the canvas renders at CSS resolution (instead of up to 1.5×) with 8-sample, cheap-blur SSAO —
+  about half the GPU time; when it comes to rest, one last frame renders at full quality. Standing
+  still in the rain stays at motion quality (20 fps of full quality would keep the GPU ~90% busy).
+- **Cheaper at no visual cost**: the shadow map renders once (sun and casters are static; redrawn
+  when the scene settles), the wet-paving mirror is 512 px (it is blurred anyway), and the warm
+  interior point lights exclude the forest templates (Babylon evaluates every assigned light per
+  pixel regardless of `range`).
 
 ## How it works
 
