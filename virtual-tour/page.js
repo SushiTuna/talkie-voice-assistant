@@ -5,7 +5,7 @@ import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
 import { wireNeighborhood } from "./neighborhood.js";
 import "./components/index.js";
-import { Required, MaxLength, IsEmail, Pattern } from "@lion/ui/form-core.js";
+import { Required, MaxLength, IsEmail, Pattern, MinDate } from "@lion/ui/form-core.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -331,13 +331,14 @@ function wireForm() {
   const status = byId("formStatus");
   const summary = byId("errorSummary");
   const summaryList = byId("errorSummaryList");
-  const other = byId("f-date");
-  const otherWrap = byId("dateOtherWrap");
+  const otherField = byId("dateOtherWrap"); // the Lion datepicker (also the wrapper that gets hidden)
+  const other = byId("f-date"); // its inner native input: aria-invalid + focus/scroll target
   const message = byId("f-message");
   const count = byId("msg-count");
 
   buildDateChips();
-  other.min = tomorrowLocal();
+  // MinDate replaces the old native `min`: it rejects earlier days and greys them out in the calendar.
+  otherField.validators = [new MinDate(new Date(`${tomorrowLocal()}T00:00:00`))];
 
   const otherChosen = () => radioGroup("date")?.modelValue === "other";
 
@@ -355,7 +356,7 @@ function wireForm() {
   // Display stays on the page side: their #err-* spans occupy slot="feedback" and
   // components/tour-input.js suppresses Lion's own message rendering (feedbackCondition),
   // so only one message per field is ever visible and aria-invalid stays page-controlled.
-  const lionField = (name) => form.querySelector(`tour-input[name="${name}"], tour-input-email[name="${name}"], tour-textarea[name="${name}"]`);
+  const lionField = (name) => form.querySelector(`tour-input[name="${name}"], tour-input-email[name="${name}"], tour-input-tel[name="${name}"], tour-textarea[name="${name}"]`);
   for (const [name, validators] of [
     ["name", [new Required(null, { getMessage: () => MSG.name }), new MaxLength(120, { getMessage: () => MSG.name })]],
     ["email", [new Required(null, { getMessage: () => MSG.email }), new IsEmail(null, { getMessage: () => MSG.email })]],
@@ -389,7 +390,12 @@ function wireForm() {
     d.tourType = groupValue("tourType");
     d.timeWindow = groupValue("timeWindow");
     d.date = groupValue("date");
-    d.date = d.date === "other" ? d.dateOther || "" : d.date || "";
+    // The datepicker's modelValue is a Date; its light-dom input holds a locale-formatted
+    // string, so derive the ISO value from the model (local getters, not toISOString()).
+    const picked = otherField.modelValue;
+    d.date = d.date === "other"
+      ? (picked instanceof Date && !isNaN(picked) ? isoLocal(picked) : "")
+      : d.date || "";
     delete d.dateOther;
     return d;
   };
@@ -474,13 +480,18 @@ function wireForm() {
   for (const name of ["tourType", "date", "timeWindow"]) {
     radioGroup(name)?.addEventListener("model-value-changed", () => {
       if (name === "date") {
-        otherWrap.hidden = !otherChosen();
+        otherField.hidden = !otherChosen();
         if (!otherChosen()) other.setAttribute("aria-invalid", "false");
       }
       setFieldError(name, "");
       updateSummary();
     });
   }
+  // Picking a day in the calendar updates modelValue without a plain `input` event.
+  otherField.addEventListener("model-value-changed", () => {
+    setFieldError("date", "");
+    updateSummary();
+  });
   // Clear a field's error as soon as the user edits it.
   form.addEventListener("input", (e) => {
     const field = Object.keys(FIELDS).find((f) => FIELDS[f].input === e.target.id);

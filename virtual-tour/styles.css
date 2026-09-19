@@ -545,6 +545,23 @@ fieldset[data-invalid] .choice:not([checked]) { border-color: var(--danger); }
 .date-chip[checked] .dc-other-icon { stroke: var(--on-accent); }
 .date-other { margin-top: 16px; max-width: 280px; }
 .date-other[hidden] { display: none; }
+/* Lion datepicker's calendar button is slotted next to the input (light DOM): match the field look */
+.date-other button {
+  flex: none; align-self: stretch; min-width: 48px; margin-left: 8px; cursor: pointer;
+  display: grid; place-items: center; color: var(--muted);
+  font: 400 16px/1 var(--sans); background: var(--bg); border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  transition: border-color .15s ease, color .15s ease;
+}
+/* the invoker's calendar glyph (components/tour-input.js _invokerIconTemplate) */
+.date-other button .invoker-icon {
+  width: 19px; height: 19px; fill: none; stroke: currentColor;
+  stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.date-other button:hover { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 38%, transparent); }
+.date-other button:focus-visible {
+  outline: 2px solid transparent; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
 
 /* text fields */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 20px; clear: both; }

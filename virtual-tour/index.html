@@ -356,10 +356,9 @@
               <legend><span class="step-dot" aria-hidden="true">2</span>Pick a day</legend>
               <p class="step-hint" id="date-hint">The next two weeks are shown. Use arrow keys to move between days.</p>
               <tour-radio-group class="date-grid" name="date" id="dateChips"></tour-radio-group>
-              <p class="field date-other" id="dateOtherWrap" hidden>
-                <label for="f-date">Your preferred date</label>
-                <input id="f-date" name="dateOther" type="date" aria-describedby="err-date" />
-              </p>
+              <tour-input-datepicker class="field date-other" id="dateOtherWrap" name="dateOther" label="Your preferred date" hidden>
+                <input slot="input" id="f-date" aria-describedby="err-date" />
+              </tour-input-datepicker>
               <p class="field-error" id="err-date"></p>
             </fieldset>
 
@@ -403,11 +402,11 @@
                   <span class="field-hint" id="email-hint" slot="help-text">We’ll send your confirmation here.</span>
                   <span class="field-error" id="err-email" slot="feedback"></span>
                 </tour-input-email>
-                <tour-input class="field" name="phone" label="Phone" type="tel">
+                <tour-input-tel class="field" name="phone" label="Phone" type="tel">
                   <input slot="input" id="f-phone" type="tel" autocomplete="tel" required />
                   <span class="field-hint" id="phone-hint" slot="help-text">Only used if we need to reach you about the visit.</span>
                   <span class="field-error" id="err-phone" slot="feedback"></span>
-                </tour-input>
+                </tour-input-tel>
                 <tour-textarea class="field field-full" name="message" rows="3">
                   <label slot="label">Anything we should know? <span class="optional">(optional)</span></label>
                   <textarea slot="input" id="f-message" rows="3" maxlength="1000"></textarea>
