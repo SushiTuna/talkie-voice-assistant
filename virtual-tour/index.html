@@ -333,26 +333,33 @@
 
             <fieldset class="step" aria-describedby="err-type">
               <legend><span class="step-dot" aria-hidden="true">1</span>How would you like to tour?</legend>
-              <tour-radio-group class="choice-grid choice-grid-2" name="tourType" id="f-tourType">
-                <tour-radio class="choice" choice-value="in-person" checked>
+              <tour-radio-group class="choice-grid choice-grid-3" name="tourType" id="f-tourType">
+                <tour-radio class="choice choice-compact" choice-value="in-person" checked>
                   <label slot="label">
                     <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5M10 20v-5.5h4V20"/></svg>
                     <span class="choice-title">In person</span>
-                    <span class="choice-desc">Walk through the home with the agent.</span>
+                    <span class="choice-desc">With the agent.</span>
                   </label>
                 </tour-radio>
-                <tour-radio class="choice" choice-value="video">
+                <tour-radio class="choice choice-compact" choice-value="video">
                   <label slot="label">
                     <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="12.5" height="11" rx="1.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3"/></svg>
                     <span class="choice-title">Video call</span>
-                    <span class="choice-desc">A live walkthrough from wherever you are.</span>
+                    <span class="choice-desc">From anywhere.</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="inquiry">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8l-4 4V6a1 1 0 0 1 1-1Z"/></svg>
+                    <span class="choice-title">Inquiry only</span>
+                    <span class="choice-desc">No booking yet.</span>
                   </label>
                 </tour-radio>
               </tour-radio-group>
               <p class="field-error" id="err-type"></p>
             </fieldset>
 
-            <fieldset class="step" aria-describedby="date-hint err-date">
+            <fieldset class="step" id="step-date" aria-describedby="date-hint err-date">
               <legend><span class="step-dot" aria-hidden="true">2</span>Pick a day</legend>
               <p class="step-hint" id="date-hint">The next two weeks are shown. Use arrow keys to move between days.</p>
               <tour-radio-group class="date-grid" name="date" id="dateChips"></tour-radio-group>
@@ -362,7 +369,7 @@
               <p class="field-error" id="err-date"></p>
             </fieldset>
 
-            <fieldset class="step" aria-describedby="err-time">
+            <fieldset class="step" id="step-time" aria-describedby="err-time">
               <legend><span class="step-dot" aria-hidden="true">3</span>Pick a time window</legend>
               <tour-radio-group class="choice-grid choice-grid-3" name="timeWindow" id="f-timeWindow">
                 <tour-radio class="choice choice-compact" choice-value="morning">

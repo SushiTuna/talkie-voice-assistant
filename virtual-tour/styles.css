@@ -496,6 +496,13 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 }
 .choice-title { font-weight: 600; font-size: 15.5px; line-height: 1.3; color: var(--ink); }
 .choice-desc { grid-column: 2; color: var(--muted); font-size: 13.5px; line-height: 1.4; }
+
+/* compact card: icon on its own line so the title and one-line description get the card's full width */
+.choice-compact { padding: 14px 38px 14px 14px; min-height: 0; }
+.choice-compact label { grid-template-columns: 1fr; align-items: start; row-gap: 2px; }
+.choice-compact .choice-icon { grid-row: auto; grid-column: 1; width: 22px; height: 22px; margin: 0 0 6px; }
+.choice-compact .choice-title { grid-column: 1; }
+.choice-compact .choice-desc { grid-column: 1; }
 /* the real radio, restyled: a ring in the corner that fills with a check when chosen */
 .choice input {
   appearance: none; -webkit-appearance: none; margin: 0; position: absolute; top: 14px; right: 14px;

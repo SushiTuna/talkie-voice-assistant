@@ -238,7 +238,7 @@ const TIME_WINDOWS = {
   afternoon: { label: "Afternoon", hours: "12 – 4 pm", start: 12, end: 16 },
   evening: { label: "Evening", hours: "4 – 7 pm", start: 16, end: 19 },
 };
-const TOUR_TYPES = { "in-person": "In person", video: "Video call" };
+const TOUR_TYPES = { "in-person": "In person", video: "Video call", inquiry: "Inquiry only" };
 const DAYS_SHOWN = 13; // + the "later date" chip = two rows of seven
 
 // Details-field rules, shared by validate() (error summary + #err-* spans) and the Lion
@@ -314,10 +314,12 @@ function icsFile(data) {
 
 function validate(data) {
   const errors = {};
-  if (!["in-person", "video"].includes(data.tourType)) errors.tourType = "Choose how you’d like to tour.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || "")) errors.date = "Pick a day for your visit.";
-  else if (data.date < tomorrowLocal()) errors.date = "Choose tomorrow or a later day.";
-  if (!TIME_WINDOWS[data.timeWindow]) errors.timeWindow = "Pick a time window.";
+  if (!["in-person", "video", "inquiry"].includes(data.tourType)) errors.tourType = "Choose how you’d like to tour.";
+  if (data.tourType !== "inquiry") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || "")) errors.date = "Pick a day for your visit.";
+    else if (data.date < tomorrowLocal()) errors.date = "Choose tomorrow or a later day.";
+    if (!TIME_WINDOWS[data.timeWindow]) errors.timeWindow = "Pick a time window.";
+  }
   if (!data.name || data.name.length > 120) errors.name = MSG.name;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email || "")) errors.email = MSG.email;
   if (!PHONE_RE.test(data.phone || "")) errors.phone = MSG.phone;
@@ -351,6 +353,38 @@ function wireForm() {
   radioGroup("date").validators = [
     new Required(null, { getMessage: () => "Pick a day for your visit." }),
   ];
+
+  // Hide date/time steps when "Inquiry only" is selected.
+  const stepDate = byId("step-date");
+  const stepTime = byId("step-time");
+  const applyTourType = () => {
+    const type = groupValue("tourType");
+    if (type === "inquiry") {
+      stepDate.hidden = true;
+      stepTime.hidden = true;
+      radioGroup("date").modelValue = "";
+      radioGroup("timeWindow").modelValue = "";
+      byId("f-date").value = "";
+      setFieldError("date", "");
+      setFieldError("timeWindow", "");
+      radioGroup("date").validators = [];
+      radioGroup("timeWindow").validators = [];
+    } else {
+      stepDate.hidden = false;
+      stepTime.hidden = false;
+      radioGroup("date").validators = [
+        new Required(null, { getMessage: () => "Pick a day for your visit." }),
+      ];
+      radioGroup("timeWindow").validators = [
+        new Required(null, { getMessage: () => "Pick a time window." }),
+      ];
+    }
+    // Renumber step dots to match visible steps.
+    [...form.querySelectorAll("fieldset.step:not([hidden])")].forEach((fs, i) => {
+      const dot = fs.querySelector(":scope > legend > .step-dot");
+      if (dot) dot.textContent = String(i + 1);
+    });
+  };
 
   // The details fields are Lion fields too, with validators mirroring validate() exactly.
   // Display stays on the page side: their #err-* spans occupy slot="feedback" and
@@ -444,10 +478,17 @@ function wireForm() {
     }
   }
 
+  // Now that setFieldError exists, sync the date/time steps to the starting tour type.
+  applyTourType();
+
   // Running summary beside the submit button (also the button's description for screen readers).
   const summaryText = byId("bookSummaryText");
   const updateSummary = () => {
     const d = readForm();
+    if (d.tourType === "inquiry") {
+      summaryText.textContent = TOUR_TYPES.inquiry;
+      return;
+    }
     const tw = TIME_WINDOWS[d.timeWindow];
     const okDate = /^\d{4}-\d{2}-\d{2}$/.test(d.date);
     const parts = [
@@ -479,6 +520,7 @@ function wireForm() {
   // comes from an input inside the group and may not carry the group's name).
   for (const name of ["tourType", "date", "timeWindow"]) {
     radioGroup(name)?.addEventListener("model-value-changed", () => {
+      if (name === "tourType") applyTourType();
       if (name === "date") {
         otherField.hidden = !otherChosen();
         if (!otherChosen()) other.setAttribute("aria-invalid", "false");
@@ -531,8 +573,8 @@ function wireForm() {
           name: data.name.trim(),
           email: data.email.trim(),
           phone: data.phone.trim(),
-          date: data.date,
-          timeWindow: data.timeWindow,
+          date: data.tourType === "inquiry" ? "" : data.date,
+          timeWindow: data.tourType === "inquiry" ? "" : data.timeWindow,
           tourType: data.tourType,
           message: (data.message || "").trim(),
           company: data.company || "",
@@ -560,10 +602,24 @@ function wireForm() {
 }
 
 function confirmation(data) {
-  const tw = TIME_WINDOWS[data.timeWindow];
   const card = document.createElement("div");
   card.className = "confirm-card";
-  card.innerHTML = `
+  if (data.tourType === "inquiry") {
+    card.innerHTML = `
+    <div class="confirm-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+    <p class="eyebrow">Inquiry received</p>
+    <h3 tabindex="-1">Thank you, <span data-f="name"></span>.</h3>
+    <p>The agent will reply to your questions by email at <b data-f="email"></b>.</p>
+    <div class="confirm-actions">
+      <a class="btn btn-secondary" href="#tour-section">Explore the 3D tour</a>
+    </div>
+    <p class="reassurance"></p>`;
+    const f = (k) => card.querySelector(`[data-f="${k}"]`);
+    f("name").textContent = data.name.trim();
+    f("email").textContent = data.email.trim();
+  } else {
+    const tw = TIME_WINDOWS[data.timeWindow];
+    card.innerHTML = `
     <div class="confirm-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
     <p class="eyebrow">Request received</p>
     <h3 tabindex="-1">Thank you, <span data-f="name"></span>.</h3>
@@ -578,13 +634,14 @@ function confirmation(data) {
       <a class="btn btn-secondary" href="#tour-section">Explore the 3D tour</a>
     </div>
     <p class="reassurance"></p>`;
-  const f = (k) => card.querySelector(`[data-f="${k}"]`);
-  f("name").textContent = data.name.trim();
-  f("email").textContent = data.email.trim();
-  f("type").textContent = TOUR_TYPES[data.tourType];
-  f("day").textContent = fmtDate(data.date, LONG_DATE);
-  f("time").textContent = `${tw.label}, ${tw.hours} (exact time to be confirmed)`;
-  f("ics").href = icsFile(data);
+    const f = (k) => card.querySelector(`[data-f="${k}"]`);
+    f("name").textContent = data.name.trim();
+    f("email").textContent = data.email.trim();
+    f("type").textContent = TOUR_TYPES[data.tourType];
+    f("day").textContent = fmtDate(data.date, LONG_DATE);
+    f("time").textContent = `${tw.label}, ${tw.hours} (exact time to be confirmed)`;
+    f("ics").href = icsFile(data);
+  }
   card.querySelector(".reassurance").textContent = listing.reassurance;
   const form = byId("tourForm");
   form.hidden = true;

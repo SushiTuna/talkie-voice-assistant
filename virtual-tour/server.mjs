@@ -173,15 +173,17 @@ function validateRequest(b) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) errors.email = "Please enter a valid email address.";
   const phone = str(b.phone);
   if (!/^[\d+()\- ]{7,20}$/.test(phone)) errors.phone = "Phone must be 7–20 characters (digits, spaces, + ( ) -).";
-  const date = str(b.date);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "Please pick a preferred date.";
-  else if (date < tomorrowIso()) errors.date = "Please choose tomorrow or later.";
-  if (!TIME_WINDOWS.includes(str(b.timeWindow))) errors.timeWindow = "Please choose a valid time window.";
   const tourType = str(b.tourType);
-  if (!["in-person", "video"].includes(tourType)) errors.tourType = "Please choose a tour type.";
+  if (!["in-person", "video", "inquiry"].includes(tourType)) errors.tourType = "Please choose a tour type.";
+  const date = str(b.date);
+  if (tourType !== "inquiry") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.date = "Please pick a preferred date.";
+    else if (date < tomorrowIso()) errors.date = "Please choose tomorrow or later.";
+    if (!TIME_WINDOWS.includes(str(b.timeWindow))) errors.timeWindow = "Please choose a valid time window.";
+  }
   const message = str(b.message);
   if (message.length > 1000) errors.message = "Message is limited to 1000 characters.";
-  return { errors, clean: { name, email, phone, date, timeWindow: str(b.timeWindow), tourType, message } };
+  return { errors, clean: { name, email, phone, date: tourType === "inquiry" ? "" : date, timeWindow: tourType === "inquiry" ? "" : str(b.timeWindow), tourType, message } };
 }
 
 function readJsonBody(req) {
