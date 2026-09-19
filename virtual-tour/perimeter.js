@@ -1,4 +1,4 @@
-// Surroundings of the loaded lot. buildForest (used by the tour): wet lane + pine forest.
+// Surroundings of the loaded lot. buildForest (used by the tour): asphalt lane + pine forest.
 // buildPerimeter (previous suburban look): road + footpaths, neighbouring houses, trees,
 // and a textured grass plane. Everything is generated in code (no extra assets) from a fixed seed,
 // so the layout is identical on every load. Meshes are tagged `metadata.perimeter = true` so the
@@ -16,7 +16,7 @@ import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader.js";
 import "@babylonjs/core/Meshes/instancedMesh.js"; // side effect: enables mesh.createInstance()
 import { createHouseKit } from "./houses.js";
 import { createPineTemplates } from "./pines.js";
-import { wetSurface } from "./mood.js";
+import { pbrSurface } from "./mood.js";
 
 /** Small deterministic PRNG (mulberry32) so the neighbourhood doesn't change between loads. */
 function rng(seed) {
@@ -42,15 +42,15 @@ function flatMat(name, hex, scene) {
 }
 
 /**
- * Damp lawn with leaf litter for the surrounding plane: Poly Haven "Leafy Grass" (CC0,
+ * Lawn with leaf litter for the surrounding plane: Poly Haven "Leafy Grass" (CC0,
  * assets/tex/leafy_grass_*) PBR maps, one repeat per 2.5 m. A soft mottle on a much larger,
  * non-integer repeat darkens the ambient light in patches so the 2.5 m tile doesn't show at a distance.
  * @param planeSize  edge length (m) of the square ground plane the material is for (UVs span 0..1)
  */
 export function makeGrassMaterial(scene, planeSize = 2000) {
-  const mat = wetSurface(scene, "leafy_grass", { metres: 2.5, uvMetresPerUnit: planeSize, darken: 0.62, roughness: 0.95 });
+  const mat = pbrSurface(scene, "leafy_grass", { metres: 2.5, uvMetresPerUnit: planeSize, roughness: 0.95 });
   mat.name = "surroundingsMat";
-  mat.albedoColor = new Color3(0.56, 0.64, 0.5); // wetter, greener and less orange than the dry scan
+  mat.albedoColor = new Color3(0.6, 0.78, 0.46); // sunlit meadow: greener and less orange than the scan
   mat.bumpTexture.level = 0.6;
   mat.environmentIntensity = 0.85;
   const mottle = mottleTexture(scene);
@@ -312,12 +312,11 @@ export function buildPerimeter(scene, min, max, groundY, frontZ = 1, foliage = {
 }
 
 /**
- * Alpine setting (the default look): no neighbours, just a wet asphalt lane along the front and
- * a misty pine forest — tall pines, firs and a few columnar cypresses — closing in around the lot,
- * densest behind the house. Same signature as buildPerimeter, plus `mirror` (the wet-ground planar
- * reflection from mood.js) for the lane.
+ * Alpine setting (the default look): no neighbours, just an asphalt lane along the front and a
+ * pine forest — tall pines, firs and a few columnar cypresses — closing in around the lot,
+ * densest behind the house. Same signature as buildPerimeter.
  */
-export function buildForest(scene, min, max, groundY, frontZ = 1, foliage = { trees: [], bushes: [] }, { mirror = null } = {}) {
+export function buildForest(scene, min, max, groundY, frontZ = 1, foliage = { trees: [], bushes: [] }) {
   const r = rng(20260919);
   const cx = (min.x + max.x) / 2, cz = (min.z + max.z) / 2;
   const blocked = [];
@@ -330,9 +329,8 @@ export function buildForest(scene, min, max, groundY, frontZ = 1, foliage = { tr
   const laneZ = (frontZ > 0 ? max.z : min.z) + frontZ * 6;
   const lane = tag(CreateGround("lane", { width: LANE_LEN, height: LANE_W }, scene));
   lane.position.set(cx, groundY + 0.02, laneZ);
-  const laneMat = wetSurface(scene, "asphalt_07", { metres: 2.5, uvMetresPerUnit: LANE_LEN, darken: 0.42, roughness: 0.45 });
+  const laneMat = pbrSurface(scene, "asphalt_07", { metres: 2.5, uvMetresPerUnit: LANE_LEN, tone: 0.7, roughness: 0.9 });
   laneMat.albedoTexture.vScale = laneMat.bumpTexture.vScale = laneMat.metallicTexture.vScale = LANE_W / 2.5;
-  if (mirror) laneMat.reflectionTexture = mirror;
   lane.material = laneMat;
   lane.receiveShadows = true;
   blocked.push({ x0: cx - LANE_LEN / 2, x1: cx + LANE_LEN / 2, z0: laneZ - LANE_W / 2 - 1.5, z1: laneZ + LANE_W / 2 + 1.5 });
@@ -444,7 +442,7 @@ export async function addBroadleafTrees(scene, slots, groundY, url = "/models/pr
   }
   for (const m of res.meshes) m.dispose(false, false); // the imported layout; materials live on in the templates
   for (const n of res.transformNodes) n.dispose();
-  // Wet, overcast look to match mood.js: deeper, less yellow leaves; matte (weak sky specular).
+  // Matched to mood.js: deeper, less yellow leaves; matte (weak sky specular).
   for (const mat of new Set(templates.flatMap((t) => t.material?.subMaterials || [t.material]))) {
     if (!mat || !("albedoColor" in mat)) continue;
     const leaves = /leaves/i.test(mat.name);

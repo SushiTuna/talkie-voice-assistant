@@ -476,8 +476,8 @@ async function stageB(t) {
   // B2 — bar + exit button visible; anchor click still works
   const vis = JSON.parse(await t.ev(`(() => {
     const vb = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top >= -1 && r.bottom <= innerHeight + 1 && getComputedStyle(e).display !== 'none'; };
-    const bar = document.getElementById('anchorBar'), btn = document.getElementById('fsBtn'), cr = document.getElementById('credit');
-    return JSON.stringify({ bar: vb(bar), exit: vb(btn), exitLabel: btn.textContent.trim(), credit: vb(cr) }); })()`));
+    const bar = document.getElementById('anchorBar'), btn = document.getElementById('fsBtn');
+    return JSON.stringify({ bar: vb(bar), exit: vb(btn), exitLabel: btn.textContent.trim() }); })()`));
   const camBefore = await camOf(t);
   // Choose the anchor the camera is furthest from, so "did it move" is a real test.
   const far = ROOM_ANCHORS.map((a) => ({ id: a.id, d: dist3(camBefore.pos, a.pos) })).sort((x, y) => y.d - x.d)[0];
@@ -486,7 +486,7 @@ async function stageB(t) {
   const moved = dist3(camBefore.pos, (await camOf(t)).pos);
   await t.shot("fullscreen.png");
   record("B2", vis.bar && vis.exit && moved > 0.02 ? "PASS" : "FAIL",
-    `anchorBarVisible=${vis.bar} exitBtnVisible=${vis.exit} label="${vis.exitLabel}" creditVisible=${vis.credit} · click ${far.id} (${far.d.toFixed(1)}m away) moved ${moved.toFixed(2)}m (pillCovered=${pill.covered}) · fullscreen.png`);
+    `anchorBarVisible=${vis.bar} exitBtnVisible=${vis.exit} label="${vis.exitLabel}" · click ${far.id} (${far.d.toFixed(1)}m away) moved ${moved.toFixed(2)}m (pillCovered=${pill.covered}) · fullscreen.png`);
 
   // B3 — exit by button, re-enter, exit by Esc; canvas size + scroll restored
   await t.clickEl("#fsBtn");
@@ -711,32 +711,27 @@ async function stageD() {
       const fp = c.heroFactsRect ? scrimAt(c.heroFactsRect) : hp;
       const fA = parseRgba(c.heroFacts);
       const factsR = ratio(over(fA.rgb, fA.a, fp), fp);
-      // overlay text drawn on the live 3D scene (pill labels + model credit)
-      let pillR = null, creditR = null, pillBg = null, creditBg = null;
+      // overlay text drawn on the live 3D scene (pill labels)
+      let pillR = null, pillBg = null;
       await t.ev(`document.getElementById('tour').scrollIntoView({ behavior: 'instant', block: 'center' })`);
       const tourReady2 = await t.settle(`!!(window.tour && window.tour.isReady())`, 180000);
       if (tourReady2) {
         await sleep(2500);
         const tb = await t.box("#tour");
         await t.shot("tour-1440.png", { x: Math.round(tb.x), y: Math.round(tb.y), width: Math.round(tb.w), height: Math.round(tb.h) });
-        const o = JSON.parse(await t.ev(`(() => { const p = document.querySelector('#anchorBar .pill'), cr = document.getElementById('credit');
-          return JSON.stringify({ pr: p.getBoundingClientRect().toJSON(), cr: cr.getBoundingClientRect().toJSON(),
-            pc: getComputedStyle(p).color, cc: getComputedStyle(cr).color }); })()`));
+        const o = JSON.parse(await t.ev(`(() => { const p = document.querySelector('#anchorBar .pill');
+          return JSON.stringify({ pr: p.getBoundingClientRect().toJSON(), pc: getComputedStyle(p).color }); })()`));
         const timg = decodePng(readFileSync(OUT + "tour-1440.png"));
         const at = (r) => [Math.round(r.x - tb.x), Math.round(r.y - tb.y)];
         const pp = at(o.pr);
         pillBg = modal(timg, pp[0] + 5, pp[1] + 5, Math.round(o.pr.width) - 10, Math.round(o.pr.height) - 10);
         const pA = parseRgba(o.pc);
         pillR = ratio(over(pA.rgb, pA.a, pillBg), pillBg);
-        const cp = at(o.cr);
-        creditBg = modal(timg, cp[0] + 6, cp[1] + 6, Math.round(o.cr.width) - 12, Math.round(o.cr.height) - 12);
-        const cA = parseRgba(o.cc);
-        creditR = ratio(over(cA.rgb, cA.a, creditBg), creditBg);
       }
-      const extras = [[pillR, "pill"], [creditR, "credit"], [eyebrowR, "hero eyebrow"], [factsR, "hero facts"]]
+      const extras = [[pillR, "pill"], [eyebrowR, "hero eyebrow"], [factsR, "hero facts"]]
         .filter(([v]) => v !== null && v < 4.5).map(([v, n]) => `${n} ${v.toFixed(2)}:1`);
       record("D5", bodyR >= 4.5 && mutedR >= 4.5 && heroR >= 3 ? (extras.length === 0 ? "PASS" : "PARTIAL") : "FAIL",
-        `body ${c.ink} on ${c.bg} = ${bodyR.toFixed(2)}:1; muted label ${c.muted} on ${c.bg} = ${mutedR.toFixed(2)}:1; hero title ${c.heroColor} over sampled scrim rgb(${hp}) = ${heroR.toFixed(2)}:1 (96px/700 → ≥3:1); hero eyebrow ${c.heroEyebrow} over rgb(${ep}) = ${eyebrowR.toFixed(2)}:1; hero facts ${c.heroFacts} over rgb(${fp}) = ${factsR.toFixed(2)}:1; pill label over sampled rgb(${pillBg}) = ${pillR === null ? "n/a" : pillR.toFixed(2) + ":1"}; model credit over sampled rgb(${creditBg}) = ${creditR === null ? "n/a" : creditR.toFixed(2) + ":1"}; below 4.5:1 → ${JSON.stringify(extras)}`);
+        `body ${c.ink} on ${c.bg} = ${bodyR.toFixed(2)}:1; muted label ${c.muted} on ${c.bg} = ${mutedR.toFixed(2)}:1; hero title ${c.heroColor} over sampled scrim rgb(${hp}) = ${heroR.toFixed(2)}:1 (96px/700 → ≥3:1); hero eyebrow ${c.heroEyebrow} over rgb(${ep}) = ${eyebrowR.toFixed(2)}:1; hero facts ${c.heroFacts} over rgb(${fp}) = ${factsR.toFixed(2)}:1; pill label over sampled rgb(${pillBg}) = ${pillR === null ? "n/a" : pillR.toFixed(2) + ":1"}; below 4.5:1 → ${JSON.stringify(extras)}`);
       await t.ev(`document.getElementById('floor-plan').scrollIntoView({ behavior: 'instant', block: 'center' })`);
       await sleep(500);
       const pb = await t.box(".plan-wrap");
@@ -837,20 +832,23 @@ async function stageE() {
   record("E5", placeholders.length === 7 && bad.length === 0 && Object.values(facts).every(Boolean) ? "PASS" : "FAIL",
     `placeholders present ${placeholders.length}/7 (missing=${JSON.stringify(missingPh)}); facts ${JSON.stringify(facts)} (bedroom pills=${copy.beds}); unsupported claims → ${JSON.stringify(bad)}`);
 
-  // E4 credit visible (in page + fullscreen)
-  const cred = JSON.parse(await t.ev(`(() => { const c = document.getElementById('credit'); const r = c.getBoundingClientRect(); const s = getComputedStyle(c);
-    return JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height), display: s.display, opacity: s.opacity,
-      inside: document.getElementById('tour').contains(c), text: c.textContent.replace(/\\s+/g, ' ').trim(), links: [...c.querySelectorAll('a')].map(a => a.hostname) }); })()`));
-  const e4ok = /CC BY 4\.0/.test(cred.text) && /Modular House Cube 3 by Swanbuild Australia/.test(cred.text) && /EDSAHERGOM STUDIO/.test(cred.text) && cred.w > 0 && cred.h > 0;
+  // E4 — no attribution overlay on the tour canvas (page or fullscreen); the footer owns the credit
+  const noOverlay = await t.ev(`(() => { const tour = document.getElementById('tour');
+    return !tour.querySelector('#credit') && !/CC BY/.test(tour.textContent); })()`);
+  const foot = JSON.parse(await t.ev(`(() => { const f = document.querySelector('footer');
+    return JSON.stringify({ text: f.textContent.replace(/\\s+/g, ' ').trim(), links: [...f.querySelectorAll('a')].map(a => a.hostname) }); })()`));
+  const footOk = /CC BY 4\.0/.test(foot.text) && /Modular House Cube 3 by Swanbuild Australia/.test(foot.text)
+    && /EDSAHERGOM STUDIO/.test(foot.text) && /CC BY-NC 4\.0/.test(foot.text);
   await t.clickEl("#fsBtn");
   await sleep(1000);
-  const credFs = JSON.parse(await t.ev(`(() => { const c = document.getElementById('credit'); const r = c.getBoundingClientRect();
-    return JSON.stringify({ w: Math.round(r.width), h: Math.round(r.height), visible: r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight + 1 }); })()`));
+  const fsState = JSON.parse(await t.ev(`(() => { const tour = document.getElementById('tour');
+    return JSON.stringify({ entered: !!document.fullscreenElement || tour.classList.contains('pseudo-fullscreen'),
+      overlay: !!tour.querySelector('#credit') || /CC BY/.test(tour.textContent) }); })()`));
   await t.shot("fullscreen-credit.png");
   await t.clickEl("#fsBtn");
   await sleep(800);
-  record("E4", e4ok && credFs.visible ? "PASS" : "FAIL",
-    `#credit ${cred.w}x${cred.h} display=${cred.display} insideTour=${cred.inside}; in fullscreen ${credFs.w}x${credFs.h} visible=${credFs.visible}; text="${cred.text}"; links=${JSON.stringify(cred.links)}`);
+  record("E4", noOverlay && footOk && !fsState.overlay ? "PASS" : "FAIL",
+    `canvas overlay in page=${noOverlay}; fullscreen entered=${fsState.entered} overlay=${fsState.overlay}; footer attribution=${footOk}; footer links=${JSON.stringify(foot.links)}`);
   await t.close();
 
   // E6 reduced motion

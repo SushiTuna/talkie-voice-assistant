@@ -24,7 +24,7 @@ npm start          # -> http://localhost:8080
 1. **Sticky header** — wordmark, section links (Tour · Residence · Floor plan · Contact), “Schedule a tour”.
 2. **Hero** — full-bleed render (`assets/hero.jpg/.webp`, captured from the model), listing title, tagline, facts line, CTA buttons.
 3. **Intro + highlights** — copy from `listing.js`, 4 highlight tiles.
-4. **Interactive 3D tour** — `#tour` frame (lazy: Babylon + model load only when the section nears the viewport or “Start tour” is clicked). Anchor pill bar, fullscreen (with iOS pseudo-fullscreen fallback), CC BY 4.0 credit inside the frame.
+4. **Interactive 3D tour** — `#tour` frame (lazy: Babylon + model load only when the section nears the viewport or “Start tour” is clicked). Anchor pill bar, fullscreen (with iOS pseudo-fullscreen fallback). No credit overlay on the canvas — attribution lives in the footer.
 5. **Residence gallery** — cards built by `page.js` from `anchors.js` + `assets/gallery-*.jpg`; “View in 3D” jumps the tour to that room.
 6. **Floor plan** — schematic SVG (hand-built, not the model texture); each room is clickable → `window.tour.goTo(id)`.
 7. **Schedule a tour form** — accessible client validation + `POST /api/tour-requests`.
@@ -59,7 +59,6 @@ camera added at runtime renders black. Reuse those two (or attach the pipelines)
 | Mouse | Look around (pointer lock) |
 | `Shift` | Jog |
 | `V` | Toggle **dollhouse / orbit view** (wheel zooms; wheel over canvas doesn’t scroll the page) |
-| `R` / “Rain” button | Toggle rain (on by default; off under `prefers-reduced-motion`) |
 | `Esc` | Release pointer / exit (pseudo-)fullscreen |
 
 ## Booking endpoint
@@ -102,21 +101,18 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
   it falls back to the raw modules plus the import map.
 - **Transfer**: brotli/gzip for code, models and the HDR; ETags, so a reload only revalidates.
 - **Parallel start**: the house `.glb` downloads while the engine chunk loads.
-- **Setup raycasts** (spawn search, storey height, rain height map, ~9 000 rays) run against
+- **Setup raycasts** (spawn search, storey height, ~9 000 rays) run against
   temporary 64-triangle submeshes (`splitForPicking()` in `main.js`). Same triangles, same hits,
   ~10× faster; the original submeshes are restored before the first frame.
 - **Render on demand** ("frame scheduling" in `main.js`): no frames while the tour is off screen or
   the tab is hidden; full rate only while the view moves, input arrives, a `goTo()` animates or
-  data loads (plus 1.2 s after); 20 fps while standing still in the rain; otherwise none — the
-  canvas keeps the last frame. Anything that changes the scene from outside the render loop must
+  data loads (plus 1.2 s after); otherwise none — the canvas keeps the last frame. Anything that changes the scene from outside the render loop must
   call `wake()`.
 - **Motion quality**: frames are GPU-bound (M2, Retina: ~45–60 ms GPU vs ~7 ms CPU). While the view
   moves, the canvas renders at CSS resolution (instead of up to 1.5×) with 8-sample, cheap-blur SSAO —
-  about half the GPU time; when it comes to rest, one last frame renders at full quality. Standing
-  still in the rain stays at motion quality (20 fps of full quality would keep the GPU ~90% busy).
+  about half the GPU time; when it comes to rest, one last frame renders at full quality.
 - **Cheaper at no visual cost**: the shadow map renders once (sun and casters are static; redrawn
-  when the scene settles), the wet-paving mirror is 512 px (it is blurred anyway), and the warm
-  interior point lights exclude the forest templates (Babylon evaluates every assigned light per
+  when the scene settles), and the warm interior point lights exclude the forest templates (Babylon evaluates every assigned light per
   pixel regardless of `range`).
 
 ## How it works
@@ -127,16 +123,16 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
   lazy loading, fullscreen. Renders inside `#tour`, never the full viewport.
 - `page.js` — funnel logic: listing copy binding, gallery cards, floor-plan → tour hooks,
   scroll reveals, mobile CTA bar, booking form client side.
-- `mood.js` — the look (misty alpine forest after rain): overcast HDRI skybox + image-based light,
-  painted mountain ring, exp2 fog, ACES + colour-curve grade, vignette, grain; re-skins the model by
-  glTF material name (charcoal-bronze cladding, satin bronze frames, clear reflective glass), wet
-  pavers with a planar `MirrorTexture`, warm interior point lights, and rain that never falls
-  through roofs (top-surface height map).
-- `perimeter.js` — `buildForest()` (used): wet asphalt lane + instanced pine forest + the model's
+- `mood.js` — the look (sunny alpine forest): clear HDRI skybox + image-based light with the key
+  light aimed at the sky's sun disc (`SUN_YAW` / `SUN_ELEVATION`), 3D distant mountains (painted
+  ring until they load), light exp2 haze, ACES + colour-curve grade, vignette, grain; re-skins the
+  model by glTF material name (charcoal-bronze cladding, satin bronze frames, clear reflective
+  glass), dry pavers and warm interior point lights.
+- `perimeter.js` — `buildForest()` (used): asphalt lane + instanced pine forest + the model's
   shrubs. `buildPerimeter()` / `houses.js` — the previous suburban street (unused, kept).
 - `pines.js` — procedural pine / fir / cypress templates (branch cards on bark trunks).
 - `cars.js` — `addGarageCars()`: streams the Ferrari SF90 and Porsche 911 in after the tour is
-  ready and parks them where the model's own cars were (shadow casters, in the wet-paving mirror,
+  ready and parks them where the model's own cars were (shadow casters,
   invisible box colliders).
 - `models/props/` — scenery models (not auto-loaded as the house). `addBroadleafTrees()` in
   `perimeter.js` streams `broadleaf_trees.glb` in after the tour is ready and mixes it into the
@@ -162,7 +158,8 @@ console-error + horizontal-overflow checks).
 
 CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; credited anyway), in `assets/env/` and `assets/tex/`:
 
-- HDRI [“Overcast Soil (Pure Sky)”](https://polyhaven.com/a/overcast_soil_puresky) — Jarod Guest, Sergej Majboroda
+- HDRI [“Kloofendal 48d Partly Cloudy (Pure Sky)”](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) — Greg Zaal, Jarod Guest
+  (`assets/env/overcast_soil_puresky_2k.hdr`, the previous overcast sky, is kept but no longer loaded)
 - Textures [“Brick Pavement 02”](https://polyhaven.com/a/brick_pavement_02) and [“Asphalt 07”](https://polyhaven.com/a/asphalt_07) — Charlotte Baglioni
 - Bark and needle maps from [“Pine Tree 01”](https://polyhaven.com/a/pine_tree_01) — Rob Tuytel, Rico Cilliers
   (`pine_branch.png` / `pine_tuft.png` are composed from its twig texture)
@@ -172,6 +169,10 @@ Broadleaf trees: **“Low Poly Tree Scene Free”** by *Nicholas-3D*,
 [Sketchfab](https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd), licensed **CC BY 4.0** (credit required).
 Modified: `models/props/broadleaf_trees.glb` keeps only the trees (grass, ground and water removed, textures
 resized to ≤1024 px); the original download is `models/props/low_poly_tree_scene_free.glb` (not loaded).
+
+Distant mountains: **“Mountain low poly For distant mountains”** by *adventurer*,
+[Sketchfab](https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8), licensed **CC BY 4.0** (credit required).
+`addDistantMountains()` in `mood.js` instances it around two horizon rings once the tour is ready.
 
 Font: [**Hanken Grotesk**](https://fonts.google.com/specimen/Hanken+Grotesk) (Google Fonts, SIL Open Font License) —
 an open-source stand-in for Typodermic's commercial [Movatif](https://www.myfonts.com/collections/movatif-font-typodermic).
@@ -192,4 +193,4 @@ quantized (KHR_mesh_quantization).
 
 3D model: **“Modular House Cube 3 by Swanbuild Australia”** by *EDSAHERGOM STUDIO*,
 [Sketchfab](https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0), licensed **CC BY 4.0** (credit required).
-Keep the in-app credit line intact if you share the tour.
+Keep the footer attribution intact if you share the tour — the CC BY 4.0 / CC BY-NC 4.0 models require it. The tour canvas itself carries no credit line; `#credit` was removed, so the footer is the only attribution on the page.

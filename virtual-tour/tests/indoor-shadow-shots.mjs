@@ -1,6 +1,7 @@
 // Screenshot two indoor anchors in both render-quality tiers to keep the SSAO tuning honest:
-// rain on (the default) settles in the FAST tier — 8-sample SSAO, the tier where flat walls
-// false-self-occlude — and rain off settles in FULL quality (16 samples, expensive blur).
+// the FAST tier (used while the view moves) — 8-sample SSAO, the tier where flat walls
+// false-self-occlude — and the FULL tier a settled view renders in (16 samples, expensive blur).
+// The FAST settings are applied through window.__quality, mirroring setFast() in main.js.
 // Needs the server running (npm start). Usage: node tests/indoor-shadow-shots.mjs [baseUrl]
 // Output: tests/shots/indoor-<anchor>-<tier>.png; exits 1 on console errors or a tour that never loads.
 import { spawn } from "node:child_process";
@@ -66,13 +67,15 @@ async function main() {
     const anchor = ROOM_ANCHORS.find((a) => a.id === id);
     if (!anchor) throw new Error(`no anchor ${id} in anchors.js`);
     await ev(`window.tour.goTo(${JSON.stringify(id)}, { instant: true })`);
-    await sleep(2000); // settle: one rested frame in the FAST tier (rain on by default)
-    console.log(`shot ${await shot(`indoor-${id}-fast.png`)} (fast tier, rain on)`);
-    await ev(`document.getElementById('rainBtn').click()`); // rain off → settled FULL-quality frame
-    await sleep(2000);
-    console.log(`shot ${await shot(`indoor-${id}-full.png`)} (full tier, rain off)`);
-    await ev(`document.getElementById('rainBtn').click()`); // back to the default for the next anchor
+    await sleep(2000); // settle: the resting frame is FULL quality
+    const tier = (samples, epsilon, expensiveBlur) => ev(`(() => { const q = window.__quality.ssao;
+      Object.assign(q, { samples: ${samples}, epsilon: ${epsilon}, expensiveBlur: ${expensiveBlur} }); window.__scene.render(); return 1; })()`);
+    await tier(8, 0.06, false);
     await sleep(300);
+    console.log(`shot ${await shot(`indoor-${id}-fast.png`)} (fast tier)`);
+    await tier(16, 0.03, true);
+    await sleep(300);
+    console.log(`shot ${await shot(`indoor-${id}-full.png`)} (full tier)`);
   }
   console.log(errors.length ? `console errors:\n  ${errors.join("\n  ")}` : "console errors: none");
   process.exitCode = errors.length ? 1 : 0;

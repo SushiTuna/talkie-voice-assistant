@@ -15,7 +15,6 @@ const crosshairEl = byId("crosshair");
 const anchorBarEl = byId("anchorBar");
 const fsBtnEl = byId("fsBtn");
 const fsLabelEl = byId("fsLabel");
-const rainBtnEl = byId("rainBtn");
 
 // ---- tunables (kept from the standalone tour) ----
 const WALK_SPEED = 0.34;     // FreeCamera speed units; ≈1.5 m/s at real scale
@@ -33,7 +32,7 @@ const B = {}; // Babylon namespace, filled by loadBabylon()
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 let engine = null, scene = null, fpCam = null, arcCam = null, sun = null, hemi = null;
-let modelMeshes = [], rain = null, shadowMap = null, ssaoPipe = null;
+let modelMeshes = [], shadowMap = null, ssaoPipe = null;
 let spawnPoint = null, mode = "walk", jogging = false, fallSpeed = 0;
 let captured = false, ready = false, animating = false, pseudoFs = false;
 let loadPromise = null;
@@ -149,17 +148,12 @@ function buildWorld() {
 // page stutter while scrolling. So a frame is only rendered when it could look different:
 //   - never while #tour is off screen or the tab is hidden;
 //   - at full rate while the view moves, input arrives, goTo() animates or data is loading;
-//   - at IDLE_RAIN_FPS while standing still in the rain (the only thing moving then);
 //   - otherwise not at all: the canvas keeps showing the last frame.
-// Babylon only measures frame time for frames it renders (engine.maxFPS skips beginFrame), so
-// the rain keeps its real-world speed at the lower rate.
 //
 // Frames are GPU-bound (~45–60 ms of GPU time on an M2 at Retina, CPU ~7 ms), so while the view
 // moves they render in FAST quality: canvas at CSS resolution instead of up to 1.5×, and 8-sample
 // SSAO with the cheap blur — about half the GPU time, and motion hides the difference. When the
 // view comes to rest, one last frame renders in FULL quality, so a still view looks as before.
-// Standing still in the rain keeps FAST (20 fps of FULL would keep the GPU ~90% busy).
-const IDLE_RAIN_FPS = 20;
 const FULL_SCALE = 1 / Math.min(window.devicePixelRatio || 1, 1.5); // sharp on Retina, capped for SSAO
 const WAKE_MS = 1200; // full rate this long after the last change (camera inertia, shader compiles)
 
@@ -202,7 +196,7 @@ function viewChanged() {
 function renderFrame() {
   // Never let an exception escape: Babylon stops re-scheduling RAF if a frame throws.
   try {
-    // First frame after a pause: advance the rain by one frame, not by the length of the pause.
+    // First frame after a pause: advance animations by one frame, not by the length of the pause.
     scene.useConstantAnimationDeltaTime = resuming;
     resuming = false;
     if (mode === "walk" && fpCam && !animating) {
@@ -224,7 +218,6 @@ function scheduleNext() {
   const moving = viewChanged() || animating;
   if (moving || scene.isLoading) wake();
   if (performance.now() < wakeUntil) {
-    engine.maxFPS = undefined;
     if (moving && ready) setFast(true);
     return;
   }
@@ -234,11 +227,10 @@ function scheduleNext() {
     if (!scene.isReady(false)) { wake(300); return; }
     readyChecked = true;
     shadowMap?.resetRefreshCounter();
-    setFast(!!rain?.isEnabled());
+    setFast(false);
     return;
   }
-  if (rain?.isEnabled()) engine.maxFPS = IDLE_RAIN_FPS;
-  else sleep();
+  sleep();
 }
 
 function setFast(on) {
@@ -389,12 +381,12 @@ function buildCameras() {
   spawnPoint = findSpawn(min, max);
   const groundY = spawnPoint.y - 0.08;
   buildSurroundingGround(groundY);
-  // Dark bronze facade, clear glass, wet pavers with planar reflections, warm interior light.
-  const { mirror, lights: warmLights } = B.mood.restyleModel(scene, { modelMeshes, anchors: ROOM_ANCHORS, groundY });
+  // Dark bronze facade, clear glass, dry pavers, warm interior light.
+  const { lights: warmLights } = B.mood.restyleModel(scene, { modelMeshes, anchors: ROOM_ANCHORS });
   // Lane on the side of the lot where the tour starts; pine forest all around; the model's shrubs as understorey.
-  const forest = B.buildForest(scene, min, max, groundY, spawnPoint.z >= center.z ? 1 : -1, findModelFoliage(), { mirror });
+  const forest = B.buildForest(scene, min, max, groundY, spawnPoint.z >= center.z ? 1 : -1, findModelFoliage());
   // Soft sky occlusion on the ground under the raised house and under each tree (the sun's
-  // shadow map alone leaves the ground beneath the house lit by the overcast sky).
+  // shadow map alone leaves the ground beneath the house lit by the sky dome).
   const roof = modelMeshes.find((m) => /^Roof_/.test(m.material?.name || ""));
   const rb = roof?.getBoundingInfo().boundingBox;
   const slab = modelMeshes.find((m) => /ED_CONCRETE/.test(m.name)); // by mesh name: restyleModel swapped its material
@@ -415,6 +407,8 @@ function buildCameras() {
     forest.fillWithConifers();
     occlude();
   });
+  // 3D mountains on the horizon stream in the same way (2 MB); the painted ridgeline ring stays if that fails.
+  B.mood.addDistantMountains(scene).catch((err) => console.warn("3D mountains unavailable, keeping painted ridges:", err));
 
   fpCam = new B.FreeCamera("fp", spawnPoint.add(new B.Vector3(0, EYE_HEIGHT + 0.05, 0)), scene);
   fpCam.checkCollisions = true;
@@ -459,12 +453,10 @@ function buildCameras() {
   // Ferrari SF90 + Porsche 911 under the carport, where the model's own cars were (~23 MB, streamed in).
   if (slab) {
     import("./cars.js").then((m) => m.addGarageCars(scene, {
-      ref: slab, floorY: slab.getBoundingInfo().boundingBox.maximumWorld.y, shadows: sun.getShadowGenerator(), mirror,
+      ref: slab, floorY: slab.getBoundingInfo().boundingBox.maximumWorld.y, shadows: sun.getShadowGenerator(),
     })).catch((err) => console.warn("garage cars unavailable:", err));
   }
-  rain = B.mood.createRain(scene, { bounds: { min, max }, groundY, enabled: !reduceMotion.matches });
   unsplitModel(); // last probe ray is cast; back to one draw call per mesh
-  updateRainBtn();
   // The SSAO/post pipelines only attach to these two cameras — never render with a third one;
   // that is why goTo() animates the existing fp camera instead of creating a new one.
 }
@@ -488,7 +480,7 @@ function setupRenderQuality(cameras) {
   shadows.filteringQuality = B.ShadowGenerator.QUALITY_HIGH;
   shadows.bias = 0.0005;
   shadows.normalBias = 0.02;
-  shadows.setDarkness(0.25); // overcast: soft shadows, but readable (0 = pitch black)
+  shadows.setDarkness(0.2); // sunny: crisp, deep shadows; the sky's IBL still fills them (0 = pitch black)
   for (const m of casters) { shadows.addShadowCaster(m, false); m.receiveShadows = true; }
   for (const m of scene.meshes) if (m.name === "surroundings" || m.metadata?.perimeter) m.receiveShadows = true;
 
@@ -523,7 +515,7 @@ function setupRenderQuality(cameras) {
 }
 
 /**
- * Setup casts several thousand probe rays (spawn search, storey height, rain height map), and
+ * Setup casts several thousand probe rays (spawn search, storey height), and
  * Babylon tests every triangle of a mesh whose bounds a ray touches. Meanwhile, split the big
  * meshes into ~CHUNK-triangle submeshes so rays skip whole chunks by their bounding boxes: same
  * triangles, same order, same hits, several times faster. Returns a function that restores the
@@ -763,23 +755,11 @@ function updateHud() {
   if (!ready) return;
   badgeEl.innerHTML = mode === "walk"
     ? (captured
-      ? "<b>Walk mode</b> — WASD move · mouse look · Shift run · <b>V</b> dollhouse · <b>R</b> rain · Esc release"
+      ? "<b>Walk mode</b> — WASD move · mouse look · Shift run · <b>V</b> dollhouse · Esc release"
       : "<b>Walk mode</b> — click the view to take control")
     : (captured
       ? "<b>Dollhouse view</b> — drag orbit · wheel zoom · <b>V</b> back to walk"
       : "<b>Dollhouse view</b> — click the view to orbit · <b>V</b> back to walk");
-}
-
-function toggleRain() {
-  if (!rain) return;
-  rain.setEnabled(!rain.isEnabled());
-  wake();
-  updateRainBtn();
-}
-
-function updateRainBtn() {
-  rainBtnEl.setAttribute("aria-pressed", String(!!rain?.isEnabled()));
-  rainBtnEl.querySelector("span").textContent = rain?.isEnabled() ? "Rain on" : "Rain off";
 }
 
 function setMode(next) {
@@ -950,11 +930,9 @@ function wireTour() {
   byId("startBtn").addEventListener("click", () => ensureTour());
   byId("retryBtn")?.addEventListener("click", () => location.reload());
   fsBtnEl.addEventListener("click", () => (fsActive() ? exitFullscreen() : enterFullscreen()));
-  rainBtnEl.addEventListener("click", () => toggleRain());
   canvas.addEventListener("click", () => { if (ready) capture(); });
   canvas.addEventListener("keydown", (e) => {
     if (e.code === "KeyV" && !e.repeat && ready) setMode(mode === "walk" ? "dollhouse" : "walk");
-    if (e.code === "KeyR" && !e.repeat && rain) toggleRain();
     if (e.key === "Shift") jogging = true;
     if (e.key === "Escape") release();
   });

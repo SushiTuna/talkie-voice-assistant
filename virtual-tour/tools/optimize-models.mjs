@@ -25,6 +25,7 @@ const GLBS = [
   "models/props/source/garage_ferrari_sf90.glb",
   "models/props/source/garage_porsche_911_gt3.glb",
   "models/props/source/broadleaf_trees.glb",
+  "models/props/source/mountain_low_poly_for_distant_mountains.glb",
 ];
 const PNGS = ["assets/tex/source/pine_branch.png", "assets/tex/source/pine_tuft.png"];
 

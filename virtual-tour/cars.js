@@ -67,14 +67,13 @@ const SPOTS = [
 ];
 
 /**
- * Load both cars and park them. They cast and receive shadows, show in the wet-paving mirror, and
+ * Load both cars and park them. They cast and receive shadows, and
  * get an invisible box collider so the walk camera goes around them rather than onto the roof.
  * @param ref      a mesh of the house model (its world matrix maps raw model units → world)
  * @param floorY   world height the tyres stand on (top of the paving)
  * @param shadows  the sun's ShadowGenerator (optional)
- * @param mirror   the wet-paving MirrorTexture (optional)
  */
-export async function addGarageCars(scene, { ref, floorY, shadows = null, mirror = null }) {
+export async function addGarageCars(scene, { ref, floorY, shadows = null }) {
   const W = ref.computeWorldMatrix(true);
   const results = await Promise.allSettled(SPOTS.map(async (spot) => {
     const res = await ImportMeshAsync(spot.url, scene);
@@ -91,7 +90,6 @@ export async function addGarageCars(scene, { ref, floorY, shadows = null, mirror
       m.checkCollisions = false; // the box below handles collisions (cheaper, and no climbing the roof)
       m.receiveShadows = true;
       shadows?.addShadowCaster(m, false);
-      mirror?.renderList.push(m);
       if (m.material) m.material.maxSimultaneousLights = 8; // sun + hemi + the warm carport lights
     }
     // The body paint ships with a full mirror clear coat (intensity 1, roughness 0). Under the bright
