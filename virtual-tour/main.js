@@ -247,6 +247,8 @@ function setFast(on) {
   engine.setHardwareScalingLevel(on ? Math.max(FULL_SCALE, 1) : FULL_SCALE);
   if (ssaoPipe) {
     ssaoPipe.samples = on ? 8 : 16;
+    // Fewer samples need a bigger depth pad, or flat walls grow false self-occlusion blotches.
+    ssaoPipe.epsilon = on ? 0.06 : 0.03;
     ssaoPipe.expensiveBlur = !on;
   }
 }
@@ -493,11 +495,13 @@ function setupRenderQuality(cameras) {
   // Crisp textures at grazing angles (floors, grass).
   for (const mat of scene.materials) for (const t of mat.getActiveTextures()) t.anisotropicFilteringLevel = 8;
 
-  // Ambient occlusion: darkens corners and contact points so rooms read as 3D.
+  // Ambient occlusion: darkens corners and contact points so rooms read as 3D. Kept to contact
+  // scale indoors: a wider radius smears metre-long grime along every wall/floor junction.
   if (B.SSAO2RenderingPipeline.IsSupported) {
     const ssao = ssaoPipe = new B.SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: 0.5, blurRatio: 1 }, cameras);
-    ssao.radius = 0.8;          // metres (the model is at real scale)
-    ssao.totalStrength = 1.1;
+    ssao.radius = 0.4;          // metres (the model is at real scale)
+    ssao.totalStrength = 0.7;
+    ssao.epsilon = 0.03;        // depth-precision pad: flat walls must not self-occlude
     ssao.samples = 16;
     ssao.maxZ = 60;
     ssao.expensiveBlur = true;
@@ -515,6 +519,7 @@ function setupRenderQuality(cameras) {
   pipeline.sharpen.edgeAmount = 0.15;
   pipeline.imageProcessingEnabled = true;
   B.mood.tunePost(pipeline); // wider bloom for glowing windows + film grain
+  window.__quality = { ssao: ssaoPipe, shadows }; // debug/QA handle, like window.__scene
 }
 
 /**

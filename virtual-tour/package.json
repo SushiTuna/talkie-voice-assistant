@@ -8,6 +8,7 @@
     "smoke": "node tests/smoke.mjs",
     "test:api": "node tests/api.mjs",
     "test:anchors": "node tests/anchor-shots.mjs",
+    "test:indoor": "node tests/indoor-shadow-shots.mjs",
     "optimize": "node tools/optimize-models.mjs"
   },
   "keywords": [],
