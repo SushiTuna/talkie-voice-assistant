@@ -24,7 +24,8 @@
     "@babylonjs/core": "/node_modules/@babylonjs/core/index.js",
     "@babylonjs/core/": "/node_modules/@babylonjs/core/",
     "@babylonjs/loaders": "/node_modules/@babylonjs/loaders/index.js",
-    "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/"
+    "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/",
+    "leaflet": "/node_modules/leaflet/dist/leaflet-src.esm.js"
   }
 }
 </script>
@@ -39,6 +40,7 @@
       <a href="#floor-plan">Floor plan</a>
       <a href="#tour-section">Tour</a>
       <a href="#residence">Residence</a>
+      <a href="#location">Location</a>
       <a href="#contact">Contact</a>
     </nav>
     <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">
@@ -215,6 +217,25 @@
     </div>
   </section>
 
+  <!-- ============ LOCATION (neighborhood.js; places from landmarks.js) ============ -->
+  <section id="location" class="location">
+    <div class="container">
+      <header class="section-head reveal" data-stagger>
+        <p class="eyebrow">Location</p>
+        <h2>The neighborhood</h2>
+        <p class="section-sub">The home sits in <span id="nbhdArea"></span>. Schools, churches, police, hospitals and malls nearby.</p>
+      </header>
+      <div class="nbhd-grid">
+        <div class="nbhd-map reveal" id="nbhdMap" role="region" aria-label="Map of the property and nearby landmarks"></div>
+        <div class="nbhd-side reveal">
+          <div class="nbhd-filters" id="nbhdFilters" role="group" aria-label="Show nearby places"></div>
+          <ul class="nbhd-list" id="nbhdList"></ul>
+          <p class="nbhd-note">Straight-line distances. Places from <a href="https://www.openstreetmap.org/#map=15/16.42138/120.55929" target="_blank" rel="noopener">OpenStreetMap</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ SCHEDULE A TOUR ============ -->
   <section id="contact" class="contact">
     <div class="container narrow">
@@ -303,6 +324,7 @@
       <p>Mountains: <a href="https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8" target="_blank" rel="noopener">“Mountain low poly For distant mountains”</a> by <a href="https://sketchfab.com/ahmagh2e" target="_blank" rel="noopener">adventurer</a> (Sketchfab) · CC BY 4.0, instanced, rescaled and re-tinted.</p>
       <p>Cars: <a href="https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f" target="_blank" rel="noopener">“2021 Ferrari SF90 Spider”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · <a href="https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243" target="_blank" rel="noopener">“Porsche 911 GT3”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · both rescaled, meshes merged and quantized.</p>
       <p>Sky, grass, pavers, asphalt and pine textures: <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> · CC0.</p>
+      <p>Map: <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a> · map tiles, map data and nearby places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL).</p>
       <p>Built with Babylon.js.</p>
     </div>
   </div>

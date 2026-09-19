@@ -3,6 +3,7 @@
 // The 3D tour itself lives in main.js (window.tour public API) — this file only calls it.
 import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
+import { wireNeighborhood } from "./neighborhood.js";
 
 const byId = (id) => document.getElementById(id);
 
@@ -361,3 +362,4 @@ wireScrollFx();
 wireMobileCta();
 wireForm();
 wireTheme();
+wireNeighborhood();

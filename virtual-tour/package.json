@@ -18,7 +18,8 @@
   "dependencies": {
     "@babylonjs/core": "^9.27.0",
     "@babylonjs/loaders": "^9.27.0",
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.0",
