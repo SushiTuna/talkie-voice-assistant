@@ -25,7 +25,10 @@
     "@babylonjs/core/": "/node_modules/@babylonjs/core/",
     "@babylonjs/loaders": "/node_modules/@babylonjs/loaders/index.js",
     "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/",
-    "leaflet": "/node_modules/leaflet/dist/leaflet-src.esm.js"
+    "leaflet": "/node_modules/leaflet/dist/leaflet-src.esm.js",
+    "lit": "/node_modules/lit/index.js",
+    "lit/": "/node_modules/lit/",
+    "@lion/ui/": "/node_modules/@lion/ui/exports/"
   }
 }
 </script>
@@ -43,15 +46,8 @@
       <a href="#location">Location</a>
       <a href="#contact">Contact</a>
     </nav>
-    <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to light mode">
-      <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>
-      </svg>
-      <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="4.2"/>
-        <path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/>
-      </svg>
-    </button>
+    <!-- components/tour-switch.js: Lion switch, checked = dark; page.js wireTheme syncs it with html[data-theme] -->
+    <tour-switch class="theme-toggle" id="themeToggle" label="Dark mode" label-sr-only></tour-switch>
     <a class="btn btn-primary btn-header" href="#contact">Schedule a tour</a>
   </div>
 </header>
@@ -177,7 +173,7 @@
         <div class="poster-inner">
           <h2>Step inside in 3D</h2>
           <p>First-person walkthrough · dollhouse orbit view · 15 room viewpoints</p>
-          <button class="btn btn-light" id="startBtn">Start tour</button>
+          <tour-button class="btn btn-light" id="startBtn">Start tour</tour-button>
           <div class="bar" id="loadWrap" role="progressbar" aria-label="Tour loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <i id="loadBar"></i>
           </div>
@@ -188,64 +184,67 @@
       <div id="crosshair" hidden></div>
       <!-- touch screens: zoom (main.js zoom()); rooms are reached from the dock, not by walking -->
       <div id="zoomCtl" role="group" aria-label="Zoom">
-        <button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">
+        <tour-button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
-        <button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">
+        </tour-button>
+        <tour-button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
-        </button>
+        </tour-button>
       </div>
       <p id="tourHint" hidden>Click the view to take control</p>
       <div id="badge" role="status"></div>
 
-      <button id="fsBtn" type="button" aria-pressed="false">
+      <tour-button id="fsBtn" type="button" aria-pressed="false">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
         </svg>
         <span id="fsLabel">Fullscreen</span>
-      </button>
+      </tour-button>
 
       <div class="tour-error" id="noModel" hidden>
         <h2>No 3D model found</h2>
         <p>Place a model file in <code>virtual-tour/models/</code> and reload.</p>
-        <button class="btn btn-light" id="retryBtn">I’ve added it — reload</button>
+        <tour-button class="btn btn-light" id="retryBtn">I’ve added it — reload</tour-button>
       </div>
       </div>
 
-      <!-- room dock: pills are built by main.js (buildAnchorBar) from anchors.js -->
+      <!-- room dock: pills are built by main.js (buildAnchorBar) from anchors.js.
+           tour-collapsible owns the show/hide: #dockToggle is its invoker, #dockBody its content. -->
       <nav id="anchorBar" class="room-dock" aria-label="Room viewpoints">
-        <div class="dock-head">
-          <p class="dock-now" aria-live="polite" aria-atomic="true">
-            <span class="dock-now-label">Now viewing</span>
-            <span class="dock-now-name" id="dockNowName">—</span>
-            <span class="dock-now-cap" id="dockNowCap"></span>
-          </p>
-          <div class="dock-actions">
-            <span class="dock-count" id="dockCount" aria-hidden="true"></span>
-            <button class="dock-btn" id="dockPrev" type="button">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
-              <span class="dock-btn-text">Previous</span>
+        <tour-collapsible id="dockCollapse" class="dock-collapse" opened>
+          <div class="dock-head">
+            <p class="dock-now" aria-live="polite" aria-atomic="true">
+              <span class="dock-now-label">Now viewing</span>
+              <span class="dock-now-name" id="dockNowName">—</span>
+              <span class="dock-now-cap" id="dockNowCap"></span>
+            </p>
+            <div class="dock-actions">
+              <span class="dock-count" id="dockCount" aria-hidden="true"></span>
+              <tour-button class="dock-btn" id="dockPrev" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+                <span class="dock-btn-text">Previous</span>
+              </tour-button>
+              <tour-button class="dock-btn" id="dockNext" type="button">
+                <span class="dock-btn-text">Next room</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+              </tour-button>
+            </div>
+          </div>
+          <tour-button class="dock-btn dock-toggle" id="dockToggle" slot="invoker" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
+            <span class="dock-btn-text">Hide rooms</span>
+          </tour-button>
+          <div class="dock-body" id="dockBody" slot="content">
+            <p class="sr-only" id="dockKeys">Use the left and right arrow keys to move between rooms, Home and End to jump to the first or last, and Enter to go there.</p>
+            <button class="dock-scroll dock-scroll-prev" type="button" tabindex="-1" aria-hidden="true" data-dir="-1">
+              <svg viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg>
             </button>
-            <button class="dock-btn" id="dockNext" type="button">
-              <span class="dock-btn-text">Next room</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
-            </button>
-            <button class="dock-btn dock-toggle" id="dockToggle" type="button" aria-expanded="true" aria-controls="dockBody">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
-              <span class="dock-btn-text">Hide rooms</span>
+            <div class="dock-track" id="dockTrack" role="toolbar" aria-label="Rooms" aria-describedby="dockKeys"></div>
+            <button class="dock-scroll dock-scroll-next" type="button" tabindex="-1" aria-hidden="true" data-dir="1">
+              <svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg>
             </button>
           </div>
-        </div>
-        <div class="dock-body" id="dockBody">
-          <p class="sr-only" id="dockKeys">Use the left and right arrow keys to move between rooms, Home and End to jump to the first or last, and Enter to go there.</p>
-          <button class="dock-scroll dock-scroll-prev" type="button" tabindex="-1" aria-hidden="true" data-dir="-1">
-            <svg viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg>
-          </button>
-          <div class="dock-track" id="dockTrack" role="toolbar" aria-label="Rooms" aria-describedby="dockKeys"></div>
-          <button class="dock-scroll dock-scroll-next" type="button" tabindex="-1" aria-hidden="true" data-dir="1">
-            <svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg>
-          </button>
-        </div>
+        </tour-collapsible>
       </nav>
     </div>
     </div>
@@ -322,6 +321,7 @@
         </aside>
 
         <div class="book-panel reveal">
+          <lion-form id="tourLionForm">
           <form id="tourForm" novalidate aria-labelledby="contact-title" aria-describedby="form-note">
             <p class="form-note" id="form-note">All fields are required unless marked optional.</p>
 
@@ -333,27 +333,29 @@
 
             <fieldset class="step" aria-describedby="err-type">
               <legend><span class="step-dot" aria-hidden="true">1</span>How would you like to tour?</legend>
-              <div class="choice-grid choice-grid-2">
-                <label class="choice">
-                  <input type="radio" id="f-type-in-person" name="tourType" value="in-person" checked required />
-                  <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5M10 20v-5.5h4V20"/></svg>
-                  <span class="choice-title">In person</span>
-                  <span class="choice-desc">Walk through the home with the agent.</span>
-                </label>
-                <label class="choice">
-                  <input type="radio" id="f-type-video" name="tourType" value="video" required />
-                  <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="12.5" height="11" rx="1.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3"/></svg>
-                  <span class="choice-title">Video call</span>
-                  <span class="choice-desc">A live walkthrough from wherever you are.</span>
-                </label>
-              </div>
+              <tour-radio-group class="choice-grid choice-grid-2" name="tourType" id="f-tourType">
+                <tour-radio class="choice" choice-value="in-person" checked>
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5M10 20v-5.5h4V20"/></svg>
+                    <span class="choice-title">In person</span>
+                    <span class="choice-desc">Walk through the home with the agent.</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice" choice-value="video">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="12.5" height="11" rx="1.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3"/></svg>
+                    <span class="choice-title">Video call</span>
+                    <span class="choice-desc">A live walkthrough from wherever you are.</span>
+                  </label>
+                </tour-radio>
+              </tour-radio-group>
               <p class="field-error" id="err-type"></p>
             </fieldset>
 
             <fieldset class="step" aria-describedby="date-hint err-date">
               <legend><span class="step-dot" aria-hidden="true">2</span>Pick a day</legend>
               <p class="step-hint" id="date-hint">The next two weeks are shown. Use arrow keys to move between days.</p>
-              <div class="date-grid" id="dateChips"></div>
+              <tour-radio-group class="date-grid" name="date" id="dateChips"></tour-radio-group>
               <p class="field date-other" id="dateOtherWrap" hidden>
                 <label for="f-date">Your preferred date</label>
                 <input id="f-date" name="dateOther" type="date" aria-describedby="err-date" />
@@ -363,55 +365,55 @@
 
             <fieldset class="step" aria-describedby="err-time">
               <legend><span class="step-dot" aria-hidden="true">3</span>Pick a time window</legend>
-              <div class="choice-grid choice-grid-3">
-                <label class="choice choice-compact">
-                  <input type="radio" id="f-time-morning" name="timeWindow" value="morning" required />
-                  <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 7v3M5.6 11.6l1.8 1.3M18.4 11.6l-1.8 1.3"/></svg>
-                  <span class="choice-title">Morning</span>
-                  <span class="choice-desc">9 am – 12 pm</span>
-                </label>
-                <label class="choice choice-compact">
-                  <input type="radio" id="f-time-afternoon" name="timeWindow" value="afternoon" required />
-                  <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>
-                  <span class="choice-title">Afternoon</span>
-                  <span class="choice-desc">12 – 4 pm</span>
-                </label>
-                <label class="choice choice-compact">
-                  <input type="radio" id="f-time-evening" name="timeWindow" value="evening" required />
-                  <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
-                  <span class="choice-title">Evening</span>
-                  <span class="choice-desc">4 – 7 pm</span>
-                </label>
-              </div>
+              <tour-radio-group class="choice-grid choice-grid-3" name="timeWindow" id="f-timeWindow">
+                <tour-radio class="choice choice-compact" choice-value="morning">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 7v3M5.6 11.6l1.8 1.3M18.4 11.6l-1.8 1.3"/></svg>
+                    <span class="choice-title">Morning</span>
+                    <span class="choice-desc">9 am – 12 pm</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="afternoon">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>
+                    <span class="choice-title">Afternoon</span>
+                    <span class="choice-desc">12 – 4 pm</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="evening">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+                    <span class="choice-title">Evening</span>
+                    <span class="choice-desc">4 – 7 pm</span>
+                  </label>
+                </tour-radio>
+              </tour-radio-group>
               <p class="field-error" id="err-time"></p>
             </fieldset>
 
             <fieldset class="step">
               <legend><span class="step-dot" aria-hidden="true">4</span>Your details</legend>
               <div class="form-grid">
-                <p class="field field-full">
-                  <label for="f-name">Full name</label>
-                  <input id="f-name" name="name" type="text" autocomplete="name" required maxlength="120" aria-describedby="err-name" />
-                  <span class="field-error" id="err-name"></span>
-                </p>
-                <p class="field">
-                  <label for="f-email">Email</label>
-                  <input id="f-email" name="email" type="email" autocomplete="email" required spellcheck="false" aria-describedby="email-hint err-email" />
-                  <span class="field-hint" id="email-hint">We’ll send your confirmation here.</span>
-                  <span class="field-error" id="err-email"></span>
-                </p>
-                <p class="field">
-                  <label for="f-phone">Phone</label>
-                  <input id="f-phone" name="phone" type="tel" autocomplete="tel" required aria-describedby="phone-hint err-phone" />
-                  <span class="field-hint" id="phone-hint">Only used if we need to reach you about the visit.</span>
-                  <span class="field-error" id="err-phone"></span>
-                </p>
-                <p class="field field-full">
-                  <label for="f-message">Anything we should know? <span class="optional">(optional)</span></label>
-                  <textarea id="f-message" name="message" rows="3" maxlength="1000" aria-describedby="msg-count err-message"></textarea>
-                  <span class="field-hint field-count" id="msg-count">Up to 1000 characters.</span>
-                  <span class="field-error" id="err-message"></span>
-                </p>
+                <tour-input class="field field-full" name="name" label="Full name">
+                  <input slot="input" id="f-name" type="text" autocomplete="name" required maxlength="120" />
+                  <span class="field-error" id="err-name" slot="feedback"></span>
+                </tour-input>
+                <tour-input-email class="field" name="email" label="Email" type="email">
+                  <input slot="input" id="f-email" type="email" autocomplete="email" required spellcheck="false" />
+                  <span class="field-hint" id="email-hint" slot="help-text">We’ll send your confirmation here.</span>
+                  <span class="field-error" id="err-email" slot="feedback"></span>
+                </tour-input-email>
+                <tour-input class="field" name="phone" label="Phone" type="tel">
+                  <input slot="input" id="f-phone" type="tel" autocomplete="tel" required />
+                  <span class="field-hint" id="phone-hint" slot="help-text">Only used if we need to reach you about the visit.</span>
+                  <span class="field-error" id="err-phone" slot="feedback"></span>
+                </tour-input>
+                <tour-textarea class="field field-full" name="message" rows="3">
+                  <label slot="label">Anything we should know? <span class="optional">(optional)</span></label>
+                  <textarea slot="input" id="f-message" rows="3" maxlength="1000"></textarea>
+                  <span class="field-hint field-count" id="msg-count" slot="help-text">Up to 1000 characters.</span>
+                  <span class="field-error" id="err-message" slot="feedback"></span>
+                </tour-textarea>
               </div>
             </fieldset>
 
@@ -426,10 +428,11 @@
                 <p class="eyebrow">Your request</p>
                 <p class="book-summary-text" id="bookSummaryText"></p>
               </div>
-              <button class="btn btn-primary btn-submit" id="submitBtn" type="submit" aria-describedby="bookSummaryText">Request a tour</button>
+              <tour-button-submit class="btn btn-primary btn-submit" id="submitBtn" aria-describedby="bookSummaryText">Request a tour</tour-button-submit>
               <p class="reassurance" data-bind="reassurance"></p>
             </div>
           </form>
+          </lion-form>
           <div id="formStatus" class="sr-only" role="status" aria-live="polite"></div>
         </div>
       </div>

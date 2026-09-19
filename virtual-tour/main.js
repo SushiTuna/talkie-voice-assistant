@@ -874,7 +874,7 @@ async function goTo(id, { instant = false } = {}) {
    live region. On narrow screens and in fullscreen the row scrolls sideways (edge arrows). */
 const TOUR_ORDER = [DOLLHOUSE, ...ANCHOR_GROUPS.flatMap((g) => ROOM_ANCHORS.filter((a) => a.group === g))];
 const dock = {
-  track: byId("dockTrack"), body: byId("dockBody"), toggle: byId("dockToggle"),
+  track: byId("dockTrack"), collapse: byId("dockCollapse"), toggle: byId("dockToggle"),
   prev: byId("dockPrev"), next: byId("dockNext"), name: byId("dockNowName"), cap: byId("dockNowCap"), count: byId("dockCount"),
 };
 const DOCK_KEY = "tour.dockCollapsed";
@@ -936,14 +936,24 @@ function buildAnchorBar() {
     const on = dock.track.querySelector('.pill[aria-pressed="true"]');
     if (on) revealPill(on, "auto");
   }).observe(dock.track);
+  // The head reserves the toggle's (variable) width as right padding, so the invoker can sit
+  // in the collapsible's grid at the right end of the head row without moving the other buttons.
+  // Computed style (not getBoundingClientRect) so an ancestor reveal transform can't skew it.
+  new ResizeObserver(() => dock.collapse.style.setProperty("--dock-toggle-w", getComputedStyle(dock.toggle).width)).observe(dock.toggle);
 
   let collapsed = false;
   try { collapsed = localStorage.getItem(DOCK_KEY) === "1"; } catch { /* storage blocked */ }
-  setDockCollapsed(collapsed);
-  dock.toggle.addEventListener("click", () => {
-    const next = dock.toggle.getAttribute("aria-expanded") === "true";
-    setDockCollapsed(next);
-    try { localStorage.setItem(DOCK_KEY, next ? "1" : "0"); } catch { /* storage blocked */ }
+  if (collapsed) dock.collapse.hide(); else dock.collapse.show(); // markup starts open; Lion owns the invoker click/keys
+  dock.collapse.addEventListener("opened-changed", () => {
+    const isCollapsed = !dock.collapse.opened;
+    anchorBarEl.classList.toggle("collapsed", isCollapsed);
+    dock.toggle.querySelector(".dock-btn-text").textContent = isCollapsed ? "Show rooms" : "Hide rooms";
+    try { localStorage.setItem(DOCK_KEY, isCollapsed ? "1" : "0"); } catch { /* storage blocked */ }
+    if (!isCollapsed) requestAnimationFrame(() => {
+      updateScrollEdges();
+      const on = dock.track.querySelector('.pill[aria-pressed="true"]');
+      if (on) revealPill(on);
+    });
   });
   setActivePill(activeId || DOLLHOUSE.id);
 }
@@ -975,18 +985,6 @@ function updateScrollEdges() {
   anchorBarEl.classList.toggle("can-right", max > 1 && t.scrollLeft < max - 1);
 }
 
-function setDockCollapsed(collapsed) {
-  dock.body.hidden = collapsed;
-  anchorBarEl.classList.toggle("collapsed", collapsed);
-  dock.toggle.setAttribute("aria-expanded", String(!collapsed));
-  dock.toggle.querySelector(".dock-btn-text").textContent = collapsed ? "Show rooms" : "Hide rooms";
-  if (!collapsed) requestAnimationFrame(() => {
-    updateScrollEdges();
-    const on = dock.track.querySelector('.pill[aria-pressed="true"]');
-    if (on) revealPill(on);
-  });
-}
-
 function step(dir) {
   const i = Math.max(0, TOUR_ORDER.findIndex((a) => a.id === activeId));
   goTo(TOUR_ORDER[(i + dir + TOUR_ORDER.length) % TOUR_ORDER.length].id);
@@ -1014,7 +1012,7 @@ function setActivePill(id) {
   dock.next.title = `Next: ${next.label}`;
   // Keep the single Tab stop on the current room, unless focus is already moving around the row.
   if (on && !dock.track.contains(document.activeElement)) rove(on);
-  if (on && !dock.body.hidden) revealPill(on);
+  if (on && dock.collapse.opened) revealPill(on);
 }
 
 // Nice-to-have: highlight the pill of the room the walker is standing in.

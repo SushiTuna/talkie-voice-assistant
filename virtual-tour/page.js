@@ -4,8 +4,16 @@
 import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
 import { wireNeighborhood } from "./neighborhood.js";
+import "./components/index.js";
+import { Required, MaxLength, IsEmail, Pattern } from "@lion/ui/form-core.js";
 
 const byId = (id) => document.getElementById(id);
+
+// Safety net: ensure each tour-radio's choiceValue matches its choice-value attribute
+// before the groups compute their initial modelValue.
+for (const el of document.querySelectorAll("tour-radio[choice-value]")) {
+  el.choiceValue = el.getAttribute("choice-value");
+}
 
 /* ------------------------------------------------------------------ copy binding */
 
@@ -190,7 +198,7 @@ function wireMobileCta() {
 // An explicit choice is saved; until then the page follows the system setting live.
 
 function wireTheme() {
-  const btn = byId("themeToggle");
+  const sw = byId("themeToggle"); // <tour-switch> (components/tour-switch.js); checked = dark
   const root = document.documentElement;
   const meta = document.querySelector('meta[name="theme-color"]');
   const system = matchMedia("(prefers-color-scheme: light)");
@@ -198,15 +206,26 @@ function wireTheme() {
   const apply = (theme) => {
     root.dataset.theme = theme;
     if (meta) meta.content = theme === "light" ? "#f5f2ec" : "#0f1011";
-    btn.setAttribute("aria-label", theme === "light" ? "Switch to dark mode" : "Switch to light mode");
   };
-  apply(root.dataset.theme === "light" ? "light" : "dark");
-  btn.addEventListener("click", () => {
-    const next = root.dataset.theme === "light" ? "dark" : "light";
+  const boot = root.dataset.theme === "light" ? "light" : "dark";
+  apply(boot);
+  sw.checked = boot === "dark";
+  // Lion's role=switch button fires "checked-changed" (bubbles to the tour-switch host).
+  let syncing = false; // programmatic syncs (system-preference changes) must not count as a choice
+  sw.addEventListener("checked-changed", () => {
+    const next = sw.checked ? "dark" : "light";
     apply(next);
+    if (syncing) return;
     try { localStorage.setItem("theme", next); } catch { /* private mode: still switches, just not remembered */ }
   });
-  system.addEventListener("change", (e) => { if (!saved()) apply(e.matches ? "light" : "dark"); });
+  system.addEventListener("change", (e) => {
+    if (saved()) return;
+    const next = e.matches ? "light" : "dark";
+    apply(next);
+    syncing = true;
+    sw.checked = next === "dark";
+    syncing = false;
+  });
 }
 
 /* ------------------------------------------------------------------ booking form */
@@ -221,6 +240,16 @@ const TIME_WINDOWS = {
 };
 const TOUR_TYPES = { "in-person": "In person", video: "Video call" };
 const DAYS_SHOWN = 13; // + the "later date" chip = two rows of seven
+
+// Details-field rules, shared by validate() (error summary + #err-* spans) and the Lion
+// validators on the tour-input fields (see wireForm).
+const PHONE_RE = /^[\d+()\- ]{7,20}$/;
+const MSG = {
+  name: "Enter your full name.",
+  email: "Enter an email address like name@example.com.",
+  phone: "Enter a phone number: 7–20 digits, spaces or + ( ) -.",
+  message: "Keep your message to 1000 characters or fewer.",
+};
 
 const pad = (n) => String(n).padStart(2, "0");
 const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -238,12 +267,15 @@ function buildDateChips() {
   const wrap = byId("dateChips");
   const now = new Date();
   const chip = (value, cls, inner, spoken) => {
+    const radio = document.createElement("tour-radio");
+    radio.className = `date-chip ${cls}`;
+    radio.choiceValue = value;
     const label = document.createElement("label");
-    label.className = `date-chip ${cls}`;
-    label.innerHTML = `<input type="radio" name="date" required />${inner}<span class="sr-only"></span>`;
-    label.firstChild.value = value;
+    label.slot = "label";
+    label.innerHTML = `${inner}<span class="sr-only"></span>`;
     label.lastChild.textContent = spoken;
-    wrap.append(label);
+    radio.append(label);
+    wrap.append(radio);
   };
   for (let i = 1; i <= DAYS_SHOWN; i++) {
     const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
@@ -286,10 +318,10 @@ function validate(data) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || "")) errors.date = "Pick a day for your visit.";
   else if (data.date < tomorrowLocal()) errors.date = "Choose tomorrow or a later day.";
   if (!TIME_WINDOWS[data.timeWindow]) errors.timeWindow = "Pick a time window.";
-  if (!data.name || data.name.length > 120) errors.name = "Enter your full name.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email || "")) errors.email = "Enter an email address like name@example.com.";
-  if (!/^[\d+()\- ]{7,20}$/.test(data.phone || "")) errors.phone = "Enter a phone number: 7–20 digits, spaces or + ( ) -.";
-  if (data.message && data.message.length > 1000) errors.message = "Keep your message to 1000 characters or fewer.";
+  if (!data.name || data.name.length > 120) errors.name = MSG.name;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email || "")) errors.email = MSG.email;
+  if (!PHONE_RE.test(data.phone || "")) errors.phone = MSG.phone;
+  if (data.message && data.message.length > 1000) errors.message = MSG.message;
   return errors;
 }
 
@@ -307,15 +339,44 @@ function wireForm() {
   buildDateChips();
   other.min = tomorrowLocal();
 
-  const radios = (name) => [...form.querySelectorAll(`input[name="${name}"]`)];
-  const pickedOrFirst = (name) => radios(name).find((r) => r.checked) || radios(name)[0];
-  const otherChosen = () => form.querySelector('input[name="date"][value="other"]').checked;
+  const otherChosen = () => radioGroup("date")?.modelValue === "other";
+
+  // tourType / timeWindow are Lion radio groups; read their modelValue instead of native radios.
+  const radioGroup = (name) => form.querySelector(`tour-radio-group[name="${name}"]`);
+  const groupValue = (name) => radioGroup(name)?.modelValue || "";
+  radioGroup("timeWindow").validators = [
+    new Required(null, { getMessage: () => "Pick a time window." }),
+  ];
+  radioGroup("date").validators = [
+    new Required(null, { getMessage: () => "Pick a day for your visit." }),
+  ];
+
+  // The details fields are Lion fields too, with validators mirroring validate() exactly.
+  // Display stays on the page side: their #err-* spans occupy slot="feedback" and
+  // components/tour-input.js suppresses Lion's own message rendering (feedbackCondition),
+  // so only one message per field is ever visible and aria-invalid stays page-controlled.
+  const lionField = (name) => form.querySelector(`tour-input[name="${name}"], tour-input-email[name="${name}"], tour-textarea[name="${name}"]`);
+  for (const [name, validators] of [
+    ["name", [new Required(null, { getMessage: () => MSG.name }), new MaxLength(120, { getMessage: () => MSG.name })]],
+    ["email", [new Required(null, { getMessage: () => MSG.email }), new IsEmail(null, { getMessage: () => MSG.email })]],
+    ["phone", [new Required(null, { getMessage: () => MSG.phone }), new Pattern(PHONE_RE, { getMessage: () => MSG.phone })]],
+    ["message", [new MaxLength(1000, { getMessage: () => MSG.message })]],
+  ]) {
+    const field = lionField(name);
+    if (field) field.validators = validators;
+  }
+
+  // Focus target inside a radio group: the checked radio's native input, else the first one.
+  const groupInput = (name) => {
+    const g = radioGroup(name);
+    return g?.querySelector("tour-radio[checked] input") || g?.querySelector("input");
+  };
 
   // Field → its error element and where to send focus (DOM order = error summary order).
   const FIELDS = {
-    tourType: { error: "err-type", target: () => pickedOrFirst("tourType") },
-    date: { error: "err-date", target: () => (otherChosen() ? other : pickedOrFirst("date")) },
-    timeWindow: { error: "err-time", target: () => pickedOrFirst("timeWindow") },
+    tourType: { error: "err-type", target: () => groupInput("tourType") },
+    date: { error: "err-date", target: () => (otherChosen() ? other : groupInput("date")) },
+    timeWindow: { error: "err-time", target: () => groupInput("timeWindow") },
     name: { error: "err-name", input: "f-name" },
     email: { error: "err-email", input: "f-email" },
     phone: { error: "err-phone", input: "f-phone" },
@@ -325,6 +386,9 @@ function wireForm() {
 
   const readForm = () => {
     const d = Object.fromEntries(new FormData(form).entries());
+    d.tourType = groupValue("tourType");
+    d.timeWindow = groupValue("timeWindow");
+    d.date = groupValue("date");
     d.date = d.date === "other" ? d.dateOther || "" : d.date || "";
     delete d.dateOther;
     return d;
@@ -401,14 +465,22 @@ function wireForm() {
   const updateCount = () => { count.textContent = `${message.value.length} / 1000 characters`; };
 
   form.addEventListener("change", (e) => {
-    if (e.target.name === "date") {
-      otherWrap.hidden = !otherChosen();
-      if (!otherChosen()) other.setAttribute("aria-invalid", "false");
-    }
     const field = { tourType: "tourType", date: "date", dateOther: "date", timeWindow: "timeWindow" }[e.target.name];
     if (field) setFieldError(field, "");
     updateSummary();
   });
+  // Lion groups announce selection changes via model-value-changed (the native change event
+  // comes from an input inside the group and may not carry the group's name).
+  for (const name of ["tourType", "date", "timeWindow"]) {
+    radioGroup(name)?.addEventListener("model-value-changed", () => {
+      if (name === "date") {
+        otherWrap.hidden = !otherChosen();
+        if (!otherChosen()) other.setAttribute("aria-invalid", "false");
+      }
+      setFieldError(name, "");
+      updateSummary();
+    });
+  }
   // Clear a field's error as soon as the user edits it.
   form.addEventListener("input", (e) => {
     const field = Object.keys(FIELDS).find((f) => FIELDS[f].input === e.target.id);
@@ -417,6 +489,8 @@ function wireForm() {
     if (e.target === message) updateCount();
   });
   updateSummary();
+  // The Lion groups settle their modelValue during their first (async) update; refresh once.
+  queueMicrotask(updateSummary);
 
   const setBusy = (busy) => {
     btn.disabled = busy;

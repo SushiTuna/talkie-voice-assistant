@@ -18,8 +18,10 @@
   "dependencies": {
     "@babylonjs/core": "^9.27.0",
     "@babylonjs/loaders": "^9.27.0",
+    "@lion/ui": "^0.21.1",
     "esbuild": "^0.28.2",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "lit": "^3.3.3"
   },
   "devDependencies": {
     "@gltf-transform/core": "^4.5.0",
