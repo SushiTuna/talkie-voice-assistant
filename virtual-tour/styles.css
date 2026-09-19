@@ -86,20 +86,23 @@ body.fs-lock { overflow: hidden; }
 .tour-section { padding: 0; }
 #tour {
   position: relative;
+  display: flex; flex-direction: column;
   width: 100%;
-  aspect-ratio: 16 / 9;
   background: #0b0d0e;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 2px;
 }
+/* the 3D view; every overlay below is positioned inside it */
+.tour-stage { position: relative; flex: 0 0 auto; aspect-ratio: 16 / 9; overflow: hidden; }
 #tour:fullscreen, #tour.pseudo-fullscreen {
-  width: 100vw; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0;
+  width: 100vw; height: 100vh; border: 0; border-radius: 0;
 }
-#tour.pseudo-fullscreen { position: fixed; inset: 0; z-index: 2147483000; }
+:is(#tour:fullscreen, #tour.pseudo-fullscreen) .tour-stage { flex: 1 1 auto; min-height: 0; aspect-ratio: auto; }
+#tour.pseudo-fullscreen { position: fixed; inset: 0; z-index: 2147483000; height: 100dvh; padding-bottom: env(safe-area-inset-bottom); }
 #renderCanvas { display: block; width: 100%; height: 100%; outline: none; touch-action: pan-y; }
 #tour.captured #renderCanvas { touch-action: none; }
-@media (max-width: 700px) { #tour { aspect-ratio: 4 / 3; } }
+@media (max-width: 700px) { .tour-stage { aspect-ratio: 4 / 3; } }
 
 /* poster shown until the tour is ready */
 .tour-poster {
@@ -144,27 +147,133 @@ body.fs-lock { overflow: hidden; }
   padding: 9px 14px; backdrop-filter: blur(6px); transition: background .15s;
 }
 #fsBtn:hover { background: rgba(13, 16, 22, .92); }
+/* phones: icon-only fullscreen button, and the badge wraps in the space left of it */
+@media (max-width: 560px) {
+  #badge { right: 68px; max-width: max-content; font-size: 12px; line-height: 1.35; padding: 7px 12px; border-radius: 14px; }
+  #fsBtn { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #fsLabel { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #fsBtn svg { width: 18px; height: 18px; }
+}
 
-#anchorBar {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 7;
-  display: flex; align-items: center; gap: 8px;
-  overflow-x: auto; white-space: nowrap; padding: 10px 14px;
-  background: linear-gradient(rgba(11, 13, 18, 0) 0%, rgba(11, 13, 18, .82) 42%);
-  scrollbar-width: thin;
+/* walk joystick: touch screens only, while walking with control of the view */
+#joystick {
+  display: none; position: absolute; left: 20px; bottom: 20px; z-index: 7;
+  width: 112px; height: 112px; border-radius: 50%; touch-action: none;
+  background: rgba(13, 16, 22, .45); border: 1px solid rgba(255, 255, 255, .28);
+  backdrop-filter: blur(4px); -webkit-user-select: none; user-select: none;
 }
+#tour.touch.captured:not(.dollhouse) #joystick { display: block; }
+.joy-knob {
+  position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(236, 232, 225, .85); box-shadow: 0 2px 10px rgba(0, 0, 0, .5); pointer-events: none;
+}
+
+/* ---------- room dock (under the 3D view; built by main.js) ---------- */
+.room-dock {
+  flex: 0 0 auto;
+  background: var(--surface); border-top: 1px solid var(--line);
+  color: var(--ink);
+}
+.dock-head {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 14px 20px 12px;
+}
+.room-dock:not(.collapsed) .dock-head { border-bottom: 1px solid var(--line); }
+.dock-now { flex: 1 1 280px; min-width: 0; display: flex; align-items: baseline; gap: 4px 12px; flex-wrap: wrap; }
+.dock-now-label { font: 600 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .14em; color: var(--muted); }
+.dock-now-name { font: 600 18px/1.2 var(--sans); letter-spacing: -.01em; color: var(--ink); }
+.dock-now-cap { flex-basis: 100%; font-size: 14px; line-height: 1.4; color: var(--muted); }
+@media (min-width: 900px) { .dock-now-cap { flex-basis: auto; } }
+
+.dock-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.dock-count { font: 500 13px/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
+.dock-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; min-width: 44px; padding: 0 16px; cursor: pointer;
+  background: transparent; color: var(--ink); border: 1px solid rgba(236, 232, 225, .4); border-radius: 99px;
+  font: 600 13px/1 var(--sans); letter-spacing: .02em;
+  transition: background .15s, border-color .15s;
+}
+.dock-btn:hover { background: var(--surface-2); border-color: rgba(236, 232, 225, .6); }
+.dock-btn svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#dockPrev { padding-left: 10px; }
+#dockNext { padding-right: 10px; }
+.dock-toggle svg { transition: transform .2s ease; }
+.room-dock.collapsed .dock-toggle svg { transform: rotate(180deg); }
+
+.dock-body { position: relative; }
+.dock-track { position: relative; } /* offsetLeft of pills is measured against the row */
+.dock-body[hidden] { display: none; }
+.dock-track {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 18px 36px;
+  padding: 16px 20px 20px;
+}
+.pill-set { display: flex; flex-direction: column; gap: 10px; }
+.pill-group { font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .14em; color: #c4bfb6; }
+.pill-row { display: flex; gap: 8px; }
 .pill {
-  flex: 0 0 auto; cursor: pointer;
-  background: rgba(13, 16, 22, .66); border: 1px solid rgba(255, 255, 255, .22); border-radius: 99px;
-  color: #e8ecf4; font: 500 12px/1 var(--sans); letter-spacing: .02em; padding: 8px 14px;
-  transition: background .15s, color .15s;
+  flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  min-height: 44px; padding: 0 18px; white-space: nowrap;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid rgba(236, 232, 225, .4); border-radius: 99px;
+  font: 500 15px/1 var(--sans); letter-spacing: .01em;
+  transition: background .15s, border-color .15s, color .15s;
 }
-.pill:hover { border-color: #fff; }
-.pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
-.pill-group {
-  flex: 0 0 auto; padding-left: 10px; color: #8d99ad;
-  font: 600 10px/1 var(--sans); text-transform: uppercase; letter-spacing: 0.14em;
+.pill:hover { background: #2a2e32; border-color: rgba(236, 232, 225, .75); }
+/* current room: filled bronze + a check, so the state isn't carried by colour alone */
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; padding-left: 14px; }
+.pill[aria-pressed="true"]::before {
+  content: ""; width: 16px; height: 16px; flex: none; background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.pill-group:first-child { padding-left: 2px; }
+.pill[aria-pressed="true"]:hover { background: var(--accent-hover); }
+:is(.pill, .dock-btn, #fsBtn):focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+/* scrolling row: narrow screens and fullscreen (where the dock must stay one row tall) */
+.dock-scroll { display: none; }
+@media (max-width: 899px) {
+  .dock-track { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 18px; }
+}
+:is(#tour:fullscreen, #tour.pseudo-fullscreen) .dock-track {
+  flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding-bottom: 18px;
+}
+.dock-track::-webkit-scrollbar { display: none; }
+.pill-set { scroll-snap-align: start; }
+.dock-track { scroll-padding-inline: 60px; } /* snapped rooms land clear of the edge arrows */
+/* edge fades + arrows appear only on the side that has more rooms */
+.dock-body::before, .dock-body::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: 72px; z-index: 1; pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+}
+.dock-body::before { left: 0; background: linear-gradient(90deg, var(--surface) 30%, transparent); }
+.dock-body::after { right: 0; background: linear-gradient(270deg, var(--surface) 30%, transparent); }
+.room-dock.can-left .dock-body::before, .room-dock.can-right .dock-body::after { opacity: 1; }
+.room-dock.can-left .dock-scroll-prev, .room-dock.can-right .dock-scroll-next { display: grid; }
+.dock-scroll {
+  position: absolute; top: 50%; z-index: 2; place-items: center; width: 40px; height: 40px; margin-top: -8px;
+  transform: translateY(-50%); cursor: pointer;
+  background: var(--surface-2); color: var(--ink); border: 1px solid rgba(236, 232, 225, .3); border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .45);
+}
+.dock-scroll:hover { border-color: rgba(236, 232, 225, .7); }
+.dock-scroll svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dock-scroll-prev { left: 10px; }
+.dock-scroll-next { right: 10px; }
+
+/* phones: shorter labels on the step buttons, compact head */
+@media (max-width: 560px) {
+  .dock-head { padding: 12px 16px 10px; gap: 10px; }
+  .dock-track { padding-inline: 16px; }
+  .dock-btn { padding: 0 12px; }
+  #dockPrev .dock-btn-text, .dock-toggle .dock-btn-text { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #dockPrev, .dock-toggle { padding: 0; }
+  #dockNext .dock-btn-text { font-size: 13px; }
+  .dock-now-name { font-size: 17px; }
+  .dock-actions { margin-left: 0; width: 100%; }
+  .dock-count { margin-right: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .dock-toggle svg, .dock-body::before, .dock-body::after { transition: none; } }
 
 .tour-error {
   position: absolute; inset: 0; z-index: 9; display: flex; flex-direction: column; gap: 14px;

@@ -169,6 +169,8 @@
     </div>
     <div class="container tour-frame">
     <div id="tour">
+      <!-- the 3D view and its overlays; the room dock sits below it, never on top of the scene -->
+      <div class="tour-stage">
       <canvas id="renderCanvas" tabindex="1" aria-label="3D tour viewport — click to take control"></canvas>
 
       <div class="tour-poster" id="tourPoster">
@@ -184,6 +186,8 @@
       </div>
 
       <div id="crosshair" hidden></div>
+      <!-- touch screens: walk joystick (shown while walking in control; main.js wireJoystick) -->
+      <div id="joystick" aria-hidden="true"><span class="joy-knob"></span></div>
       <p id="tourHint" hidden>Click the view to take control</p>
       <div id="badge" role="status"></div>
 
@@ -194,13 +198,48 @@
         <span id="fsLabel">Fullscreen</span>
       </button>
 
-      <nav id="anchorBar" aria-label="Room viewpoints"></nav>
-
       <div class="tour-error" id="noModel" hidden>
         <h2>No 3D model found</h2>
         <p>Place a model file in <code>virtual-tour/models/</code> and reload.</p>
         <button class="btn btn-light" id="retryBtn">I’ve added it — reload</button>
       </div>
+      </div>
+
+      <!-- room dock: pills are built by main.js (buildAnchorBar) from anchors.js -->
+      <nav id="anchorBar" class="room-dock" aria-label="Room viewpoints">
+        <div class="dock-head">
+          <p class="dock-now" aria-live="polite" aria-atomic="true">
+            <span class="dock-now-label">Now viewing</span>
+            <span class="dock-now-name" id="dockNowName">—</span>
+            <span class="dock-now-cap" id="dockNowCap"></span>
+          </p>
+          <div class="dock-actions">
+            <span class="dock-count" id="dockCount" aria-hidden="true"></span>
+            <button class="dock-btn" id="dockPrev" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+              <span class="dock-btn-text">Previous</span>
+            </button>
+            <button class="dock-btn" id="dockNext" type="button">
+              <span class="dock-btn-text">Next room</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+            </button>
+            <button class="dock-btn dock-toggle" id="dockToggle" type="button" aria-expanded="true" aria-controls="dockBody">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
+              <span class="dock-btn-text">Hide rooms</span>
+            </button>
+          </div>
+        </div>
+        <div class="dock-body" id="dockBody">
+          <p class="sr-only" id="dockKeys">Use the left and right arrow keys to move between rooms, Home and End to jump to the first or last, and Enter to go there.</p>
+          <button class="dock-scroll dock-scroll-prev" type="button" tabindex="-1" aria-hidden="true" data-dir="-1">
+            <svg viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg>
+          </button>
+          <div class="dock-track" id="dockTrack" role="toolbar" aria-label="Rooms" aria-describedby="dockKeys"></div>
+          <button class="dock-scroll dock-scroll-next" type="button" tabindex="-1" aria-hidden="true" data-dir="1">
+            <svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg>
+          </button>
+        </div>
+      </nav>
     </div>
     </div>
   </section>

@@ -30,6 +30,11 @@ const ROOM_RADIUS = 4.5;     // walking within this (XZ) of an anchor marks its 
 
 const B = {}; // Babylon namespace, filled by loadBabylon()
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+// Phones and tablets: iOS Safari kills the WebGL context when a page uses too much GPU memory
+// (the canvas goes black), and after that can refuse new contexts ("WebGL not supported").
+// So touch devices get a lighter scene: CSS-resolution canvas, smaller shadow map, no SSAO,
+// no MSAA/bloom/grain, textures capped at 512 px, a 128 px sky cube, and no broadleaf trees.
+const LITE = window.matchMedia("(pointer: coarse)").matches;
 
 let engine = null, scene = null, fpCam = null, arcCam = null, sun = null, hemi = null;
 let modelMeshes = [], shadowMap = null, ssaoPipe = null;
@@ -72,6 +77,7 @@ function showError(title, msg) {
   posterEl.hidden = true;
   noModelEl.querySelector("h2").textContent = title;
   noModelEl.querySelector("p").textContent = msg;
+  byId("retryBtn").textContent = title === "No 3D model found" ? "I’ve added it — reload" : "Reload";
   noModelEl.hidden = false;
 }
 
@@ -114,14 +120,26 @@ async function loadTour() {
   } catch (err) {
     console.error(err);
     loadPromise = null;
-    showError("Could not load model", String(err?.message || err));
+    if (/WebGL not supported/.test(err?.message)) {
+      showError("3D isn’t available in this browser", "The browser refused a WebGL context. On iPhone, close this tab, open a new one and try again.");
+    } else showError("Could not load model", String(err?.message || err));
   }
 }
 
 /* ------------------------------------------------------------------ scene setup */
 
 function buildWorld() {
-  engine = new B.Engine(canvas, true, { stencil: true, preserveDrawingBuffer: true }, true);
+  engine = new B.Engine(canvas, !LITE, { stencil: true, preserveDrawingBuffer: !LITE }, !LITE);
+  // Babylon downsizes image textures above this on upload (ThinEngine._prepareWebGLTexture).
+  if (LITE) engine.getCaps().maxTextureSize = Math.min(engine.getCaps().maxTextureSize, 512);
+  engine.onContextLostObservable.add(() => {
+    sleep();
+    const stage = ready ? "after loading" : `while ${byId("loadMsg").textContent.replace(/…$/, "").toLowerCase() || "loading"}`;
+    console.error(`WebGL context lost ${stage}`);
+    showError("The 3D view stopped", ready
+      ? "The browser ran out of graphics memory. Reload to try again."
+      : "The browser shut off 3D graphics as the view started. On iPhone, fully close Safari (swipe it away in the app switcher), reopen it and try again.");
+  });
   // Sharp on Retina, but cap the resolution so SSAO stays affordable.
   engine.setHardwareScalingLevel(FULL_SCALE);
   scene = new B.Scene(engine);
@@ -136,7 +154,7 @@ function buildWorld() {
   sun.position.set(10, 15, -10);
   // Overcast HDRI sky + image-based light, misty mountains, fog and the colour grade (mood.js);
   // the gradient dome shows until the HDRI has loaded.
-  B.mood.setupAtmosphere(scene, { hemi, sun, fallbackSky: buildSky() });
+  B.mood.setupAtmosphere(scene, { hemi, sun, fallbackSky: buildSky(), envSize: LITE ? 128 : 512 });
   // New meshes (streamed trees and cars) and textures (HDR sky, maps) need frames to show up.
   scene.onNewMeshAddedObservable.add(() => wake());
   scene.onNewTextureAddedObservable.add(() => wake());
@@ -154,7 +172,7 @@ function buildWorld() {
 // moves they render in FAST quality: canvas at CSS resolution instead of up to 1.5×, and 8-sample
 // SSAO with the cheap blur — about half the GPU time, and motion hides the difference. When the
 // view comes to rest, one last frame renders in FULL quality, so a still view looks as before.
-const FULL_SCALE = 1 / Math.min(window.devicePixelRatio || 1, 1.5); // sharp on Retina, capped for SSAO
+const FULL_SCALE = LITE ? 1 : 1 / Math.min(window.devicePixelRatio || 1, 1.5); // sharp on Retina, capped for SSAO
 const WAKE_MS = 1200; // full rate this long after the last change (camera inertia, shader compiles)
 
 let onScreen = false, looping = false, wakeUntil = 0, resuming = false, readyChecked = false, fast = false;
@@ -216,7 +234,7 @@ function renderFrame() {
 
 function scheduleNext() {
   const moving = viewChanged() || animating;
-  if (moving || scene.isLoading) wake();
+  if (moving || scene.isLoading || joy.active) wake();
   if (performance.now() < wakeUntil) {
     if (moving && ready) setFast(true);
     return;
@@ -402,7 +420,7 @@ function buildCameras() {
   occlude(); // conifers first, at grass height; the house call below then finds no new trees
   B.addGroundOcclusion(scene, { footprint: rb && { min: rb.minimumWorld, max: rb.maximumWorld }, y: decalY });
   // Broadleaf trees for the mid/far forest stream in after the tour is ready (5 MB); conifers if that fails.
-  B.addBroadleafTrees(scene, forest.broadleafSlots, groundY).then(occlude, (err) => {
+  (LITE ? Promise.reject(new Error("skipped on touch devices")) : B.addBroadleafTrees(scene, forest.broadleafSlots, groundY)).then(occlude, (err) => {
     console.warn("broadleaf trees unavailable, planting conifers instead:", err);
     forest.fillWithConifers();
     occlude();
@@ -419,7 +437,7 @@ function buildCameras() {
   fpCam.ellipsoidOffset = new B.Vector3(0, 0, 0);
   fpCam.minZ = 0.05;
   fpCam.fov = 1.0;
-  fpCam.angularSensibility = 1800;
+  fpCam.angularSensibility = LITE ? 1100 : 1800; // a finger swipe covers fewer pixels than a mouse
   fpCam.inertia = 0.72;
   fpCam.speed = WALK_SPEED;
   fpCam.keysUp = [87, 38];    // W / ↑
@@ -432,6 +450,13 @@ function buildCameras() {
   const checkInputs = fpCam.inputs.checkInputs.bind(fpCam.inputs);
   fpCam.inputs.checkInputs = () => {
     checkInputs();
+    if (joy.active && captured && !animating) {
+      // Joystick (touch screens): x strafes, y walks, along the ground at the keyboard's speed.
+      const s = fpCam._computeLocalCameraSpeed(), yaw = fpCam.rotation.y;
+      const side = joy.x * s, fwd = -joy.y * s;
+      fpCam.cameraDirection.x += Math.cos(yaw) * side + Math.sin(yaw) * fwd;
+      fpCam.cameraDirection.z += -Math.sin(yaw) * side + Math.cos(yaw) * fwd;
+    }
     const d = fpCam.cameraDirection;
     const total = d.length();
     const horiz = Math.hypot(d.x, d.z);
@@ -450,7 +475,7 @@ function buildCameras() {
 
   scene.activeCamera = fpCam;
   setupRenderQuality([fpCam, arcCam]);
-  // Ferrari SF90 + Porsche 911 under the carport, where the model's own cars were (~23 MB, streamed in).
+  // Ferrari SF90 + Porsche 911 under the carport, where the model's own cars were (~8 MB, streamed in).
   if (slab) {
     import("./cars.js").then((m) => m.addGarageCars(scene, {
       ref: slab, floorY: slab.getBoundingInfo().boundingBox.maximumWorld.y, shadows: sun.getShadowGenerator(),
@@ -471,7 +496,7 @@ function setupRenderQuality(cameras) {
 
   // Soft sun shadows (PCF). The light's shadow frustum is fitted to the casters automatically.
   sun.autoCalcShadowZBounds = true;
-  const shadows = new B.ShadowGenerator(2048, sun);
+  const shadows = new B.ShadowGenerator(LITE ? 1024 : 2048, sun);
   // Sun and casters never move, so the map is drawn once (RenderTargetTexture.REFRESHRATE_RENDER_ONCE)
   // and redrawn by scheduleNext() whenever the scene settles (e.g. after the cars stream in).
   shadowMap = shadows.getShadowMap();
@@ -489,7 +514,7 @@ function setupRenderQuality(cameras) {
 
   // Ambient occlusion: darkens corners and contact points so rooms read as 3D. Kept to contact
   // scale indoors: a wider radius smears metre-long grime along every wall/floor junction.
-  if (B.SSAO2RenderingPipeline.IsSupported) {
+  if (!LITE && B.SSAO2RenderingPipeline.IsSupported) {
     const ssao = ssaoPipe = new B.SSAO2RenderingPipeline("ssao", scene, { ssaoRatio: 0.5, blurRatio: 1 }, cameras);
     ssao.radius = 0.4;          // metres (the model is at real scale)
     ssao.totalStrength = 0.7;
@@ -511,6 +536,11 @@ function setupRenderQuality(cameras) {
   pipeline.sharpen.edgeAmount = 0.15;
   pipeline.imageProcessingEnabled = true;
   B.mood.tunePost(pipeline); // wider bloom for glowing windows + film grain
+  if (LITE) {
+    pipeline.samples = 1; // FXAA alone
+    pipeline.bloomEnabled = false;
+    pipeline.grainEnabled = false;
+  }
   window.__quality = { ssao: ssaoPipe, shadows }; // debug/QA handle, like window.__scene
 }
 
@@ -753,6 +783,12 @@ function updateHud() {
   crosshairEl.hidden = !(captured && mode === "walk");
   hintEl.hidden = !ready || captured;
   if (!ready) return;
+  if (LITE) {
+    badgeEl.innerHTML = mode === "walk"
+      ? (captured ? "<b>Walk</b> — joystick to move · drag to look" : "<b>Walk</b> — tap the view to start")
+      : (captured ? "<b>Dollhouse</b> — drag to orbit · pinch to zoom" : "<b>Dollhouse</b> — tap the view to orbit");
+    return;
+  }
   badgeEl.innerHTML = mode === "walk"
     ? (captured
       ? "<b>Walk mode</b> — WASD move · mouse look · Shift run · <b>V</b> dollhouse · Esc release"
@@ -837,37 +873,153 @@ async function goTo(id, { instant = false } = {}) {
   try { history.replaceState(null, "", `#room=${id}`); } catch { /* exotic sandboxes */ }
 }
 
-let pillsBuilt = false;
+/* Room dock (index.html #anchorBar): grouped pills in a toolbar under the 3D view.
+   One Tab stop for the whole row (roving tabindex; arrows / Home / End move, Enter / Space go),
+   Previous / Next step through the viewpoints in order, and the "Now viewing" line is a polite
+   live region. On narrow screens and in fullscreen the row scrolls sideways (edge arrows). */
+const TOUR_ORDER = [DOLLHOUSE, ...ANCHOR_GROUPS.flatMap((g) => ROOM_ANCHORS.filter((a) => a.group === g))];
+const dock = {
+  track: byId("dockTrack"), body: byId("dockBody"), toggle: byId("dockToggle"),
+  prev: byId("dockPrev"), next: byId("dockNext"), name: byId("dockNowName"), cap: byId("dockNowCap"), count: byId("dockCount"),
+};
+const DOCK_KEY = "tour.dockCollapsed";
+let pillsBuilt = false, activeId = null;
+
 function buildAnchorBar() {
   if (pillsBuilt) return;
   pillsBuilt = true;
-  const groups = [
-    [DOLLHOUSE.group, [DOLLHOUSE]],
-    ...ANCHOR_GROUPS.map((g) => [g, ROOM_ANCHORS.filter((a) => a.group === g)]),
-  ];
-  for (const [name, items] of groups) {
+  const groups = [[DOLLHOUSE.group, [DOLLHOUSE]], ...ANCHOR_GROUPS.map((g) => [g, TOUR_ORDER.filter((a) => a.group === g)])];
+  groups.forEach(([name, items], gi) => {
+    const group = document.createElement("div");
+    group.className = "pill-set";
+    group.setAttribute("role", "group");
     const label = document.createElement("span");
     label.className = "pill-group";
+    label.id = `pill-group-${gi}`;
     label.textContent = name;
-    anchorBarEl.append(label);
+    group.setAttribute("aria-labelledby", label.id);
+    const row = document.createElement("div");
+    row.className = "pill-row";
     for (const a of items) {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "pill";
       b.dataset.anchor = a.id;
+      b.tabIndex = -1;
       b.textContent = a.label;
-      b.title = a.caption;
       b.setAttribute("aria-pressed", "false");
       b.addEventListener("click", () => goTo(a.id));
-      anchorBarEl.append(b);
+      row.append(b);
     }
+    group.append(label, row);
+    dock.track.append(group);
+  });
+  dock.track.querySelector(".pill").tabIndex = 0;
+
+  dock.track.addEventListener("keydown", (e) => {
+    const pills = [...dock.track.querySelectorAll(".pill")];
+    const i = pills.indexOf(document.activeElement);
+    if (i < 0) return;
+    const to = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: pills.length - 1 }[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    focusPill(pills[(to + pills.length) % pills.length]);
+  });
+  dock.track.addEventListener("focusin", (e) => { if (e.target.matches(".pill")) rove(e.target); });
+
+  dock.prev.addEventListener("click", () => step(-1));
+  dock.next.addEventListener("click", () => step(1));
+  for (const b of anchorBarEl.querySelectorAll(".dock-scroll")) {
+    b.addEventListener("click", () => {
+      dock.track.scrollBy({ left: Number(b.dataset.dir) * dock.track.clientWidth * 0.7, behavior: smooth() });
+    });
   }
+  dock.track.addEventListener("scroll", updateScrollEdges, { passive: true });
+  // First layout happens only once #tour is .ready, so re-centre the current room whenever the row resizes.
+  new ResizeObserver(() => {
+    updateScrollEdges();
+    const on = dock.track.querySelector('.pill[aria-pressed="true"]');
+    if (on) revealPill(on, "auto");
+  }).observe(dock.track);
+
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(DOCK_KEY) === "1"; } catch { /* storage blocked */ }
+  setDockCollapsed(collapsed);
+  dock.toggle.addEventListener("click", () => {
+    const next = dock.toggle.getAttribute("aria-expanded") === "true";
+    setDockCollapsed(next);
+    try { localStorage.setItem(DOCK_KEY, next ? "1" : "0"); } catch { /* storage blocked */ }
+  });
+  setActivePill(activeId || DOLLHOUSE.id);
+}
+
+const smooth = () => (reduceMotion.matches ? "auto" : "smooth");
+
+function rove(pill) {
+  for (const b of dock.track.querySelectorAll(".pill")) b.tabIndex = b === pill ? 0 : -1;
+}
+
+function focusPill(pill) {
+  rove(pill);
+  pill.focus({ preventScroll: true });
+  revealPill(pill);
+}
+
+// Scroll the row (never the page) so the pill is fully in view.
+function revealPill(pill, behavior = smooth()) {
+  const t = dock.track;
+  if (t.scrollWidth <= t.clientWidth) return;
+  const pad = 64, l = pill.offsetLeft, r = l + pill.offsetWidth; // clear the edge fade + arrow
+  if (l - pad < t.scrollLeft) t.scrollTo({ left: l - pad, behavior });
+  else if (r + pad > t.scrollLeft + t.clientWidth) t.scrollTo({ left: r + pad - t.clientWidth, behavior });
+}
+
+function updateScrollEdges() {
+  const t = dock.track, max = t.scrollWidth - t.clientWidth;
+  anchorBarEl.classList.toggle("can-left", max > 1 && t.scrollLeft > 1);
+  anchorBarEl.classList.toggle("can-right", max > 1 && t.scrollLeft < max - 1);
+}
+
+function setDockCollapsed(collapsed) {
+  dock.body.hidden = collapsed;
+  anchorBarEl.classList.toggle("collapsed", collapsed);
+  dock.toggle.setAttribute("aria-expanded", String(!collapsed));
+  dock.toggle.querySelector(".dock-btn-text").textContent = collapsed ? "Show rooms" : "Hide rooms";
+  if (!collapsed) requestAnimationFrame(() => {
+    updateScrollEdges();
+    const on = dock.track.querySelector('.pill[aria-pressed="true"]');
+    if (on) revealPill(on);
+  });
+}
+
+function step(dir) {
+  const i = Math.max(0, TOUR_ORDER.findIndex((a) => a.id === activeId));
+  goTo(TOUR_ORDER[(i + dir + TOUR_ORDER.length) % TOUR_ORDER.length].id);
 }
 
 function setActivePill(id) {
-  for (const b of anchorBarEl.querySelectorAll(".pill")) {
-    b.setAttribute("aria-pressed", String(b.dataset.anchor === id));
+  activeId = id;
+  if (!pillsBuilt) return;
+  let on = null;
+  for (const b of dock.track.querySelectorAll(".pill")) {
+    const hit = b.dataset.anchor === id;
+    b.setAttribute("aria-pressed", String(hit));
+    if (hit) on = b;
   }
+  const i = TOUR_ORDER.findIndex((a) => a.id === id);
+  const a = TOUR_ORDER[i];
+  if (!a) return;
+  dock.name.textContent = a.label;
+  dock.cap.textContent = a.id === DOLLHOUSE.id ? "Orbit the whole house" : a.caption;
+  dock.count.textContent = `${i + 1} / ${TOUR_ORDER.length}`;
+  const n = TOUR_ORDER.length, prev = TOUR_ORDER[(i - 1 + n) % n], next = TOUR_ORDER[(i + 1) % n];
+  dock.prev.setAttribute("aria-label", `Previous room: ${prev.label}`);
+  dock.next.setAttribute("aria-label", `Next room: ${next.label}`);
+  dock.prev.title = `Previous: ${prev.label}`;
+  dock.next.title = `Next: ${next.label}`;
+  // Keep the single Tab stop on the current room, unless focus is already moving around the row.
+  if (on && !dock.track.contains(document.activeElement)) rove(on);
+  if (on && !dock.body.hidden) revealPill(on);
 }
 
 // Nice-to-have: highlight the pill of the room the walker is standing in.
@@ -926,7 +1078,47 @@ function onFsChange() {
 
 /* ------------------------------------------------------------------ wiring + public API */
 
+/* Touch screens have no WASD: a thumb joystick in the corner walks (fpCam.inputs.checkInputs
+   reads joy), and a one-finger drag elsewhere on the view looks around (Babylon's mouse input). */
+const joy = window.__joy = { active: false, x: 0, y: 0 }; // also a debug/QA handle
+function wireJoystick() {
+  const pad = byId("joystick"), knob = pad.querySelector(".joy-knob");
+  let id = null;
+  const move = (e) => {
+    const r = pad.getBoundingClientRect(), R = r.width / 2;
+    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
+    const d = Math.hypot(dx, dy);
+    if (d > R) { dx *= R / d; dy *= R / d; }
+    joy.x = dx / R; joy.y = dy / R;
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+  };
+  const end = (e) => {
+    if (e.pointerId !== id) return;
+    id = null;
+    joy.active = false; joy.x = joy.y = 0;
+    knob.style.transform = "";
+  };
+  pad.addEventListener("pointerdown", (e) => {
+    if (id !== null) return;
+    e.preventDefault();
+    id = e.pointerId;
+    joy.active = true;
+    // Keeps the drag when the thumb slides off the pad; can throw for touch pointers (seen in Chrome).
+    try { pad.setPointerCapture(id); } catch { /* the pad still gets moves while the thumb is on it */ }
+    move(e);
+    wake();
+  });
+  pad.addEventListener("pointermove", (e) => { if (e.pointerId === id) move(e); });
+  pad.addEventListener("pointerup", end);
+  pad.addEventListener("pointercancel", end);
+}
+
 function wireTour() {
+  if (LITE) {
+    tourEl.classList.add("touch");
+    hintEl.textContent = "Tap the view to take control";
+    wireJoystick();
+  }
   byId("startBtn").addEventListener("click", () => ensureTour());
   byId("retryBtn")?.addEventListener("click", () => location.reload());
   fsBtnEl.addEventListener("click", () => (fsActive() ? exitFullscreen() : enterFullscreen()));
@@ -949,7 +1141,7 @@ function wireTour() {
   document.addEventListener("fullscreenchange", onFsChange);
   document.addEventListener("webkitfullscreenchange", onFsChange);
   window.addEventListener("resize", resizeEngine);
-  new ResizeObserver(resizeEngine).observe(tourEl);
+  new ResizeObserver(resizeEngine).observe(canvas); // the dock under the view can change the canvas size on its own
 
   // Frame scheduling (see "frame scheduling"): render only while #tour is on screen, and wake
   // the loop on any input — Babylon applies camera input inside scene.render().

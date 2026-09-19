@@ -49,7 +49,7 @@ function rng(seed) {
  * key light aimed from the sky's sun, light exp2 haze and a filmic grade. `fallbackSky` (the old gradient dome)
  * stays visible until the HDR has loaded, and for good if it fails.
  */
-export function setupAtmosphere(scene, { hemi, sun, fallbackSky }) {
+export function setupAtmosphere(scene, { hemi, sun, fallbackSky, envSize = 512 }) {
   const fog = Color3.FromHexString(FOG);
   scene.clearColor = Color4.FromColor3(fog, 1);
   scene.fogMode = 2; // Scene.FOGMODE_EXP2
@@ -100,7 +100,7 @@ export function setupAtmosphere(scene, { hemi, sun, fallbackSky }) {
   skyMat.disableLighting = true;
   skyMat.fogEnabled = false;
   skybox.material = skyMat;
-  const hdr = new HDRCubeTexture(ENV_URL, scene, 512, false, true, false, true, () => {
+  const hdr = new HDRCubeTexture(ENV_URL, scene, envSize, false, true, false, true, () => {
     skyMat.reflectionTexture = hdr;
     skyMat.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
     skyMat.reflectionTexture.level = SKY_LEVEL;

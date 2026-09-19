@@ -169,7 +169,8 @@ async function clickPill(t, id) {
     if (r.top > innerHeight * 0.6 || r.bottom < innerHeight * 0.4) tour.scrollIntoView({ behavior: 'instant', block: 'center' });
     return true; })()`);
   await sleep(200);
-  await t.ev(`(() => { const bar = document.getElementById('anchorBar'), b = document.querySelector(${JSON.stringify(sel)});
+  await t.ev(`(() => { const tg = document.getElementById('dockToggle'); if (tg.getAttribute('aria-expanded') === 'false') tg.click(); return true; })()`);
+  await t.ev(`(() => { const bar = document.getElementById('dockTrack'), b = document.querySelector(${JSON.stringify(sel)});
     const br = bar.getBoundingClientRect(), r = b.getBoundingClientRect();
     if (r.left < br.left + 4) bar.scrollLeft -= (br.left + 14 - r.left);
     else if (r.right > br.right - 4) bar.scrollLeft += (r.right - br.right + 14);
@@ -272,10 +273,10 @@ async function stageA() {
 
   // A1 — anchor bar contents / grouping / no "Patio"
   const items = JSON.parse(await t.ev(`(() => {
-    const out = []; let cur = null;
-    for (const n of document.getElementById('anchorBar').children) {
-      if (n.className === 'pill-group') { cur = n.textContent; continue; }
-      out.push({ group: cur, label: n.textContent, id: n.dataset.anchor });
+    const out = [];
+    for (const set of document.querySelectorAll('#dockTrack .pill-set')) {
+      const group = set.querySelector('.pill-group').textContent;
+      for (const n of set.querySelectorAll('.pill')) out.push({ group, label: n.textContent, id: n.dataset.anchor });
     }
     return JSON.stringify(out); })()`));
   const expected = [
@@ -333,23 +334,34 @@ async function stageA() {
     if (o.cls === "pill" && o.anchor && !pillsSeen.includes(o.anchor)) pillsSeen.push(o.anchor);
     seen.push(o);
   }
+  // The room row is one Tab stop (toolbar pattern): arrow keys walk the rest of it.
+  let tabStops = pillsSeen.length;
+  for (const id of await (async () => {
+    const got = [];
+    await t.focus(`#dockTrack .pill[tabindex="0"]`);
+    for (let i = 0; i < allIds.length; i++) {
+      got.push(await t.ev(`document.activeElement?.dataset?.anchor || null`));
+      await t.key("ArrowRight", "ArrowRight", 39);
+    }
+    return got;
+  })()) if (id && !pillsSeen.includes(id)) pillsSeen.push(id);
   const unreached = allIds.filter((id) => !pillsSeen.includes(id));
   const ring = JSON.parse(await t.ev(`(() => { const e = document.activeElement; const s = getComputedStyle(e);
     return JSON.stringify({ outline: s.outlineWidth + ' ' + s.outlineStyle + ' ' + s.outlineColor, shadow: s.boxShadow,
       anchor: e.dataset?.anchor || null, focusVisible: e.matches(':focus-visible') }); })()`));
   if (ring.anchor) {
-    await t.ev(`(() => { const bar = document.getElementById('anchorBar'); const r = document.activeElement.getBoundingClientRect();
+    await t.ev(`(() => { const bar = document.getElementById('dockTrack'); const r = document.activeElement.getBoundingClientRect();
       const br = bar.getBoundingClientRect(); if (r.right > br.right) bar.scrollLeft += r.right - br.right + 12;
       else if (r.left < br.left) bar.scrollLeft -= (br.left - r.left + 12); return 1; })()`);
     await sleep(250);
     const bb = await t.box(`#anchorBar .pill[data-anchor="${ring.anchor}"]`);
     await t.shot("focus-ring.png", { x: Math.round(bb.x - 12), y: Math.round(bb.y - 12), width: Math.round(bb.w + 24), height: Math.round(bb.h + 24) });
   }
-  // Tab until a room pill (not dollhouse) has focus, then press Enter.
+  // Arrow to a room pill (not dollhouse), then press Enter.
   for (let i = 0; i < 20; i++) {
     const a = await t.ev(`document.activeElement?.dataset?.anchor || null`);
     if (a && a !== DOLLHOUSE.id) break;
-    await t.key("Tab", "Tab", 9);
+    await t.key("ArrowRight", "ArrowRight", 39);
     await sleep(80);
   }
   const enterAnchor = await t.ev(`document.activeElement?.dataset?.anchor || null`);
@@ -369,8 +381,8 @@ async function stageA() {
   const spaceMoved = dist3(beforeSpace.pos, (await camOf(t)).pos);
   const spaceHash = await t.ev(`location.hash`);
   const ringVisible = ring.focusVisible && !/\bnone\b/.test(ring.outline) && !/^0px /.test(ring.outline);
-  record("A5", unreached.length === 0 && enterMoved > 0.02 && spaceMoved > 0.02 && enterHash === `#room=${enterAnchor}` ? (ringVisible ? "PASS" : "PARTIAL") : "FAIL",
-    `Tab reached ${pillsSeen.length}/${allIds.length} pills (unreached=${JSON.stringify(unreached)}); last focused=${ring.anchor} :focus-visible=${ring.focusVisible} outline="${ring.outline}" (focus-ring.png); Enter on ${enterAnchor}: moved ${enterMoved.toFixed(2)}m hash ${hashBefore}→${enterHash} aria-pressed=${enterPressed}; Space on kitchen: moved ${spaceMoved.toFixed(2)}m → ${spaceHash}`);
+  record("A5", unreached.length === 0 && tabStops === 1 && enterMoved > 0.02 && spaceMoved > 0.02 && enterHash === `#room=${enterAnchor}` ? (ringVisible ? "PASS" : "PARTIAL") : "FAIL",
+    `Tab stops in room row=${tabStops}; Tab + arrows reached ${pillsSeen.length}/${allIds.length} pills (unreached=${JSON.stringify(unreached)}); last focused=${ring.anchor} :focus-visible=${ring.focusVisible} outline="${ring.outline}" (focus-ring.png); Enter on ${enterAnchor}: moved ${enterMoved.toFixed(2)}m hash ${hashBefore}→${enterHash} aria-pressed=${enterPressed}; Space on kitchen: moved ${spaceMoved.toFixed(2)}m → ${spaceHash}`);
   return t;
 }
 

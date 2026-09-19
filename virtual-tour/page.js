@@ -84,7 +84,7 @@ function wireFloorPlan() {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
     });
   }
-  // Keep the schematic in sync when the user walks or uses the pills.
+  // Keep the schematic in sync when the user walks or uses the room dock.
   new MutationObserver(() => {
     const on = document.querySelector('#anchorBar .pill[aria-pressed="true"]')?.dataset.anchor;
     if (!on) return;
