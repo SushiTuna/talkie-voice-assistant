@@ -1,0 +1,7484 @@
+{
+  "url": "http://localhost:8080/",
+  "capturedAt": "2026-09-19T17:14:37.417Z",
+  "runs": {
+    "desktop-dark": {
+      "screenshots": [
+        "desktop-dark-above-fold.png",
+        "desktop-dark-full.png",
+        "desktop-dark-section-top.png",
+        "desktop-dark-section-floor-plan.png",
+        "desktop-dark-section-highlights.png",
+        "desktop-dark-section-tour-section.png",
+        "desktop-dark-section-residence.png",
+        "desktop-dark-section-location.png",
+        "desktop-dark-section-contact.png",
+        "desktop-dark-form-errors.png",
+        "desktop-dark-tour-started.png"
+      ],
+      "inventory": {
+        "title": "Modular House Cube 3 — Explore in 3D & Book a Tour",
+        "theme": "dark",
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "docHeight": 7970,
+        "horizontalOverflow": false,
+        "body": {
+          "fontFamily": "\"Hanken Grotesk\", -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "fontSize": "16px",
+          "color": "rgb(236, 232, 225)",
+          "background": "rgb(15, 16, 17)"
+        },
+        "landmarks": [
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "nav",
+            "label": "Primary"
+          },
+          {
+            "tag": "main",
+            "id": "top"
+          },
+          {
+            "tag": "section",
+            "label": "Listing overview"
+          },
+          {
+            "tag": "section",
+            "id": "floor-plan"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "svg",
+            "role": "group",
+            "label": "Clickable schematic floor plan"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Lounge in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Dining in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Kitchen in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Laundry in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Study Nook in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Rumpus in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 3 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 2 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 1 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Bathroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Ensuite in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Master Bedroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Balcony in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View the carport in the 3D tour"
+          },
+          {
+            "tag": "section",
+            "label": "About this home"
+          },
+          {
+            "tag": "section",
+            "id": "tour-section",
+            "label": "Interactive 3D tour"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "loadWrap",
+            "role": "progressbar",
+            "label": "Tour loading progress"
+          },
+          {
+            "tag": "div",
+            "id": "zoomCtl",
+            "role": "group",
+            "label": "Zoom"
+          },
+          {
+            "tag": "div",
+            "id": "badge",
+            "role": "status"
+          },
+          {
+            "tag": "nav",
+            "id": "anchorBar",
+            "label": "Room viewpoints"
+          },
+          {
+            "tag": "div",
+            "id": "dockTrack",
+            "role": "toolbar",
+            "label": "Rooms"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "section",
+            "id": "residence"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "section",
+            "id": "location"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "role": "region",
+            "label": "Map of the property and nearby landmarks"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom in"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom out"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdFilters",
+            "role": "group",
+            "label": "Show nearby places"
+          },
+          {
+            "tag": "section",
+            "id": "contact"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "aside"
+          },
+          {
+            "tag": "div",
+            "id": "errorSummary",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "id": "formStatus",
+            "role": "status"
+          },
+          {
+            "tag": "footer"
+          }
+        ],
+        "headings": [
+          {
+            "level": 1,
+            "text": "Modular House Cube 3",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "One level, four wings",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Walk the home, room by room",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Step inside in 3D",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "No 3D model found",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "The rooms, rendered from the model",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Lounge",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Kitchen",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Dining",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Master Bedroom",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Balcony",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Garage",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "The neighborhood",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Book a time to visit",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "How it works",
+            "visible": true
+          }
+        ],
+        "interactive": [
+          {
+            "tag": "a",
+            "name": "Modular House Cube 3 — back to top",
+            "href": "#top",
+            "visible": true,
+            "size": [
+              236,
+              28
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Floor plan",
+            "href": "#floor-plan",
+            "visible": true,
+            "size": [
+              80,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Tour",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              35,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Residence",
+            "href": "#residence",
+            "visible": true,
+            "size": [
+              73,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Location",
+            "href": "#location",
+            "visible": true,
+            "size": [
+              66,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Contact",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              63,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "themeToggle",
+            "type": "button",
+            "name": "Switch to light mode",
+            "visible": true,
+            "size": [
+              38,
+              38
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              156,
+              37
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              182,
+              46
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore in 3D",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              110,
+              46
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              208,
+              416
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              220,
+              147
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              220,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Laundry in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Study Nook in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Rumpus in the 3D tour",
+            "visible": true,
+            "size": [
+              184,
+              147
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 3 in the 3D tour",
+            "visible": true,
+            "size": [
+              122,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 2 in the 3D tour",
+            "visible": true,
+            "size": [
+              122,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 1 in the 3D tour",
+            "visible": true,
+            "size": [
+              110,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Bathroom in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Ensuite in the 3D tour",
+            "visible": true,
+            "size": [
+              147,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              147,
+              184
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              83,
+              220
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View the carport in the 3D tour",
+            "visible": true,
+            "size": [
+              367,
+              76
+            ]
+          },
+          {
+            "tag": "canvas",
+            "id": "renderCanvas",
+            "name": "3D tour viewport — click to take control",
+            "visible": true,
+            "size": [
+              1182,
+              665
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "startBtn",
+            "type": "submit",
+            "name": "Start tour",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomIn",
+            "type": "button",
+            "name": "Zoom in",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomOut",
+            "type": "button",
+            "name": "Zoom out",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "fsBtn",
+            "type": "button",
+            "name": "Fullscreen",
+            "visible": true,
+            "size": [
+              131,
+              34
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "retryBtn",
+            "type": "submit",
+            "name": "I’ve added it — reload",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockPrev",
+            "type": "button",
+            "name": "Previous room: Dollhouse",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockNext",
+            "type": "button",
+            "name": "Next room: Garage",
+            "visible": true,
+            "size": [
+              116,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockToggle",
+            "type": "button",
+            "name": "Hide rooms",
+            "visible": true,
+            "size": [
+              128,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dollhouse",
+            "visible": true,
+            "size": [
+              107,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Exterior",
+            "visible": true,
+            "size": [
+              114,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Garage",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Balcony",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Lounge",
+            "visible": true,
+            "size": [
+              87,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dining",
+            "visible": true,
+            "size": [
+              80,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Kitchen",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Rumpus",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Study Nook",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Master Bedroom",
+            "visible": true,
+            "size": [
+              153,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 1",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 2",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 3",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Ensuite",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Bathroom",
+            "visible": true,
+            "size": [
+              106,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Laundry",
+            "visible": true,
+            "size": [
+              94,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Garage in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "name": "Map of the property and nearby landmarks",
+            "visible": true,
+            "size": [
+              686,
+              560
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "The property",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Tadiangan COMPAC Police Station",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Westville School",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Pines City Doctors' Hospital",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Cooyeesan Hotel Plaza",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Seventh Day Adventist Church",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom in",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom out",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              30,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              71,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Nearest",
+            "visible": true,
+            "size": [
+              91,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Police",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Schools",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Hospitals",
+            "visible": true,
+            "size": [
+              127,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Malls",
+            "visible": true,
+            "size": [
+              100,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Churches",
+            "visible": true,
+            "size": [
+              129,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "PoliceTadiangan COMPAC Police Station 1.5 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "SchoolsWestville School 460 m",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "HospitalsPines City Doctors' Hospital 3.8 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "MallsCooyeesan Hotel Plaza 2.3 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "ChurchesSeventh Day Adventist Church 130 m",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/#map=15/16.42138/120.55929",
+            "visible": true,
+            "size": [
+              85,
+              16
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail2",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20%E2%80%94%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              91,
+              19
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore the 3D tour first",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              206,
+              30
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-in-person",
+            "type": "radio",
+            "name": "In person Walk through the home with the agent.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-video",
+            "type": "radio",
+            "name": "Video call A live walkthrough from wherever you are.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 21 SepTomorrow, Monday, September 21",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 22 SepTuesday, September 22",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 23 SepWednesday, September 23",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 24 SepThursday, September 24",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 25 SepFriday, September 25",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 26 SepSaturday, September 26",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sun 27 SepSunday, September 27",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 28 SepMonday, September 28",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 29 SepTuesday, September 29",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 30 SepWednesday, September 30",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 1 OctThursday, October 1",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 2 OctFriday, October 2",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 3 OctSaturday, October 3",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Later dateA later date — choose it on a calendar",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-date",
+            "type": "date",
+            "name": "Your preferred date",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-morning",
+            "type": "radio",
+            "name": "Morning 9 am – 12 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-afternoon",
+            "type": "radio",
+            "name": "Afternoon 12 – 4 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-evening",
+            "type": "radio",
+            "name": "Evening 4 – 7 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-name",
+            "type": "text",
+            "name": "Full name",
+            "visible": true,
+            "size": [
+              599,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-email",
+            "type": "email",
+            "name": "Email",
+            "visible": true,
+            "size": [
+              290,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-phone",
+            "type": "tel",
+            "name": "Phone",
+            "visible": true,
+            "size": [
+              290,
+              48
+            ]
+          },
+          {
+            "tag": "textarea",
+            "id": "f-message",
+            "type": "textarea",
+            "name": "Anything we should know? (optional)",
+            "visible": true,
+            "size": [
+              599,
+              96
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-company",
+            "type": "text",
+            "name": "Company",
+            "visible": true,
+            "size": [
+              153,
+              21
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "submitBtn",
+            "type": "submit",
+            "name": "Request a tour",
+            "visible": true,
+            "size": [
+              181,
+              52
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20—%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              88,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Modular House Cube 3 by Swanbuild Australia”",
+            "href": "https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0",
+            "visible": true,
+            "size": [
+              304,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "EDSAHERGOM STUDIO",
+            "href": "https://sketchfab.com/edsahergom",
+            "visible": true,
+            "size": [
+              145,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Low Poly Tree Scene Free”",
+            "href": "https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd",
+            "visible": true,
+            "size": [
+              172,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Nicholas-3D",
+            "href": "https://sketchfab.com/Nicholas01",
+            "visible": true,
+            "size": [
+              356,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Mountain low poly For distant mountains”",
+            "href": "https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8",
+            "visible": true,
+            "size": [
+              267,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "adventurer",
+            "href": "https://sketchfab.com/ahmagh2e",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“2021 Ferrari SF90 Spider”",
+            "href": "https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f",
+            "visible": true,
+            "size": [
+              169,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Porsche 911 GT3”",
+            "href": "https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243",
+            "visible": true,
+            "size": [
+              119,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              365,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Poly Haven",
+            "href": "https://polyhaven.com",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Icons8",
+            "href": "https://icons8.com",
+            "visible": true,
+            "size": [
+              41,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              42,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              99,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          }
+        ],
+        "images": [
+          {
+            "src": "/assets/hero.jpg",
+            "alt": "The dark-clad raised home in a misty pine forest, warm light in its windows",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-lounge.jpg",
+            "alt": "Lounge — Lounge with a full-height picture window",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-kitchen.jpg",
+            "alt": "Kitchen — Island kitchen with butler's pantry",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-dining.jpg",
+            "alt": "Dining — Six-seat dining beside the lounge",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-master-bedroom.jpg",
+            "alt": "Master Bedroom — Master suite with walk-in robe and ensuite",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-balcony.jpg",
+            "alt": "Balcony — Timber deck with pergola off the living area",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-garage.jpg",
+            "alt": "Garage — Open carport under the house (2 cars)",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7435.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7435.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7435.png",
+            "alt": "",
+            "loaded": true
+          }
+        ],
+        "ids": [
+          "themeToggle",
+          "top",
+          "floor-plan",
+          "highlights",
+          "tour-section",
+          "tour",
+          "renderCanvas",
+          "tourPoster",
+          "startBtn",
+          "loadWrap",
+          "loadBar",
+          "loadMsg",
+          "crosshair",
+          "zoomCtl",
+          "zoomIn",
+          "zoomOut",
+          "tourHint",
+          "badge",
+          "fsBtn",
+          "fsLabel",
+          "noModel",
+          "retryBtn",
+          "anchorBar",
+          "dockNowName",
+          "dockNowCap",
+          "dockCount",
+          "dockPrev",
+          "dockNext",
+          "dockToggle",
+          "dockBody",
+          "dockKeys",
+          "dockTrack",
+          "pill-group-0",
+          "pill-group-1",
+          "pill-group-2",
+          "pill-group-3",
+          "pill-group-4",
+          "residence",
+          "gallery",
+          "location",
+          "nbhdArea",
+          "nbhdMap",
+          "nbhdFilters",
+          "nbhdList",
+          "contact",
+          "contact-title",
+          "book-steps-title",
+          "agentEmail2",
+          "tourForm",
+          "form-note",
+          "errorSummary",
+          "errorSummaryTitle",
+          "errorSummaryList",
+          "f-type-in-person",
+          "f-type-video",
+          "err-type",
+          "date-hint",
+          "dateChips",
+          "dateOtherWrap",
+          "f-date",
+          "err-date",
+          "f-time-morning",
+          "f-time-afternoon",
+          "f-time-evening",
+          "err-time",
+          "f-name",
+          "err-name",
+          "f-email",
+          "email-hint",
+          "err-email",
+          "f-phone",
+          "phone-hint",
+          "err-phone",
+          "f-message",
+          "msg-count",
+          "err-message",
+          "f-company",
+          "bookSummary",
+          "bookSummaryText",
+          "submitBtn",
+          "formStatus",
+          "agentEmail",
+          "mobileCta"
+        ],
+        "customElements": [],
+        "cssTokens": {
+          "--bg": "#0f1011",
+          "--surface": "#16181a",
+          "--surface-2": "#1d2023",
+          "--ink": "#ece8e1",
+          "--muted": "#a19d95",
+          "--line": "rgba(236, 232, 225, .12)",
+          "--accent": "#b8986a",
+          "--accent-hover": "#cbab7b",
+          "--on-accent": "#14120f",
+          "--warm": "#c9a877",
+          "--danger": "#e8907a",
+          "--header-bg": "rgba(15, 16, 17, .8)",
+          "--header-bg-solid": "rgba(15, 16, 17, .93)",
+          "--bar-bg": "rgba(15, 16, 17, .96)",
+          "--sans": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--display": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--gut": "48px",
+          "--maxw": "1280px",
+          "--sec": "clamp(72px, 10vw, 160px)",
+          "--lm-police": "#5f82b4",
+          "--lm-school": "#6e9c6a",
+          "--lm-hospital": "#c9675e",
+          "--lm-mall": "#9a78b8",
+          "--lm-church": "#b8986a",
+          "--lm": "",
+          "--ease-out": "cubic-bezier(.16, 1, .3, 1)",
+          "--i": ""
+        }
+      },
+      "keyboardTabOrder": [
+        "canvas#renderCanvas 3D tour viewport — click to take control",
+        "a Modular House Cube 3 — back to top",
+        "a Floor plan",
+        "a Tour",
+        "a Residence",
+        "a Location",
+        "a Contact",
+        "button#themeToggle Switch to light mode",
+        "a Schedule a tour",
+        "a Schedule a tour",
+        "a Explore in 3D",
+        "g View Lounge in the 3D tour",
+        "g View Dining in the 3D tour",
+        "g View Kitchen in the 3D tour",
+        "g View Laundry in the 3D tour",
+        "g View Study Nook in the 3D tour",
+        "g View Rumpus in the 3D tour",
+        "g View Room 3 in the 3D tour",
+        "g View Room 2 in the 3D tour",
+        "g View Room 1 in the 3D tour",
+        "g View Bathroom in the 3D tour",
+        "g View Ensuite in the 3D tour",
+        "g View Master Bedroom in the 3D tour",
+        "g View Balcony in the 3D tour",
+        "g View the carport in the 3D tour",
+        "button#fsBtn Fullscreen",
+        "button#dockPrev Previous room: Dollhouse",
+        "button#dockNext Next room: Garage",
+        "button#dockToggle Hide rooms",
+        "button Exterior",
+        "button View Lounge in the 3D tour",
+        "button View in 3D",
+        "button View Kitchen in the 3D tour",
+        "button View in 3D",
+        "button View Dining in the 3D tour",
+        "button View in 3D",
+        "button View Master Bedroom in the 3D tour",
+        "button View in 3D",
+        "button View Balcony in the 3D tour",
+        "button View in 3D"
+      ],
+      "formErrors": {
+        "summaryVisible": true,
+        "summary": "Pick a day for your visit.\nPick a time window.\nEnter your full name.\nEnter an email address like name@example.com.\nEnter a phone number: 7–20 digits, spaces or + ( ) -.",
+        "focused": "errorSummary",
+        "invalid": [
+          "f-name",
+          "f-email",
+          "f-phone"
+        ]
+      },
+      "tourState": {
+        "badge": "Walk mode — click the view to take control",
+        "hint": "Click the view to take control",
+        "dockNow": "Exterior",
+        "dockCount": "2 / 16",
+        "noModel": false
+      }
+    },
+    "desktop-light": {
+      "screenshots": [
+        "desktop-light-above-fold.png",
+        "desktop-light-full.png",
+        "desktop-light-section-top.png",
+        "desktop-light-section-floor-plan.png",
+        "desktop-light-section-highlights.png",
+        "desktop-light-section-tour-section.png",
+        "desktop-light-section-residence.png",
+        "desktop-light-section-location.png",
+        "desktop-light-section-contact.png"
+      ],
+      "inventory": {
+        "title": "Modular House Cube 3 — Explore in 3D & Book a Tour",
+        "theme": "light",
+        "viewport": {
+          "w": 1440,
+          "h": 900
+        },
+        "docHeight": 7970,
+        "horizontalOverflow": false,
+        "body": {
+          "fontFamily": "\"Hanken Grotesk\", -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "fontSize": "16px",
+          "color": "rgb(28, 27, 25)",
+          "background": "rgb(245, 242, 236)"
+        },
+        "landmarks": [
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "nav",
+            "label": "Primary"
+          },
+          {
+            "tag": "main",
+            "id": "top"
+          },
+          {
+            "tag": "section",
+            "label": "Listing overview"
+          },
+          {
+            "tag": "section",
+            "id": "floor-plan"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "svg",
+            "role": "group",
+            "label": "Clickable schematic floor plan"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Lounge in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Dining in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Kitchen in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Laundry in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Study Nook in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Rumpus in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 3 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 2 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 1 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Bathroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Ensuite in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Master Bedroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Balcony in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View the carport in the 3D tour"
+          },
+          {
+            "tag": "section",
+            "label": "About this home"
+          },
+          {
+            "tag": "section",
+            "id": "tour-section",
+            "label": "Interactive 3D tour"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "loadWrap",
+            "role": "progressbar",
+            "label": "Tour loading progress"
+          },
+          {
+            "tag": "div",
+            "id": "zoomCtl",
+            "role": "group",
+            "label": "Zoom"
+          },
+          {
+            "tag": "div",
+            "id": "badge",
+            "role": "status"
+          },
+          {
+            "tag": "nav",
+            "id": "anchorBar",
+            "label": "Room viewpoints"
+          },
+          {
+            "tag": "div",
+            "id": "dockTrack",
+            "role": "toolbar",
+            "label": "Rooms"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "section",
+            "id": "residence"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "section",
+            "id": "location"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "role": "region",
+            "label": "Map of the property and nearby landmarks"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom in"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom out"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdFilters",
+            "role": "group",
+            "label": "Show nearby places"
+          },
+          {
+            "tag": "section",
+            "id": "contact"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "aside"
+          },
+          {
+            "tag": "div",
+            "id": "errorSummary",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "id": "formStatus",
+            "role": "status"
+          },
+          {
+            "tag": "footer"
+          }
+        ],
+        "headings": [
+          {
+            "level": 1,
+            "text": "Modular House Cube 3",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "One level, four wings",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Walk the home, room by room",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Step inside in 3D",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "No 3D model found",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "The rooms, rendered from the model",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Lounge",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Kitchen",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Dining",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Master Bedroom",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Balcony",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Garage",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "The neighborhood",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Book a time to visit",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "How it works",
+            "visible": true
+          }
+        ],
+        "interactive": [
+          {
+            "tag": "a",
+            "name": "Modular House Cube 3 — back to top",
+            "href": "#top",
+            "visible": true,
+            "size": [
+              236,
+              28
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Floor plan",
+            "href": "#floor-plan",
+            "visible": true,
+            "size": [
+              80,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Tour",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              35,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Residence",
+            "href": "#residence",
+            "visible": true,
+            "size": [
+              73,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Location",
+            "href": "#location",
+            "visible": true,
+            "size": [
+              66,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Contact",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              63,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "themeToggle",
+            "type": "button",
+            "name": "Switch to dark mode",
+            "visible": true,
+            "size": [
+              38,
+              38
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              156,
+              37
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              182,
+              46
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore in 3D",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              110,
+              46
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              208,
+              416
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              220,
+              147
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              220,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Laundry in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Study Nook in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Rumpus in the 3D tour",
+            "visible": true,
+            "size": [
+              184,
+              147
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 3 in the 3D tour",
+            "visible": true,
+            "size": [
+              122,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 2 in the 3D tour",
+            "visible": true,
+            "size": [
+              122,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 1 in the 3D tour",
+            "visible": true,
+            "size": [
+              110,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Bathroom in the 3D tour",
+            "visible": true,
+            "size": [
+              135,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Ensuite in the 3D tour",
+            "visible": true,
+            "size": [
+              147,
+              135
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              147,
+              184
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              83,
+              220
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View the carport in the 3D tour",
+            "visible": true,
+            "size": [
+              367,
+              76
+            ]
+          },
+          {
+            "tag": "canvas",
+            "id": "renderCanvas",
+            "name": "3D tour viewport — click to take control",
+            "visible": true,
+            "size": [
+              1182,
+              665
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "startBtn",
+            "type": "submit",
+            "name": "Start tour",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomIn",
+            "type": "button",
+            "name": "Zoom in",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomOut",
+            "type": "button",
+            "name": "Zoom out",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "fsBtn",
+            "type": "button",
+            "name": "Fullscreen",
+            "visible": true,
+            "size": [
+              131,
+              34
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "retryBtn",
+            "type": "submit",
+            "name": "I’ve added it — reload",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockPrev",
+            "type": "button",
+            "name": "Previous room: Dollhouse",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockNext",
+            "type": "button",
+            "name": "Next room: Garage",
+            "visible": true,
+            "size": [
+              116,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockToggle",
+            "type": "button",
+            "name": "Hide rooms",
+            "visible": true,
+            "size": [
+              128,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dollhouse",
+            "visible": true,
+            "size": [
+              107,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Exterior",
+            "visible": true,
+            "size": [
+              114,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Garage",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Balcony",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Lounge",
+            "visible": true,
+            "size": [
+              87,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dining",
+            "visible": true,
+            "size": [
+              80,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Kitchen",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Rumpus",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Study Nook",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Master Bedroom",
+            "visible": true,
+            "size": [
+              153,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 1",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 2",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 3",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Ensuite",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Bathroom",
+            "visible": true,
+            "size": [
+              106,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Laundry",
+            "visible": true,
+            "size": [
+              94,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Garage in the 3D tour",
+            "visible": true,
+            "size": [
+              374,
+              210
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "name": "Map of the property and nearby landmarks",
+            "visible": true,
+            "size": [
+              686,
+              560
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "The property",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Tadiangan COMPAC Police Station",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Westville School",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Pines City Doctors' Hospital",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Cooyeesan Hotel Plaza",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Seventh Day Adventist Church",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom in",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom out",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              30,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              71,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Nearest",
+            "visible": true,
+            "size": [
+              91,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Police",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Schools",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Hospitals",
+            "visible": true,
+            "size": [
+              127,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Malls",
+            "visible": true,
+            "size": [
+              100,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Churches",
+            "visible": true,
+            "size": [
+              129,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "PoliceTadiangan COMPAC Police Station 1.5 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "SchoolsWestville School 460 m",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "HospitalsPines City Doctors' Hospital 3.8 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "MallsCooyeesan Hotel Plaza 2.3 km",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "ChurchesSeventh Day Adventist Church 130 m",
+            "visible": true,
+            "size": [
+              442,
+              56
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/#map=15/16.42138/120.55929",
+            "visible": true,
+            "size": [
+              85,
+              16
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail2",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20%E2%80%94%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              91,
+              19
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore the 3D tour first",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              206,
+              30
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-in-person",
+            "type": "radio",
+            "name": "In person Walk through the home with the agent.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-video",
+            "type": "radio",
+            "name": "Video call A live walkthrough from wherever you are.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 21 SepTomorrow, Monday, September 21",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 22 SepTuesday, September 22",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 23 SepWednesday, September 23",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 24 SepThursday, September 24",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 25 SepFriday, September 25",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 26 SepSaturday, September 26",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sun 27 SepSunday, September 27",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 28 SepMonday, September 28",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 29 SepTuesday, September 29",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 30 SepWednesday, September 30",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 1 OctThursday, October 1",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 2 OctFriday, October 2",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 3 OctSaturday, October 3",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Later dateA later date — choose it on a calendar",
+            "visible": true,
+            "size": [
+              77,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-date",
+            "type": "date",
+            "name": "Your preferred date",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-morning",
+            "type": "radio",
+            "name": "Morning 9 am – 12 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-afternoon",
+            "type": "radio",
+            "name": "Afternoon 12 – 4 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-evening",
+            "type": "radio",
+            "name": "Evening 4 – 7 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-name",
+            "type": "text",
+            "name": "Full name",
+            "visible": true,
+            "size": [
+              599,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-email",
+            "type": "email",
+            "name": "Email",
+            "visible": true,
+            "size": [
+              290,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-phone",
+            "type": "tel",
+            "name": "Phone",
+            "visible": true,
+            "size": [
+              290,
+              48
+            ]
+          },
+          {
+            "tag": "textarea",
+            "id": "f-message",
+            "type": "textarea",
+            "name": "Anything we should know? (optional)",
+            "visible": true,
+            "size": [
+              599,
+              96
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-company",
+            "type": "text",
+            "name": "Company",
+            "visible": true,
+            "size": [
+              153,
+              21
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "submitBtn",
+            "type": "submit",
+            "name": "Request a tour",
+            "visible": true,
+            "size": [
+              181,
+              52
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20—%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              88,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Modular House Cube 3 by Swanbuild Australia”",
+            "href": "https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0",
+            "visible": true,
+            "size": [
+              304,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "EDSAHERGOM STUDIO",
+            "href": "https://sketchfab.com/edsahergom",
+            "visible": true,
+            "size": [
+              145,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Low Poly Tree Scene Free”",
+            "href": "https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd",
+            "visible": true,
+            "size": [
+              172,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Nicholas-3D",
+            "href": "https://sketchfab.com/Nicholas01",
+            "visible": true,
+            "size": [
+              356,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Mountain low poly For distant mountains”",
+            "href": "https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8",
+            "visible": true,
+            "size": [
+              267,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "adventurer",
+            "href": "https://sketchfab.com/ahmagh2e",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“2021 Ferrari SF90 Spider”",
+            "href": "https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f",
+            "visible": true,
+            "size": [
+              169,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Porsche 911 GT3”",
+            "href": "https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243",
+            "visible": true,
+            "size": [
+              119,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              365,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Poly Haven",
+            "href": "https://polyhaven.com",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Icons8",
+            "href": "https://icons8.com",
+            "visible": true,
+            "size": [
+              41,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              42,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              99,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          }
+        ],
+        "images": [
+          {
+            "src": "/assets/hero.jpg",
+            "alt": "The dark-clad raised home in a misty pine forest, warm light in its windows",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-lounge.jpg",
+            "alt": "Lounge — Lounge with a full-height picture window",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-kitchen.jpg",
+            "alt": "Kitchen — Island kitchen with butler's pantry",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-dining.jpg",
+            "alt": "Dining — Six-seat dining beside the lounge",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-master-bedroom.jpg",
+            "alt": "Master Bedroom — Master suite with walk-in robe and ensuite",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-balcony.jpg",
+            "alt": "Balcony — Timber deck with pergola off the living area",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-garage.jpg",
+            "alt": "Garage — Open carport under the house (2 cars)",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7434.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13679/7435.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7433.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13678/7435.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/14/13680/7435.png",
+            "alt": "",
+            "loaded": true
+          }
+        ],
+        "ids": [
+          "themeToggle",
+          "top",
+          "floor-plan",
+          "highlights",
+          "tour-section",
+          "tour",
+          "renderCanvas",
+          "tourPoster",
+          "startBtn",
+          "loadWrap",
+          "loadBar",
+          "loadMsg",
+          "crosshair",
+          "zoomCtl",
+          "zoomIn",
+          "zoomOut",
+          "tourHint",
+          "badge",
+          "fsBtn",
+          "fsLabel",
+          "noModel",
+          "retryBtn",
+          "anchorBar",
+          "dockNowName",
+          "dockNowCap",
+          "dockCount",
+          "dockPrev",
+          "dockNext",
+          "dockToggle",
+          "dockBody",
+          "dockKeys",
+          "dockTrack",
+          "pill-group-0",
+          "pill-group-1",
+          "pill-group-2",
+          "pill-group-3",
+          "pill-group-4",
+          "residence",
+          "gallery",
+          "location",
+          "nbhdArea",
+          "nbhdMap",
+          "nbhdFilters",
+          "nbhdList",
+          "contact",
+          "contact-title",
+          "book-steps-title",
+          "agentEmail2",
+          "tourForm",
+          "form-note",
+          "errorSummary",
+          "errorSummaryTitle",
+          "errorSummaryList",
+          "f-type-in-person",
+          "f-type-video",
+          "err-type",
+          "date-hint",
+          "dateChips",
+          "dateOtherWrap",
+          "f-date",
+          "err-date",
+          "f-time-morning",
+          "f-time-afternoon",
+          "f-time-evening",
+          "err-time",
+          "f-name",
+          "err-name",
+          "f-email",
+          "email-hint",
+          "err-email",
+          "f-phone",
+          "phone-hint",
+          "err-phone",
+          "f-message",
+          "msg-count",
+          "err-message",
+          "f-company",
+          "bookSummary",
+          "bookSummaryText",
+          "submitBtn",
+          "formStatus",
+          "agentEmail",
+          "mobileCta"
+        ],
+        "customElements": [],
+        "cssTokens": {
+          "--bg": "#f5f2ec",
+          "--surface": "#fdfbf7",
+          "--surface-2": "#ebe6dd",
+          "--ink": "#1c1b19",
+          "--muted": "#5e5950",
+          "--line": "rgba(28, 27, 25, .13)",
+          "--accent": "#83643a",
+          "--accent-hover": "#6f5330",
+          "--on-accent": "#ffffff",
+          "--warm": "#80602f",
+          "--danger": "#a63d26",
+          "--header-bg": "rgba(245, 242, 236, .82)",
+          "--header-bg-solid": "rgba(245, 242, 236, .95)",
+          "--bar-bg": "rgba(245, 242, 236, .97)",
+          "--sans": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--display": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--gut": "48px",
+          "--maxw": "1280px",
+          "--sec": "clamp(72px, 10vw, 160px)",
+          "--lm-police": "#5f82b4",
+          "--lm-school": "#6e9c6a",
+          "--lm-hospital": "#c9675e",
+          "--lm-mall": "#9a78b8",
+          "--lm-church": "#83643a",
+          "--lm": "",
+          "--ease-out": "cubic-bezier(.16, 1, .3, 1)",
+          "--i": ""
+        }
+      }
+    },
+    "mobile-dark": {
+      "screenshots": [
+        "mobile-dark-above-fold.png",
+        "mobile-dark-full.png",
+        "mobile-dark-section-top.png",
+        "mobile-dark-section-floor-plan.png",
+        "mobile-dark-section-highlights.png",
+        "mobile-dark-section-tour-section.png",
+        "mobile-dark-section-residence.png",
+        "mobile-dark-section-location.png",
+        "mobile-dark-section-contact.png",
+        "mobile-dark-form-errors.png",
+        "mobile-dark-tour-started.png"
+      ],
+      "inventory": {
+        "title": "Modular House Cube 3 — Explore in 3D & Book a Tour",
+        "theme": "dark",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "docHeight": 9920,
+        "horizontalOverflow": false,
+        "body": {
+          "fontFamily": "\"Hanken Grotesk\", -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "fontSize": "16px",
+          "color": "rgb(236, 232, 225)",
+          "background": "rgb(15, 16, 17)"
+        },
+        "landmarks": [
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "nav",
+            "label": "Primary"
+          },
+          {
+            "tag": "main",
+            "id": "top"
+          },
+          {
+            "tag": "section",
+            "label": "Listing overview"
+          },
+          {
+            "tag": "section",
+            "id": "floor-plan"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "svg",
+            "role": "group",
+            "label": "Clickable schematic floor plan"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Lounge in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Dining in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Kitchen in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Laundry in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Study Nook in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Rumpus in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 3 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 2 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 1 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Bathroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Ensuite in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Master Bedroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Balcony in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View the carport in the 3D tour"
+          },
+          {
+            "tag": "section",
+            "label": "About this home"
+          },
+          {
+            "tag": "section",
+            "id": "tour-section",
+            "label": "Interactive 3D tour"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "loadWrap",
+            "role": "progressbar",
+            "label": "Tour loading progress"
+          },
+          {
+            "tag": "div",
+            "id": "zoomCtl",
+            "role": "group",
+            "label": "Zoom"
+          },
+          {
+            "tag": "div",
+            "id": "badge",
+            "role": "status"
+          },
+          {
+            "tag": "nav",
+            "id": "anchorBar",
+            "label": "Room viewpoints"
+          },
+          {
+            "tag": "div",
+            "id": "dockTrack",
+            "role": "toolbar",
+            "label": "Rooms"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "section",
+            "id": "residence"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "section",
+            "id": "location"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "role": "region",
+            "label": "Map of the property and nearby landmarks"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom in"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom out"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdFilters",
+            "role": "group",
+            "label": "Show nearby places"
+          },
+          {
+            "tag": "section",
+            "id": "contact"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "aside"
+          },
+          {
+            "tag": "div",
+            "id": "errorSummary",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "id": "formStatus",
+            "role": "status"
+          },
+          {
+            "tag": "footer"
+          }
+        ],
+        "headings": [
+          {
+            "level": 1,
+            "text": "Modular House Cube 3",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "One level, four wings",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Walk the home, room by room",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Step inside in 3D",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "No 3D model found",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "The rooms, rendered from the model",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Lounge",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Kitchen",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Dining",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Master Bedroom",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Balcony",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Garage",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "The neighborhood",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Book a time to visit",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "How it works",
+            "visible": true
+          }
+        ],
+        "interactive": [
+          {
+            "tag": "a",
+            "name": "Modular House Cube 3 — back to top",
+            "href": "#top",
+            "visible": true,
+            "size": [
+              236,
+              28
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Floor plan",
+            "href": "#floor-plan",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Tour",
+            "href": "#tour-section",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Residence",
+            "href": "#residence",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Location",
+            "href": "#location",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Contact",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "themeToggle",
+            "type": "button",
+            "name": "Switch to light mode",
+            "visible": true,
+            "size": [
+              38,
+              38
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              182,
+              46
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore in 3D",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              110,
+              46
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              121,
+              242
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              128,
+              85
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              128,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Laundry in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Study Nook in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Rumpus in the 3D tour",
+            "visible": true,
+            "size": [
+              107,
+              85
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 3 in the 3D tour",
+            "visible": true,
+            "size": [
+              71,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 2 in the 3D tour",
+            "visible": true,
+            "size": [
+              71,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 1 in the 3D tour",
+            "visible": true,
+            "size": [
+              64,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Bathroom in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Ensuite in the 3D tour",
+            "visible": true,
+            "size": [
+              85,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              85,
+              107
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              48,
+              128
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View the carport in the 3D tour",
+            "visible": true,
+            "size": [
+              213,
+              44
+            ]
+          },
+          {
+            "tag": "canvas",
+            "id": "renderCanvas",
+            "name": "3D tour viewport — click to take control",
+            "visible": true,
+            "size": [
+              340,
+              255
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "startBtn",
+            "type": "submit",
+            "name": "Start tour",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomIn",
+            "type": "button",
+            "name": "Zoom in",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomOut",
+            "type": "button",
+            "name": "Zoom out",
+            "visible": true,
+            "disabled": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "fsBtn",
+            "type": "button",
+            "name": "Fullscreen",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "retryBtn",
+            "type": "submit",
+            "name": "I’ve added it — reload",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockPrev",
+            "type": "button",
+            "name": "Previous room: Dollhouse",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockNext",
+            "type": "button",
+            "name": "Next room: Garage",
+            "visible": true,
+            "size": [
+              112,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockToggle",
+            "type": "button",
+            "name": "Hide rooms",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": true,
+            "size": [
+              40,
+              40
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dollhouse",
+            "visible": true,
+            "size": [
+              107,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Exterior",
+            "visible": true,
+            "size": [
+              114,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Garage",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Balcony",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Lounge",
+            "visible": true,
+            "size": [
+              87,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dining",
+            "visible": true,
+            "size": [
+              80,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Kitchen",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Rumpus",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Study Nook",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Master Bedroom",
+            "visible": true,
+            "size": [
+              153,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 1",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 2",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 3",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Ensuite",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Bathroom",
+            "visible": true,
+            "size": [
+              106,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Laundry",
+            "visible": true,
+            "size": [
+              94,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": true,
+            "size": [
+              40,
+              40
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Garage in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "name": "Map of the property and nearby landmarks",
+            "visible": true,
+            "size": [
+              342,
+              320
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "The property",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Tadiangan COMPAC Police Station",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Westville School",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Pines City Doctors' Hospital",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Cooyeesan Hotel Plaza",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Seventh Day Adventist Church",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom in",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom out",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              30,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              71,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Nearest",
+            "visible": true,
+            "size": [
+              91,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Police",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Schools",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Hospitals",
+            "visible": true,
+            "size": [
+              127,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Malls",
+            "visible": true,
+            "size": [
+              100,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Churches",
+            "visible": true,
+            "size": [
+              129,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "PoliceTadiangan COMPAC Police Station 1.5 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "SchoolsWestville School 460 m",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "HospitalsPines City Doctors' Hospital 3.8 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "MallsCooyeesan Hotel Plaza 2.3 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "ChurchesSeventh Day Adventist Church 130 m",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/#map=15/16.42138/120.55929",
+            "visible": true,
+            "size": [
+              85,
+              16
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail2",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20%E2%80%94%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              91,
+              19
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore the 3D tour first",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              206,
+              30
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-in-person",
+            "type": "radio",
+            "name": "In person Walk through the home with the agent.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-video",
+            "type": "radio",
+            "name": "Video call A live walkthrough from wherever you are.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 21 SepTomorrow, Monday, September 21",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 22 SepTuesday, September 22",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 23 SepWednesday, September 23",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 24 SepThursday, September 24",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 25 SepFriday, September 25",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 26 SepSaturday, September 26",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sun 27 SepSunday, September 27",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 28 SepMonday, September 28",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 29 SepTuesday, September 29",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 30 SepWednesday, September 30",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 1 OctThursday, October 1",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 2 OctFriday, October 2",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 3 OctSaturday, October 3",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Later dateA later date — choose it on a calendar",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-date",
+            "type": "date",
+            "name": "Your preferred date",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-morning",
+            "type": "radio",
+            "name": "Morning 9 am – 12 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-afternoon",
+            "type": "radio",
+            "name": "Afternoon 12 – 4 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-evening",
+            "type": "radio",
+            "name": "Evening 4 – 7 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-name",
+            "type": "text",
+            "name": "Full name",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-email",
+            "type": "email",
+            "name": "Email",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-phone",
+            "type": "tel",
+            "name": "Phone",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "textarea",
+            "id": "f-message",
+            "type": "textarea",
+            "name": "Anything we should know? (optional)",
+            "visible": true,
+            "size": [
+              300,
+              96
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-company",
+            "type": "text",
+            "name": "Company",
+            "visible": true,
+            "size": [
+              153,
+              21
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "submitBtn",
+            "type": "submit",
+            "name": "Request a tour",
+            "visible": true,
+            "size": [
+              300,
+              52
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20—%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              88,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Modular House Cube 3 by Swanbuild Australia”",
+            "href": "https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0",
+            "visible": true,
+            "size": [
+              304,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "EDSAHERGOM STUDIO",
+            "href": "https://sketchfab.com/edsahergom",
+            "visible": true,
+            "size": [
+              145,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Low Poly Tree Scene Free”",
+            "href": "https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd",
+            "visible": true,
+            "size": [
+              172,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Nicholas-3D",
+            "href": "https://sketchfab.com/Nicholas01",
+            "visible": true,
+            "size": [
+              75,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Mountain low poly For distant mountains”",
+            "href": "https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8",
+            "visible": true,
+            "size": [
+              267,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "adventurer",
+            "href": "https://sketchfab.com/ahmagh2e",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“2021 Ferrari SF90 Spider”",
+            "href": "https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f",
+            "visible": true,
+            "size": [
+              169,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Porsche 911 GT3”",
+            "href": "https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243",
+            "visible": true,
+            "size": [
+              119,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Poly Haven",
+            "href": "https://polyhaven.com",
+            "visible": true,
+            "size": [
+              311,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Icons8",
+            "href": "https://icons8.com",
+            "visible": true,
+            "size": [
+              41,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              42,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              99,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              152,
+              37
+            ]
+          }
+        ],
+        "images": [
+          {
+            "src": "/assets/hero.jpg",
+            "alt": "The dark-clad raised home in a misty pine forest, warm light in its windows",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-lounge.jpg",
+            "alt": "Lounge — Lounge with a full-height picture window",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-kitchen.jpg",
+            "alt": "Kitchen — Island kitchen with butler's pantry",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-dining.jpg",
+            "alt": "Dining — Six-seat dining beside the lounge",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-master-bedroom.jpg",
+            "alt": "Master Bedroom — Master suite with walk-in robe and ensuite",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-balcony.jpg",
+            "alt": "Balcony — Timber deck with pergola off the living area",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-garage.jpg",
+            "alt": "Garage — Open carport under the house (2 cars)",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6839/3716.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6840/3716.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6839/3717.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6840/3717.png",
+            "alt": "",
+            "loaded": true
+          }
+        ],
+        "ids": [
+          "themeToggle",
+          "top",
+          "floor-plan",
+          "highlights",
+          "tour-section",
+          "tour",
+          "renderCanvas",
+          "tourPoster",
+          "startBtn",
+          "loadWrap",
+          "loadBar",
+          "loadMsg",
+          "crosshair",
+          "zoomCtl",
+          "zoomIn",
+          "zoomOut",
+          "tourHint",
+          "badge",
+          "fsBtn",
+          "fsLabel",
+          "noModel",
+          "retryBtn",
+          "anchorBar",
+          "dockNowName",
+          "dockNowCap",
+          "dockCount",
+          "dockPrev",
+          "dockNext",
+          "dockToggle",
+          "dockBody",
+          "dockKeys",
+          "dockTrack",
+          "pill-group-0",
+          "pill-group-1",
+          "pill-group-2",
+          "pill-group-3",
+          "pill-group-4",
+          "residence",
+          "gallery",
+          "location",
+          "nbhdArea",
+          "nbhdMap",
+          "nbhdFilters",
+          "nbhdList",
+          "contact",
+          "contact-title",
+          "book-steps-title",
+          "agentEmail2",
+          "tourForm",
+          "form-note",
+          "errorSummary",
+          "errorSummaryTitle",
+          "errorSummaryList",
+          "f-type-in-person",
+          "f-type-video",
+          "err-type",
+          "date-hint",
+          "dateChips",
+          "dateOtherWrap",
+          "f-date",
+          "err-date",
+          "f-time-morning",
+          "f-time-afternoon",
+          "f-time-evening",
+          "err-time",
+          "f-name",
+          "err-name",
+          "f-email",
+          "email-hint",
+          "err-email",
+          "f-phone",
+          "phone-hint",
+          "err-phone",
+          "f-message",
+          "msg-count",
+          "err-message",
+          "f-company",
+          "bookSummary",
+          "bookSummaryText",
+          "submitBtn",
+          "formStatus",
+          "agentEmail",
+          "mobileCta"
+        ],
+        "customElements": [],
+        "cssTokens": {
+          "--bg": "#0f1011",
+          "--surface": "#16181a",
+          "--surface-2": "#1d2023",
+          "--ink": "#ece8e1",
+          "--muted": "#a19d95",
+          "--line": "rgba(236, 232, 225, .12)",
+          "--accent": "#b8986a",
+          "--accent-hover": "#cbab7b",
+          "--on-accent": "#14120f",
+          "--warm": "#c9a877",
+          "--danger": "#e8907a",
+          "--header-bg": "rgba(15, 16, 17, .8)",
+          "--header-bg-solid": "rgba(15, 16, 17, .93)",
+          "--bar-bg": "rgba(15, 16, 17, .96)",
+          "--sans": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--display": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--gut": "24px",
+          "--maxw": "1280px",
+          "--sec": "clamp(72px, 10vw, 160px)",
+          "--lm-police": "#5f82b4",
+          "--lm-school": "#6e9c6a",
+          "--lm-hospital": "#c9675e",
+          "--lm-mall": "#9a78b8",
+          "--lm-church": "#b8986a",
+          "--lm": "",
+          "--ease-out": "cubic-bezier(.16, 1, .3, 1)",
+          "--i": ""
+        }
+      },
+      "keyboardTabOrder": [
+        "canvas#renderCanvas 3D tour viewport — click to take control",
+        "a Modular House Cube 3 — back to top",
+        "button#themeToggle Switch to light mode",
+        "a Schedule a tour",
+        "a Explore in 3D",
+        "g View Lounge in the 3D tour",
+        "g View Dining in the 3D tour",
+        "g View Kitchen in the 3D tour",
+        "g View Laundry in the 3D tour",
+        "g View Study Nook in the 3D tour",
+        "g View Rumpus in the 3D tour",
+        "g View Room 3 in the 3D tour",
+        "g View Room 2 in the 3D tour",
+        "g View Room 1 in the 3D tour",
+        "g View Bathroom in the 3D tour",
+        "g View Ensuite in the 3D tour",
+        "g View Master Bedroom in the 3D tour",
+        "g View Balcony in the 3D tour",
+        "g View the carport in the 3D tour",
+        "button#zoomIn Zoom in",
+        "button#fsBtn Fullscreen",
+        "button#dockPrev Previous room: Dollhouse",
+        "button#dockNext Next room: Garage",
+        "button#dockToggle Hide rooms",
+        "button Exterior",
+        "button View Lounge in the 3D tour",
+        "button View in 3D",
+        "button View Kitchen in the 3D tour",
+        "button View in 3D",
+        "button View Dining in the 3D tour",
+        "button View in 3D",
+        "button View Master Bedroom in the 3D tour",
+        "button View in 3D",
+        "button View Balcony in the 3D tour",
+        "button View in 3D",
+        "button View Garage in the 3D tour",
+        "button View in 3D",
+        "div#nbhdMap Map of the property and nearby landmarks",
+        "div ",
+        "div "
+      ],
+      "formErrors": {
+        "summaryVisible": true,
+        "summary": "Pick a day for your visit.\nPick a time window.\nEnter your full name.\nEnter an email address like name@example.com.\nEnter a phone number: 7–20 digits, spaces or + ( ) -.",
+        "focused": "errorSummary",
+        "invalid": [
+          "f-name",
+          "f-email",
+          "f-phone"
+        ]
+      },
+      "tourState": {
+        "badge": "Room view — tap the view to look around",
+        "hint": "Tap the view to look around",
+        "dockNow": "Exterior",
+        "dockCount": "2 / 16",
+        "noModel": false
+      }
+    },
+    "mobile-light": {
+      "screenshots": [
+        "mobile-light-above-fold.png",
+        "mobile-light-full.png",
+        "mobile-light-section-top.png",
+        "mobile-light-section-floor-plan.png",
+        "mobile-light-section-highlights.png",
+        "mobile-light-section-tour-section.png",
+        "mobile-light-section-residence.png",
+        "mobile-light-section-location.png",
+        "mobile-light-section-contact.png"
+      ],
+      "inventory": {
+        "title": "Modular House Cube 3 — Explore in 3D & Book a Tour",
+        "theme": "light",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "docHeight": 9920,
+        "horizontalOverflow": false,
+        "body": {
+          "fontFamily": "\"Hanken Grotesk\", -apple-system, \"system-ui\", \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "fontSize": "16px",
+          "color": "rgb(28, 27, 25)",
+          "background": "rgb(245, 242, 236)"
+        },
+        "landmarks": [
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "nav",
+            "label": "Primary"
+          },
+          {
+            "tag": "main",
+            "id": "top"
+          },
+          {
+            "tag": "section",
+            "label": "Listing overview"
+          },
+          {
+            "tag": "section",
+            "id": "floor-plan"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "svg",
+            "role": "group",
+            "label": "Clickable schematic floor plan"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Lounge in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Dining in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Kitchen in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Laundry in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Study Nook in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Rumpus in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 3 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 2 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Room 1 in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Bathroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Ensuite in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Master Bedroom in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View Balcony in the 3D tour"
+          },
+          {
+            "tag": "g",
+            "role": "button",
+            "label": "View the carport in the 3D tour"
+          },
+          {
+            "tag": "section",
+            "label": "About this home"
+          },
+          {
+            "tag": "section",
+            "id": "tour-section",
+            "label": "Interactive 3D tour"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "loadWrap",
+            "role": "progressbar",
+            "label": "Tour loading progress"
+          },
+          {
+            "tag": "div",
+            "id": "zoomCtl",
+            "role": "group",
+            "label": "Zoom"
+          },
+          {
+            "tag": "div",
+            "id": "badge",
+            "role": "status"
+          },
+          {
+            "tag": "nav",
+            "id": "anchorBar",
+            "label": "Room viewpoints"
+          },
+          {
+            "tag": "div",
+            "id": "dockTrack",
+            "role": "toolbar",
+            "label": "Rooms"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "role": "group"
+          },
+          {
+            "tag": "section",
+            "id": "residence"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "section",
+            "id": "location"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "role": "region",
+            "label": "Map of the property and nearby landmarks"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "div",
+            "role": "button"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom in"
+          },
+          {
+            "tag": "a",
+            "role": "button",
+            "label": "Zoom out"
+          },
+          {
+            "tag": "div",
+            "id": "nbhdFilters",
+            "role": "group",
+            "label": "Show nearby places"
+          },
+          {
+            "tag": "section",
+            "id": "contact"
+          },
+          {
+            "tag": "header"
+          },
+          {
+            "tag": "aside"
+          },
+          {
+            "tag": "div",
+            "id": "errorSummary",
+            "role": "group"
+          },
+          {
+            "tag": "div",
+            "id": "formStatus",
+            "role": "status"
+          },
+          {
+            "tag": "footer"
+          }
+        ],
+        "headings": [
+          {
+            "level": 1,
+            "text": "Modular House Cube 3",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "One level, four wings",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Walk the home, room by room",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Step inside in 3D",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "No 3D model found",
+            "visible": false
+          },
+          {
+            "level": 2,
+            "text": "The rooms, rendered from the model",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Lounge",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Kitchen",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Dining",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Master Bedroom",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Balcony",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "Garage",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "The neighborhood",
+            "visible": true
+          },
+          {
+            "level": 2,
+            "text": "Book a time to visit",
+            "visible": true
+          },
+          {
+            "level": 3,
+            "text": "How it works",
+            "visible": true
+          }
+        ],
+        "interactive": [
+          {
+            "tag": "a",
+            "name": "Modular House Cube 3 — back to top",
+            "href": "#top",
+            "visible": true,
+            "size": [
+              236,
+              28
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Floor plan",
+            "href": "#floor-plan",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Tour",
+            "href": "#tour-section",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Residence",
+            "href": "#residence",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Location",
+            "href": "#location",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Contact",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "themeToggle",
+            "type": "button",
+            "name": "Switch to dark mode",
+            "visible": true,
+            "size": [
+              38,
+              38
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              182,
+              46
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore in 3D",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              110,
+              46
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              121,
+              242
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              128,
+              85
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              128,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Laundry in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Study Nook in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Rumpus in the 3D tour",
+            "visible": true,
+            "size": [
+              107,
+              85
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 3 in the 3D tour",
+            "visible": true,
+            "size": [
+              71,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 2 in the 3D tour",
+            "visible": true,
+            "size": [
+              71,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Room 1 in the 3D tour",
+            "visible": true,
+            "size": [
+              64,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Bathroom in the 3D tour",
+            "visible": true,
+            "size": [
+              78,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Ensuite in the 3D tour",
+            "visible": true,
+            "size": [
+              85,
+              78
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              85,
+              107
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              48,
+              128
+            ]
+          },
+          {
+            "tag": "g",
+            "name": "View the carport in the 3D tour",
+            "visible": true,
+            "size": [
+              213,
+              44
+            ]
+          },
+          {
+            "tag": "canvas",
+            "id": "renderCanvas",
+            "name": "3D tour viewport — click to take control",
+            "visible": true,
+            "size": [
+              340,
+              255
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "startBtn",
+            "type": "submit",
+            "name": "Start tour",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomIn",
+            "type": "button",
+            "name": "Zoom in",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "zoomOut",
+            "type": "button",
+            "name": "Zoom out",
+            "visible": true,
+            "disabled": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "fsBtn",
+            "type": "button",
+            "name": "Fullscreen",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "retryBtn",
+            "type": "submit",
+            "name": "I’ve added it — reload",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockPrev",
+            "type": "button",
+            "name": "Previous room: Dollhouse",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockNext",
+            "type": "button",
+            "name": "Next room: Garage",
+            "visible": true,
+            "size": [
+              112,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "dockToggle",
+            "type": "button",
+            "name": "Hide rooms",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dollhouse",
+            "visible": true,
+            "size": [
+              107,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Exterior",
+            "visible": true,
+            "size": [
+              114,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Garage",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Balcony",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Lounge",
+            "visible": true,
+            "size": [
+              87,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Dining",
+            "visible": true,
+            "size": [
+              80,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Kitchen",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Rumpus",
+            "visible": true,
+            "size": [
+              93,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Study Nook",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Master Bedroom",
+            "visible": true,
+            "size": [
+              153,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 1",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 2",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Room 3",
+            "visible": true,
+            "size": [
+              90,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Ensuite",
+            "visible": true,
+            "size": [
+              88,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Bathroom",
+            "visible": true,
+            "size": [
+              106,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Laundry",
+            "visible": true,
+            "size": [
+              94,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "",
+            "visible": true,
+            "size": [
+              40,
+              40
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Lounge in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Kitchen in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Dining in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Master Bedroom in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Balcony in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View Garage in the 3D tour",
+            "visible": true,
+            "size": [
+              340,
+              191
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "View in 3D",
+            "visible": true,
+            "size": [
+              78,
+              29
+            ]
+          },
+          {
+            "tag": "div",
+            "id": "nbhdMap",
+            "name": "Map of the property and nearby landmarks",
+            "visible": true,
+            "size": [
+              342,
+              320
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "The property",
+            "visible": true,
+            "size": [
+              44,
+              44
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Tadiangan COMPAC Police Station",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Westville School",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Pines City Doctors' Hospital",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Cooyeesan Hotel Plaza",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "div",
+            "name": "Seventh Day Adventist Church",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom in",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Zoom out",
+            "href": "#",
+            "visible": true,
+            "size": [
+              30,
+              30
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              30,
+              13
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              71,
+              13
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Nearest",
+            "visible": true,
+            "size": [
+              91,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Police",
+            "visible": true,
+            "size": [
+              104,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Schools",
+            "visible": true,
+            "size": [
+              117,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Hospitals",
+            "visible": true,
+            "size": [
+              127,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Malls",
+            "visible": true,
+            "size": [
+              100,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "Churches",
+            "visible": true,
+            "size": [
+              129,
+              44
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "PoliceTadiangan COMPAC Police Station 1.5 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "SchoolsWestville School 460 m",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "HospitalsPines City Doctors' Hospital 3.8 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "MallsCooyeesan Hotel Plaza 2.3 km",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "button",
+            "type": "button",
+            "name": "ChurchesSeventh Day Adventist Church 130 m",
+            "visible": true,
+            "size": [
+              342,
+              56
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/#map=15/16.42138/120.55929",
+            "visible": true,
+            "size": [
+              85,
+              16
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail2",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20%E2%80%94%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              91,
+              19
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Explore the 3D tour first",
+            "href": "#tour-section",
+            "visible": true,
+            "size": [
+              206,
+              30
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-in-person",
+            "type": "radio",
+            "name": "In person Walk through the home with the agent.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-type-video",
+            "type": "radio",
+            "name": "Video call A live walkthrough from wherever you are.",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 21 SepTomorrow, Monday, September 21",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 22 SepTuesday, September 22",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 23 SepWednesday, September 23",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 24 SepThursday, September 24",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 25 SepFriday, September 25",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 26 SepSaturday, September 26",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sun 27 SepSunday, September 27",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Mon 28 SepMonday, September 28",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Tue 29 SepTuesday, September 29",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Wed 30 SepWednesday, September 30",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Thu 1 OctThursday, October 1",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Fri 2 OctFriday, October 2",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Sat 3 OctSaturday, October 3",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "type": "radio",
+            "name": "Later dateA later date — choose it on a calendar",
+            "visible": true,
+            "size": [
+              67,
+              77
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-date",
+            "type": "date",
+            "name": "Your preferred date",
+            "visible": false,
+            "size": [
+              0,
+              0
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-morning",
+            "type": "radio",
+            "name": "Morning 9 am – 12 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-afternoon",
+            "type": "radio",
+            "name": "Afternoon 12 – 4 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-time-evening",
+            "type": "radio",
+            "name": "Evening 4 – 7 pm",
+            "visible": true,
+            "size": [
+              20,
+              20
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-name",
+            "type": "text",
+            "name": "Full name",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-email",
+            "type": "email",
+            "name": "Email",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-phone",
+            "type": "tel",
+            "name": "Phone",
+            "visible": true,
+            "size": [
+              300,
+              48
+            ]
+          },
+          {
+            "tag": "textarea",
+            "id": "f-message",
+            "type": "textarea",
+            "name": "Anything we should know? (optional)",
+            "visible": true,
+            "size": [
+              300,
+              96
+            ]
+          },
+          {
+            "tag": "input",
+            "id": "f-company",
+            "type": "text",
+            "name": "Company",
+            "visible": true,
+            "size": [
+              153,
+              21
+            ]
+          },
+          {
+            "tag": "button",
+            "id": "submitBtn",
+            "type": "submit",
+            "name": "Request a tour",
+            "visible": true,
+            "size": [
+              300,
+              52
+            ]
+          },
+          {
+            "tag": "a",
+            "id": "agentEmail",
+            "name": "[agent@email]",
+            "href": "mailto:[agent@email]?subject=Tour%20request%20—%20Modular%20House%20Cube%203",
+            "visible": true,
+            "size": [
+              88,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Modular House Cube 3 by Swanbuild Australia”",
+            "href": "https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0",
+            "visible": true,
+            "size": [
+              304,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "EDSAHERGOM STUDIO",
+            "href": "https://sketchfab.com/edsahergom",
+            "visible": true,
+            "size": [
+              145,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Low Poly Tree Scene Free”",
+            "href": "https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd",
+            "visible": true,
+            "size": [
+              172,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Nicholas-3D",
+            "href": "https://sketchfab.com/Nicholas01",
+            "visible": true,
+            "size": [
+              75,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Mountain low poly For distant mountains”",
+            "href": "https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8",
+            "visible": true,
+            "size": [
+              267,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "adventurer",
+            "href": "https://sketchfab.com/ahmagh2e",
+            "visible": true,
+            "size": [
+              69,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“2021 Ferrari SF90 Spider”",
+            "href": "https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f",
+            "visible": true,
+            "size": [
+              169,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "“Porsche 911 GT3”",
+            "href": "https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243",
+            "visible": true,
+            "size": [
+              119,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Outlaw Games™",
+            "href": "https://sketchfab.com/Outlaw_Games",
+            "visible": true,
+            "size": [
+              102,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Poly Haven",
+            "href": "https://polyhaven.com",
+            "visible": true,
+            "size": [
+              311,
+              40
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Icons8",
+            "href": "https://icons8.com",
+            "visible": true,
+            "size": [
+              41,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Leaflet",
+            "href": "https://leafletjs.com",
+            "visible": true,
+            "size": [
+              42,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "OpenStreetMap",
+            "href": "https://www.openstreetmap.org/copyright",
+            "visible": true,
+            "size": [
+              99,
+              18
+            ]
+          },
+          {
+            "tag": "a",
+            "name": "Schedule a tour",
+            "href": "#contact",
+            "visible": true,
+            "size": [
+              152,
+              37
+            ]
+          }
+        ],
+        "images": [
+          {
+            "src": "/assets/hero.jpg",
+            "alt": "The dark-clad raised home in a misty pine forest, warm light in its windows",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-lounge.jpg",
+            "alt": "Lounge — Lounge with a full-height picture window",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-kitchen.jpg",
+            "alt": "Kitchen — Island kitchen with butler's pantry",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-dining.jpg",
+            "alt": "Dining — Six-seat dining beside the lounge",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-master-bedroom.jpg",
+            "alt": "Master Bedroom — Master suite with walk-in robe and ensuite",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-balcony.jpg",
+            "alt": "Balcony — Timber deck with pergola off the living area",
+            "loaded": true
+          },
+          {
+            "src": "/assets/gallery-garage.jpg",
+            "alt": "Garage — Open carport under the house (2 cars)",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6839/3716.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6840/3716.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6839/3717.png",
+            "alt": "",
+            "loaded": true
+          },
+          {
+            "src": "https://tile.openstreetmap.org/13/6840/3717.png",
+            "alt": "",
+            "loaded": true
+          }
+        ],
+        "ids": [
+          "themeToggle",
+          "top",
+          "floor-plan",
+          "highlights",
+          "tour-section",
+          "tour",
+          "renderCanvas",
+          "tourPoster",
+          "startBtn",
+          "loadWrap",
+          "loadBar",
+          "loadMsg",
+          "crosshair",
+          "zoomCtl",
+          "zoomIn",
+          "zoomOut",
+          "tourHint",
+          "badge",
+          "fsBtn",
+          "fsLabel",
+          "noModel",
+          "retryBtn",
+          "anchorBar",
+          "dockNowName",
+          "dockNowCap",
+          "dockCount",
+          "dockPrev",
+          "dockNext",
+          "dockToggle",
+          "dockBody",
+          "dockKeys",
+          "dockTrack",
+          "pill-group-0",
+          "pill-group-1",
+          "pill-group-2",
+          "pill-group-3",
+          "pill-group-4",
+          "residence",
+          "gallery",
+          "location",
+          "nbhdArea",
+          "nbhdMap",
+          "nbhdFilters",
+          "nbhdList",
+          "contact",
+          "contact-title",
+          "book-steps-title",
+          "agentEmail2",
+          "tourForm",
+          "form-note",
+          "errorSummary",
+          "errorSummaryTitle",
+          "errorSummaryList",
+          "f-type-in-person",
+          "f-type-video",
+          "err-type",
+          "date-hint",
+          "dateChips",
+          "dateOtherWrap",
+          "f-date",
+          "err-date",
+          "f-time-morning",
+          "f-time-afternoon",
+          "f-time-evening",
+          "err-time",
+          "f-name",
+          "err-name",
+          "f-email",
+          "email-hint",
+          "err-email",
+          "f-phone",
+          "phone-hint",
+          "err-phone",
+          "f-message",
+          "msg-count",
+          "err-message",
+          "f-company",
+          "bookSummary",
+          "bookSummaryText",
+          "submitBtn",
+          "formStatus",
+          "agentEmail",
+          "mobileCta"
+        ],
+        "customElements": [],
+        "cssTokens": {
+          "--bg": "#f5f2ec",
+          "--surface": "#fdfbf7",
+          "--surface-2": "#ebe6dd",
+          "--ink": "#1c1b19",
+          "--muted": "#5e5950",
+          "--line": "rgba(28, 27, 25, .13)",
+          "--accent": "#83643a",
+          "--accent-hover": "#6f5330",
+          "--on-accent": "#ffffff",
+          "--warm": "#80602f",
+          "--danger": "#a63d26",
+          "--header-bg": "rgba(245, 242, 236, .82)",
+          "--header-bg-solid": "rgba(245, 242, 236, .95)",
+          "--bar-bg": "rgba(245, 242, 236, .97)",
+          "--sans": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--display": "\"Hanken Grotesk\", -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif",
+          "--gut": "24px",
+          "--maxw": "1280px",
+          "--sec": "clamp(72px, 10vw, 160px)",
+          "--lm-police": "#5f82b4",
+          "--lm-school": "#6e9c6a",
+          "--lm-hospital": "#c9675e",
+          "--lm-mall": "#9a78b8",
+          "--lm-church": "#83643a",
+          "--lm": "",
+          "--ease-out": "cubic-bezier(.16, 1, .3, 1)",
+          "--i": ""
+        }
+      }
+    }
+  },
+  "console": [
+    "warning: broadleaf trees unavailable, planting conifers instead: Error: skipped on touch devices\n    at vt (http://localhost:8080/dist/main.js:1:7799)\n    at ft (http://localhost:8080/dist/main.js:1:1682)",
+    "warning: broadleaf trees unavailable, planting conifers instead: Error: skipped on touch devices\n    at vt (http://localhost:8080/dist/main.js:1:7799)\n    at ft (http://localhost:8080/dist/main.js:1:1682)"
+  ]
+}
