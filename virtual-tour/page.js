@@ -18,6 +18,9 @@ function bindCopy() {
   const email = byId("agentEmail");
   email.textContent = listing.agent.email;
   email.href = `mailto:${listing.agent.email}?subject=Tour%20request%20—%20${encodeURIComponent(listing.name)}`;
+  const email2 = byId("agentEmail2");
+  email2.textContent = email.textContent;
+  email2.href = email.href;
   // Phone is a placeholder — render as text, not a tel: link.
   const ul = byId("highlights");
   for (const h of listing.highlights) {
@@ -182,10 +185,6 @@ function wireMobileCta() {
   io.observe(byId("contact"));
 }
 
-/* ------------------------------------------------------------------ booking form */
-
-const TIME_WINDOWS = { morning: "Morning (9–12)", afternoon: "Afternoon (12–4)", evening: "Evening (4–7)" };
-
 /* ------------------------------------------------------------------ light / dark theme */
 // index.html's <head> already set html[data-theme] before first paint; this keeps it in sync.
 // An explicit choice is saved; until then the page follows the system setting live.
@@ -210,101 +209,235 @@ function wireTheme() {
   system.addEventListener("change", (e) => { if (!saved()) apply(e.matches ? "light" : "dark"); });
 }
 
+/* ------------------------------------------------------------------ booking form */
+// Stepped form (index.html #contact): tour type → day → time window → details. Every choice is a
+// native radio in a <label> card; this file adds the two-week day strip, the running summary next
+// to the submit button, the error summary and the confirmation. server.mjs re-validates it all.
+
+const TIME_WINDOWS = {
+  morning: { label: "Morning", hours: "9 am – 12 pm", start: 9, end: 12 },
+  afternoon: { label: "Afternoon", hours: "12 – 4 pm", start: 12, end: 16 },
+  evening: { label: "Evening", hours: "4 – 7 pm", start: 16, end: 19 },
+};
+const TOUR_TYPES = { "in-person": "In person", video: "Video call" };
+const DAYS_SHOWN = 13; // + the "later date" chip = two rows of seven
+
+const pad = (n) => String(n).padStart(2, "0");
+const isoLocal = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const fmtDate = (iso, opts) => parseIso(iso).toLocaleDateString(undefined, opts);
+const LONG_DATE = { weekday: "long", day: "numeric", month: "long", year: "numeric" };
+
 function tomorrowLocal() {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return isoLocal(d);
+}
+
+function buildDateChips() {
+  const wrap = byId("dateChips");
+  const now = new Date();
+  const chip = (value, cls, inner, spoken) => {
+    const label = document.createElement("label");
+    label.className = `date-chip ${cls}`;
+    label.innerHTML = `<input type="radio" name="date" required />${inner}<span class="sr-only"></span>`;
+    label.firstChild.value = value;
+    label.lastChild.textContent = spoken;
+    wrap.append(label);
+  };
+  for (let i = 1; i <= DAYS_SHOWN; i++) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+    const part = (o) => day.toLocaleDateString(undefined, o);
+    chip(isoLocal(day), day.getDay() % 6 === 0 ? "is-weekend" : "",
+      `<span class="dc-dow" aria-hidden="true">${part({ weekday: "short" })}</span>
+       <span class="dc-day" aria-hidden="true">${day.getDate()}</span>
+       <span class="dc-mon" aria-hidden="true">${part({ month: "short" })}</span>`,
+      `${i === 1 ? "Tomorrow, " : ""}${part({ weekday: "long", day: "numeric", month: "long" })}`);
+  }
+  chip("other", "is-other",
+    `<span class="dc-dow" aria-hidden="true">Later</span>
+     <svg class="dc-other-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="1.5"/><path d="M4 10h16M8.5 3.5v4M15.5 3.5v4"/></svg>
+     <span class="dc-mon" aria-hidden="true">date</span>`,
+    "A later date — choose it on a calendar");
+}
+
+function icsFile(data) {
+  const tw = TIME_WINDOWS[data.timeWindow];
+  const day = data.date.replaceAll("-", "");
+  const esc = (s) => String(s).replace(/[\;,]/g, (c) => `\\${c}`).replace(/\n/g, "\\n");
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+  const lines = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Virtual tour//Tour request//EN", "BEGIN:VEVENT",
+    `UID:${Date.now()}-${Math.random().toString(36).slice(2)}@tour-request`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${day}T${pad(tw.start)}0000`,
+    `DTEND:${day}T${pad(tw.end)}0000`,
+    `SUMMARY:${esc(`Tour request: ${listing.name} (awaiting confirmation)`)}`,
+    `DESCRIPTION:${esc(`${TOUR_TYPES[data.tourType]} tour, ${tw.label.toLowerCase()} window. The agent will confirm an exact time by email.`)}`,
+    `LOCATION:${esc(data.tourType === "video" ? "Video call" : listing.address)}`,
+    "STATUS:TENTATIVE", "END:VEVENT", "END:VCALENDAR",
+  ];
+  return URL.createObjectURL(new Blob([lines.join("\r\n") + "\r\n"], { type: "text/calendar" }));
 }
 
 function validate(data) {
   const errors = {};
-  if (!data.name || data.name.length > 120) errors.name = "Please enter your full name.";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email || "")) errors.email = "Please enter a valid email address.";
-  if (!/^[\d+()\- ]{7,20}$/.test(data.phone || "")) errors.phone = "Phone: 7–20 characters (digits, spaces, + ( ) -).";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || "")) errors.date = "Please pick a preferred date.";
-  else if (data.date < tomorrowLocal()) errors.date = "Please choose tomorrow or later.";
-  if (!TIME_WINDOWS[data.timeWindow]) errors.timeWindow = "Please choose a time window.";
-  if (!["in-person", "video"].includes(data.tourType)) errors.tourType = "Please choose a tour type.";
-  if (data.message && data.message.length > 1000) errors.message = "Message is limited to 1000 characters.";
+  if (!["in-person", "video"].includes(data.tourType)) errors.tourType = "Choose how you’d like to tour.";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date || "")) errors.date = "Pick a day for your visit.";
+  else if (data.date < tomorrowLocal()) errors.date = "Choose tomorrow or a later day.";
+  if (!TIME_WINDOWS[data.timeWindow]) errors.timeWindow = "Pick a time window.";
+  if (!data.name || data.name.length > 120) errors.name = "Enter your full name.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email || "")) errors.email = "Enter an email address like name@example.com.";
+  if (!/^[\d+()\- ]{7,20}$/.test(data.phone || "")) errors.phone = "Enter a phone number: 7–20 digits, spaces or + ( ) -.";
+  if (data.message && data.message.length > 1000) errors.message = "Keep your message to 1000 characters or fewer.";
   return errors;
 }
 
-const FIELD_INPUT = {
-  name: "f-name", email: "f-email", phone: "f-phone", date: "f-date",
-  timeWindow: "f-time", message: "f-message", tourType: null, form: null,
-};
-const FIELD_ERROR = {
-  name: "err-name", email: "err-email", phone: "err-phone", date: "err-date",
-  timeWindow: "err-time", message: "err-message", tourType: null, form: "formError",
-};
-
-function showErrors(errors) {
-  for (const [field, id] of Object.entries(FIELD_INPUT)) {
-    const input = id && byId(id);
-    if (input) {
-      input.setAttribute("aria-invalid", errors[field] ? "true" : "false");
-      const err = byId(FIELD_ERROR[field]);
-      if (err) err.textContent = errors[field] || "";
-    }
-  }
-  let banner = byId("formError");
-  if (errors.form) {
-    if (!banner) {
-      banner = document.createElement("p");
-      banner.id = "formError";
-      banner.className = "form-banner-error";
-      byId("tourForm").prepend(banner);
-    }
-    banner.textContent = errors.form;
-  } else if (banner) banner.remove();
-  const first = Object.keys(errors).find((k) => FIELD_INPUT[k]);
-  if (first && FIELD_INPUT[first]) byId(FIELD_INPUT[first]).focus();
-}
-
-function confirmation(data) {
-  const card = document.createElement("div");
-  card.className = "confirm-card";
-  card.innerHTML = `
-    <p class="eyebrow">Request received</p>
-    <h3>Thank you, <span id="cf-name"></span>.</h3>
-    <p>We’ve pencilled you in for <b id="cf-when"></b> and will confirm by email at <b id="cf-email"></b>.
-    ${"" /* reassurance repeated below */}</p>
-    <p class="reassurance" data-bind="reassurance">${listing.reassurance}</p>`;
-  card.querySelector("#cf-name").textContent = data.name;
-  card.querySelector("#cf-when").textContent =
-    `${data.date} · ${TIME_WINDOWS[data.timeWindow]} · ${data.tourType === "video" ? "Video call" : "In-person"}`;
-  card.querySelector("#cf-email").textContent = data.email;
-  const form = byId("tourForm");
-  form.hidden = true;
-  form.after(card);
-  byId("formStatus").textContent = "Your tour request was sent successfully.";
-  card.querySelector("h3").tabIndex = -1;
-  card.querySelector("h3").focus();
-}
-
 function wireForm() {
-  const dateInput = byId("f-date");
-  dateInput.min = tomorrowLocal();
   const form = byId("tourForm");
   const btn = byId("submitBtn");
   const status = byId("formStatus");
+  const summary = byId("errorSummary");
+  const summaryList = byId("errorSummaryList");
+  const other = byId("f-date");
+  const otherWrap = byId("dateOtherWrap");
+  const message = byId("f-message");
+  const count = byId("msg-count");
 
-  const formData = () => Object.fromEntries(new FormData(form).entries());
+  buildDateChips();
+  other.min = tomorrowLocal();
+
+  const radios = (name) => [...form.querySelectorAll(`input[name="${name}"]`)];
+  const pickedOrFirst = (name) => radios(name).find((r) => r.checked) || radios(name)[0];
+  const otherChosen = () => form.querySelector('input[name="date"][value="other"]').checked;
+
+  // Field → its error element and where to send focus (DOM order = error summary order).
+  const FIELDS = {
+    tourType: { error: "err-type", target: () => pickedOrFirst("tourType") },
+    date: { error: "err-date", target: () => (otherChosen() ? other : pickedOrFirst("date")) },
+    timeWindow: { error: "err-time", target: () => pickedOrFirst("timeWindow") },
+    name: { error: "err-name", input: "f-name" },
+    email: { error: "err-email", input: "f-email" },
+    phone: { error: "err-phone", input: "f-phone" },
+    message: { error: "err-message", input: "f-message" },
+  };
+  const targetOf = (f) => (FIELDS[f].input ? byId(FIELDS[f].input) : FIELDS[f].target());
+
+  const readForm = () => {
+    const d = Object.fromEntries(new FormData(form).entries());
+    d.date = d.date === "other" ? d.dateOther || "" : d.date || "";
+    delete d.dateOther;
+    return d;
+  };
+
+  const setFieldError = (field, msg) => {
+    const { error, input } = FIELDS[field];
+    const el = byId(error);
+    el.textContent = msg || "";
+    if (input) byId(input).setAttribute("aria-invalid", msg ? "true" : "false");
+    else el.closest("fieldset").toggleAttribute("data-invalid", !!msg);
+    if (field === "date") other.setAttribute("aria-invalid", msg && otherChosen() ? "true" : "false");
+    // Fixing a field also takes it off the summary list.
+    if (!msg) {
+      summaryList.querySelector(`[data-field="${field}"]`)?.remove();
+      if (!summaryList.children.length) summary.hidden = true;
+    }
+  };
+
+  function showErrors(errors) {
+    for (const f of Object.keys(FIELDS)) setFieldError(f, errors[f]);
+    summaryList.replaceChildren();
+    for (const f of [...Object.keys(FIELDS), "form"]) {
+      if (!errors[f]) continue;
+      const li = document.createElement("li");
+      li.dataset.field = f;
+      if (f === "form") li.textContent = errors.form;
+      else {
+        const a = document.createElement("a");
+        const t = targetOf(f);
+        a.href = `#${t.id || "contact"}`;
+        a.textContent = errors[f];
+        a.addEventListener("click", (e) => {
+          e.preventDefault();
+          const el = targetOf(f);
+          el.focus({ preventScroll: true });
+          el.scrollIntoView({ block: "center", behavior: fx ? "smooth" : "auto" });
+        });
+        li.append(a);
+      }
+      summaryList.append(li);
+    }
+    summary.hidden = !summaryList.children.length;
+    if (!summary.hidden) {
+      summary.focus({ preventScroll: true });
+      summary.scrollIntoView({ block: "center", behavior: fx ? "smooth" : "auto" });
+    }
+  }
+
+  // Running summary beside the submit button (also the button's description for screen readers).
+  const summaryText = byId("bookSummaryText");
+  const updateSummary = () => {
+    const d = readForm();
+    const tw = TIME_WINDOWS[d.timeWindow];
+    const okDate = /^\d{4}-\d{2}-\d{2}$/.test(d.date);
+    const parts = [
+      [TOUR_TYPES[d.tourType], "choose a tour type"],
+      [okDate && fmtDate(d.date, { weekday: "short", day: "numeric", month: "short" }), "pick a day"],
+      [tw && `${tw.label}, ${tw.hours}`, "pick a time"],
+    ];
+    summaryText.replaceChildren();
+    parts.forEach(([val, todo], i) => {
+      if (i) summaryText.append(" · ");
+      if (val) summaryText.append(val);
+      else {
+        const s = document.createElement("span");
+        s.className = "pending";
+        s.textContent = todo;
+        summaryText.append(s);
+      }
+    });
+  };
+
+  const updateCount = () => { count.textContent = `${message.value.length} / 1000 characters`; };
+
+  form.addEventListener("change", (e) => {
+    if (e.target.name === "date") {
+      otherWrap.hidden = !otherChosen();
+      if (!otherChosen()) other.setAttribute("aria-invalid", "false");
+    }
+    const field = { tourType: "tourType", date: "date", dateOther: "date", timeWindow: "timeWindow" }[e.target.name];
+    if (field) setFieldError(field, "");
+    updateSummary();
+  });
+  // Clear a field's error as soon as the user edits it.
+  form.addEventListener("input", (e) => {
+    const field = Object.keys(FIELDS).find((f) => FIELDS[f].input === e.target.id);
+    if (field && e.target.getAttribute("aria-invalid") === "true") setFieldError(field, "");
+    if (e.target === other) updateSummary();
+    if (e.target === message) updateCount();
+  });
+  updateSummary();
+
+  const setBusy = (busy) => {
+    btn.disabled = busy;
+    if (busy) btn.setAttribute("aria-busy", "true");
+    else btn.removeAttribute("aria-busy");
+    btn.textContent = busy ? "Sending…" : "Request a tour";
+  };
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const data = formData();
+    const data = readForm();
     const errors = validate(data);
     if (Object.keys(errors).length) {
       showErrors(errors);
-      status.textContent = "Please correct the highlighted fields.";
+      const n = Object.keys(errors).length;
+      status.textContent = `${n} ${n === 1 ? "answer needs" : "answers need"} another look.`;
       return;
     }
     showErrors({});
-    btn.disabled = true;
-    btn.textContent = "Sending…";
-    status.textContent = "";
+    setBusy(true);
+    status.textContent = "Sending your request…";
     try {
       const res = await fetch("/api/tour-requests", {
         method: "POST",
@@ -321,35 +454,60 @@ function wireForm() {
         }),
       });
       const json = await res.json().catch(() => null);
-      if (res.status === 200 && json?.ok) {
-        confirmation(data); // honeypot silently accepted
-        return;
-      }
-      if (res.status === 201 && json?.ok) {
+      // 201 = stored; 200 = honeypot, silently accepted
+      if ((res.status === 201 || res.status === 200) && json?.ok) {
         confirmation(data);
         return;
       }
       if (res.status === 400 && json?.errors) {
         showErrors(json.errors);
-        status.textContent = "Some details need another look — please check the highlighted fields.";
+        status.textContent = "Some details need another look.";
       } else {
-        status.textContent = "Something went wrong sending your request. Your details are still here — please try again.";
+        showErrors({ form: "Something went wrong sending your request. Your details are still here — please try again." });
+        status.textContent = "";
       }
     } catch {
-      status.textContent = "Network error — your details are still here. Please try again.";
+      showErrors({ form: "Network error — your details are still here. Please check your connection and try again." });
+      status.textContent = "";
     }
-    btn.disabled = false;
-    btn.textContent = "Request a tour";
+    setBusy(false);
   });
+}
 
-  // Clear a field's error as soon as the user edits it.
-  form.addEventListener("input", (e) => {
-    const entry = Object.entries(FIELD_INPUT).find(([, id]) => id && e.target.id === id);
-    if (entry && e.target.getAttribute("aria-invalid") === "true") {
-      e.target.setAttribute("aria-invalid", "false");
-      byId(FIELD_ERROR[entry[0]]).textContent = "";
-    }
-  });
+function confirmation(data) {
+  const tw = TIME_WINDOWS[data.timeWindow];
+  const card = document.createElement("div");
+  card.className = "confirm-card";
+  card.innerHTML = `
+    <div class="confirm-badge" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></div>
+    <p class="eyebrow">Request received</p>
+    <h3 tabindex="-1">Thank you, <span data-f="name"></span>.</h3>
+    <p>The agent will confirm an exact time by email at <b data-f="email"></b>.</p>
+    <dl class="confirm-details">
+      <dt>Tour</dt><dd data-f="type"></dd>
+      <dt>Day</dt><dd data-f="day"></dd>
+      <dt>Time</dt><dd data-f="time"></dd>
+    </dl>
+    <div class="confirm-actions">
+      <a class="btn btn-primary" data-f="ics" download="tour-request.ics">Add to calendar (.ics)</a>
+      <a class="btn btn-secondary" href="#tour-section">Explore the 3D tour</a>
+    </div>
+    <p class="reassurance"></p>`;
+  const f = (k) => card.querySelector(`[data-f="${k}"]`);
+  f("name").textContent = data.name.trim();
+  f("email").textContent = data.email.trim();
+  f("type").textContent = TOUR_TYPES[data.tourType];
+  f("day").textContent = fmtDate(data.date, LONG_DATE);
+  f("time").textContent = `${tw.label}, ${tw.hours} (exact time to be confirmed)`;
+  f("ics").href = icsFile(data);
+  card.querySelector(".reassurance").textContent = listing.reassurance;
+  const form = byId("tourForm");
+  form.hidden = true;
+  form.after(card);
+  byId("formStatus").textContent = "Your tour request was sent.";
+  const h = card.querySelector("h3");
+  h.focus({ preventScroll: true });
+  card.scrollIntoView({ block: "center", behavior: fx ? "smooth" : "auto" });
 }
 
 /* ------------------------------------------------------------------ boot */
