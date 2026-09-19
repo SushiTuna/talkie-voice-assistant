@@ -234,7 +234,7 @@ function renderFrame() {
 
 function scheduleNext() {
   const moving = viewChanged() || animating;
-  if (moving || scene.isLoading || joy.active) wake();
+  if (moving || scene.isLoading) wake();
   if (performance.now() < wakeUntil) {
     if (moving && ready) setFast(true);
     return;
@@ -436,7 +436,7 @@ function buildCameras() {
   fpCam.ellipsoid = new B.Vector3(0.12, (EYE_HEIGHT - STEP_HEIGHT) / 2, 0.12);
   fpCam.ellipsoidOffset = new B.Vector3(0, 0, 0);
   fpCam.minZ = 0.05;
-  fpCam.fov = 1.0;
+  fpCam.fov = BASE_FOV;
   fpCam.angularSensibility = LITE ? 1100 : 1800; // a finger swipe covers fewer pixels than a mouse
   fpCam.inertia = 0.72;
   fpCam.speed = WALK_SPEED;
@@ -450,13 +450,6 @@ function buildCameras() {
   const checkInputs = fpCam.inputs.checkInputs.bind(fpCam.inputs);
   fpCam.inputs.checkInputs = () => {
     checkInputs();
-    if (joy.active && captured && !animating) {
-      // Joystick (touch screens): x strafes, y walks, along the ground at the keyboard's speed.
-      const s = fpCam._computeLocalCameraSpeed(), yaw = fpCam.rotation.y;
-      const side = joy.x * s, fwd = -joy.y * s;
-      fpCam.cameraDirection.x += Math.cos(yaw) * side + Math.sin(yaw) * fwd;
-      fpCam.cameraDirection.z += -Math.sin(yaw) * side + Math.cos(yaw) * fwd;
-    }
     const d = fpCam.cameraDirection;
     const total = d.length();
     const horiz = Math.hypot(d.x, d.z);
@@ -780,12 +773,13 @@ function release() {
 }
 
 function updateHud() {
-  crosshairEl.hidden = !(captured && mode === "walk");
+  crosshairEl.hidden = !(captured && mode === "walk") || LITE; // an aiming dot only helps when walking
   hintEl.hidden = !ready || captured;
   if (!ready) return;
+  updateZoomButtons();
   if (LITE) {
     badgeEl.innerHTML = mode === "walk"
-      ? (captured ? "<b>Walk</b> — joystick to move · drag to look" : "<b>Walk</b> — tap the view to start")
+      ? (captured ? "<b>Room view</b> — drag to look · pick a room below" : "<b>Room view</b> — tap the view to look around")
       : (captured ? "<b>Dollhouse</b> — drag to orbit · pinch to zoom" : "<b>Dollhouse</b> — tap the view to orbit");
     return;
   }
@@ -867,6 +861,7 @@ async function goTo(id, { instant = false } = {}) {
     setMode("dollhouse");
   } else {
     setMode("walk");
+    if (fpCam.fov !== BASE_FOV) { fpCam.fov = BASE_FOV; updateZoomButtons(); } // each room opens unzoomed
     await animateTo(anchor, instant);
     setActivePill(anchor.id);
   }
@@ -1078,46 +1073,40 @@ function onFsChange() {
 
 /* ------------------------------------------------------------------ wiring + public API */
 
-/* Touch screens have no WASD: a thumb joystick in the corner walks (fpCam.inputs.checkInputs
-   reads joy), and a one-finger drag elsewhere on the view looks around (Babylon's mouse input). */
-const joy = window.__joy = { active: false, x: 0, y: 0 }; // also a debug/QA handle
-function wireJoystick() {
-  const pad = byId("joystick"), knob = pad.querySelector(".joy-knob");
-  let id = null;
-  const move = (e) => {
-    const r = pad.getBoundingClientRect(), R = r.width / 2;
-    let dx = e.clientX - (r.left + R), dy = e.clientY - (r.top + R);
-    const d = Math.hypot(dx, dy);
-    if (d > R) { dx *= R / d; dy *= R / d; }
-    joy.x = dx / R; joy.y = dy / R;
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-  };
-  const end = (e) => {
-    if (e.pointerId !== id) return;
-    id = null;
-    joy.active = false; joy.x = joy.y = 0;
-    knob.style.transform = "";
-  };
-  pad.addEventListener("pointerdown", (e) => {
-    if (id !== null) return;
-    e.preventDefault();
-    id = e.pointerId;
-    joy.active = true;
-    // Keeps the drag when the thumb slides off the pad; can throw for touch pointers (seen in Chrome).
-    try { pad.setPointerCapture(id); } catch { /* the pad still gets moves while the thumb is on it */ }
-    move(e);
-    wake();
-  });
-  pad.addEventListener("pointermove", (e) => { if (e.pointerId === id) move(e); });
-  pad.addEventListener("pointerup", end);
-  pad.addEventListener("pointercancel", end);
+/* Touch screens don't walk: the room pills are the only way to move, a one-finger drag looks
+   around (Babylon's mouse input rotates only), and + / − zoom: the field of view in a room, the
+   orbit distance in the dollhouse. */
+const BASE_FOV = 1.0, MIN_FOV = 0.35, ZOOM_STEP = 0.8;
+function zoom(dir) { // dir: 1 = in, -1 = out
+  if (!ready) return;
+  const k = dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+  if (mode === "dollhouse") {
+    arcCam.radius = Math.min(arcCam.upperRadiusLimit, Math.max(arcCam.lowerRadiusLimit, arcCam.radius * k));
+  } else {
+    fpCam.fov = Math.min(BASE_FOV, Math.max(MIN_FOV, fpCam.fov * k));
+  }
+  updateZoomButtons();
+  wake();
+}
+function updateZoomButtons() {
+  if (!LITE || !ready) return;
+  const [inB, outB] = [byId("zoomIn"), byId("zoomOut")];
+  const eps = 1e-3;
+  if (mode === "dollhouse") {
+    inB.disabled = arcCam.radius <= arcCam.lowerRadiusLimit + eps;
+    outB.disabled = arcCam.radius >= arcCam.upperRadiusLimit - eps;
+  } else {
+    inB.disabled = fpCam.fov <= MIN_FOV + eps;
+    outB.disabled = fpCam.fov >= BASE_FOV - eps;
+  }
 }
 
 function wireTour() {
   if (LITE) {
     tourEl.classList.add("touch");
-    hintEl.textContent = "Tap the view to take control";
-    wireJoystick();
+    hintEl.textContent = "Tap the view to look around";
+    byId("zoomIn").addEventListener("click", () => zoom(1));
+    byId("zoomOut").addEventListener("click", () => zoom(-1));
   }
   byId("startBtn").addEventListener("click", () => ensureTour());
   byId("retryBtn")?.addEventListener("click", () => location.reload());

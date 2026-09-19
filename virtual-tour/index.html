@@ -34,7 +34,7 @@
 <header class="site-header">
   <div class="header-inner">
     <a class="wordmark" href="#top" aria-label="Modular House Cube 3 — back to top">
-      <span class="wm-a">Modular House</span><span class="wm-b">Cube&nbsp;3</span>
+      <span class="wm-logo" aria-hidden="true"></span><span class="wm-text"><span class="wm-a">Modular House</span><span class="wm-b">Cube&nbsp;3</span></span>
     </a>
     <nav class="main-nav" aria-label="Primary">
       <a href="#floor-plan">Floor plan</a>
@@ -186,8 +186,15 @@
       </div>
 
       <div id="crosshair" hidden></div>
-      <!-- touch screens: walk joystick (shown while walking in control; main.js wireJoystick) -->
-      <div id="joystick" aria-hidden="true"><span class="joy-knob"></span></div>
+      <!-- touch screens: zoom (main.js zoom()); rooms are reached from the dock, not by walking -->
+      <div id="zoomCtl" role="group" aria-label="Zoom">
+        <button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </button>
+      </div>
       <p id="tourHint" hidden>Click the view to take control</p>
       <div id="badge" role="status"></div>
 
@@ -452,6 +459,7 @@
       <p>Mountains: <a href="https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8" target="_blank" rel="noopener">“Mountain low poly For distant mountains”</a> by <a href="https://sketchfab.com/ahmagh2e" target="_blank" rel="noopener">adventurer</a> (Sketchfab) · CC BY 4.0, instanced, rescaled and re-tinted.</p>
       <p>Cars: <a href="https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f" target="_blank" rel="noopener">“2021 Ferrari SF90 Spider”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · <a href="https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243" target="_blank" rel="noopener">“Porsche 911 GT3”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · both rescaled, meshes merged and quantized.</p>
       <p>Sky, grass, pavers, asphalt and pine textures: <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> · CC0.</p>
+      <p>Logo: “Home” icon (Keek Line) by <a href="https://icons8.com" target="_blank" rel="noopener">Icons8</a>.</p>
       <p>Map: <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a> · map tiles, map data and nearby places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL).</p>
       <p>Built with Babylon.js.</p>
     </div>

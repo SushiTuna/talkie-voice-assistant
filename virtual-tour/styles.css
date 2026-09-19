@@ -155,18 +155,21 @@ body.fs-lock { overflow: hidden; }
   #fsBtn svg { width: 18px; height: 18px; }
 }
 
-/* walk joystick: touch screens only, while walking with control of the view */
-#joystick {
-  display: none; position: absolute; left: 20px; bottom: 20px; z-index: 7;
-  width: 112px; height: 112px; border-radius: 50%; touch-action: none;
-  background: rgba(13, 16, 22, .45); border: 1px solid rgba(255, 255, 255, .28);
-  backdrop-filter: blur(4px); -webkit-user-select: none; user-select: none;
+/* zoom + / −: touch screens only, once the tour is ready */
+#zoomCtl {
+  display: none; position: absolute; right: 12px; bottom: 12px; z-index: 7; flex-direction: column;
+  background: rgba(13, 16, 22, .72); border: 1px solid rgba(255, 255, 255, .14); border-radius: 99px;
+  backdrop-filter: blur(6px); overflow: hidden;
 }
-#tour.touch.captured:not(.dollhouse) #joystick { display: block; }
-.joy-knob {
-  position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
-  background: rgba(236, 232, 225, .85); box-shadow: 0 2px 10px rgba(0, 0, 0, .5); pointer-events: none;
+#tour.touch.ready #zoomCtl { display: flex; }
+.zoom-btn {
+  display: grid; place-items: center; width: 44px; height: 44px; padding: 0; cursor: pointer;
+  background: none; border: 0; color: #fff; touch-action: manipulation;
 }
+.zoom-btn + .zoom-btn { border-top: 1px solid rgba(255, 255, 255, .14); }
+.zoom-btn:disabled { color: rgba(255, 255, 255, .3); cursor: default; }
+.zoom-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.zoom-btn:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
 
 /* ---------- room dock (under the 3D view; built by main.js) ---------- */
 .room-dock {
@@ -300,8 +303,15 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
   max-width: var(--maxw); margin-inline: auto; padding-inline: var(--gut);
   display: flex; align-items: center; gap: 32px; height: 64px;
 }
-.wordmark { text-decoration: none; display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
-.wm-a { font: 500 20px/1 var(--display); letter-spacing: .01em; color: var(--ink); }
+.wordmark { text-decoration: none; display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.wm-text { display: flex; align-items: baseline; gap: 8px; }
+/* logo: Icons8 "Home" (Keek Line), assets/brand/ — a mask, so it takes the ink colour in both themes */
+.wm-logo {
+  flex: none; width: 28px; height: 28px; background: var(--ink);
+  -webkit-mask: url("/assets/brand/logo-home.png") center / contain no-repeat;
+          mask: url("/assets/brand/logo-home.png") center / contain no-repeat;
+}
+.wm-a { font: 500 20px/1 var(--display); letter-spacing: .01em; color: var(--ink); white-space: nowrap; }
 .wm-b { font: 500 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--warm); }
 .main-nav { display: flex; gap: 28px; }
 .main-nav a {
@@ -719,6 +729,9 @@ html[data-theme="dark"] .nbhd-tiles { filter: invert(1) hue-rotate(180deg) grays
 .mobile-cta .btn { padding: 12px 18px; font-size: 11px; flex: 0 0 auto; }
 @media (max-width: 899px) {
   .mobile-cta { display: flex; }
+  /* the sticky bar carries "Schedule a tour" on phones, so the header drops its copy */
+  .btn-header { display: none; }
+  .theme-toggle { margin-right: 0; }
   body { padding-bottom: 76px; }
 }
 
