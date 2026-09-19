@@ -1,4 +1,5 @@
-// Procedural neighbourhood around the loaded lot: road + footpaths, neighbouring houses, trees,
+// Surroundings of the loaded lot. buildForest (used by the tour): wet lane + pine forest.
+// buildPerimeter (previous suburban look): road + footpaths, neighbouring houses, trees,
 // and a textured grass plane. Everything is generated in code (no extra assets) from a fixed seed,
 // so the layout is identical on every load. Meshes are tagged `metadata.perimeter = true` so the
 // renderer can keep them out of the shadow-caster list.
@@ -11,8 +12,11 @@ import { CreateIcoSphere } from "@babylonjs/core/Meshes/Builders/icoSphereBuilde
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture.js";
 import { Mesh } from "@babylonjs/core/Meshes/mesh.js";
+import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader.js";
 import "@babylonjs/core/Meshes/instancedMesh.js"; // side effect: enables mesh.createInstance()
 import { createHouseKit } from "./houses.js";
+import { createPineTemplates } from "./pines.js";
+import { wetSurface } from "./mood.js";
 
 /** Small deterministic PRNG (mulberry32) so the neighbourhood doesn't change between loads. */
 function rng(seed) {
@@ -38,91 +42,122 @@ function flatMat(name, hex, scene) {
 }
 
 /**
- * Grass for the surrounding plane. If the model has its own ground material, clone it (same PBR
- * look as the lot) and tile only the greenest patch of its texture — lot textures usually have
- * dirt/paths around the edges — mirrored so seams don't show, at the model's own texture scale.
- * Otherwise (or until that crop is ready) a mottled procedural grass is used.
- * @param source      the model's ground material (optional)
- * @param tileMeters  how many metres the whole source texture covers on the model
+ * Damp lawn with leaf litter for the surrounding plane: Poly Haven "Leafy Grass" (CC0,
+ * assets/tex/leafy_grass_*) PBR maps, one repeat per 2.5 m. A soft mottle on a much larger,
+ * non-integer repeat darkens the ambient light in patches so the 2.5 m tile doesn't show at a distance.
+ * @param planeSize  edge length (m) of the square ground plane the material is for (UVs span 0..1)
  */
-export function makeGrassMaterial(scene, source = null, tileMeters = 10) {
-  const srcTex = source?.albedoTexture || source?.diffuseTexture;
-  const procedural = proceduralGrassTexture(scene);
-  if (!srcTex) {
-    const mat = new StandardMaterial("surroundingsMat", scene);
-    mat.diffuseTexture = procedural;
-    mat.specularColor = Color3.Black();
-    return mat;
-  }
-  const mat = source.clone("surroundingsMat");
-  mat.bumpTexture = null; // the lot's normal map is laid out for the lot, not a tile
-  const setTex = (t) => { if ("albedoTexture" in mat) mat.albedoTexture = t; else mat.diffuseTexture = t; };
-  setTex(procedural);
-  greenestPatch(scene, srcTex).then((patch) => {
-    if (!patch) return;
-    const metres = (patch.size / srcTex.getSize().width) * tileMeters;
-    patch.texture.uScale = patch.texture.vScale = 2000 / metres;
-    setTex(patch.texture);
-    procedural.dispose();
-  }).catch(() => { /* keep procedural grass */ });
+export function makeGrassMaterial(scene, planeSize = 2000) {
+  const mat = wetSurface(scene, "leafy_grass", { metres: 2.5, uvMetresPerUnit: planeSize, darken: 0.62, roughness: 0.95 });
+  mat.name = "surroundingsMat";
+  mat.albedoColor = new Color3(0.56, 0.64, 0.5); // wetter, greener and less orange than the dry scan
+  mat.bumpTexture.level = 0.6;
+  mat.environmentIntensity = 0.85;
+  const mottle = mottleTexture(scene);
+  mottle.uScale = mottle.vScale = planeSize / 37; // ~37 m per repeat, out of step with the 2.5 m tile
+  mat.ambientTexture = mottle;
+  mat.ambientTextureStrength = 1;
   return mat;
 }
 
-/** Crop the greenest square region (2×2 cells of an 8×8 grid) of a texture into a tileable texture. */
-async function greenestPatch(scene, srcTex) {
-  const { width: W, height: H } = srcTex.getSize();
-  const px = await srcTex.readPixels();
-  if (!px || !W || !H) return null;
-  const G = 8, cw = Math.floor(W / G), ch = Math.floor(H / G);
-  const score = [];
-  for (let gy = 0; gy < G; gy++) for (let gx = 0; gx < G; gx++) {
-    let r = 0, g = 0, b = 0, n = 0;
-    for (let y = gy * ch; y < (gy + 1) * ch; y += 4) for (let x = gx * cw; x < (gx + 1) * cw; x += 4) {
-      const i = (y * W + x) * 4; r += px[i]; g += px[i + 1]; b += px[i + 2]; n++;
-    }
-    score[gy * G + gx] = (g - (r + b) / 2) / n; // greenness
-  }
-  let best = null;
-  for (let gy = 0; gy < G - 1; gy++) for (let gx = 0; gx < G - 1; gx++) {
-    const s = score[gy * G + gx] + score[gy * G + gx + 1] + score[(gy + 1) * G + gx] + score[(gy + 1) * G + gx + 1];
-    if (!best || s > best.s) best = { s, gx, gy };
-  }
-  if (!best || best.s <= 0) return null; // nothing green in the texture
-  const inset = 6, size = Math.min(cw, ch) * 2 - inset * 2;
-  const x0 = best.gx * cw + inset, y0 = best.gy * ch + inset;
-  const tex = new DynamicTexture("grassPatch", { width: size, height: size }, scene, true);
+/** Seamless greyscale blotches (0.6–1.0) used as a large-scale ambient-occlusion variation. */
+function mottleTexture(scene) {
+  const size = 256;
+  const tex = new DynamicTexture("grassMottle", { width: size, height: size }, scene, true);
   const ctx = tex.getContext();
-  const img = ctx.createImageData(size, size);
-  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
-    const si = ((y0 + y) * W + (x0 + x)) * 4, di = (y * size + x) * 4;
-    img.data[di] = px[si]; img.data[di + 1] = px[si + 1]; img.data[di + 2] = px[si + 2]; img.data[di + 3] = 255;
-  }
-  ctx.putImageData(img, 0, 0);
-  tex.update();
-  tex.wrapU = tex.wrapV = 2; // Texture.MIRROR_ADDRESSMODE: seamless without a tileable source
-  tex.anisotropicFilteringLevel = 8;
-  return { texture: tex, size };
-}
-
-/** Mottled procedural grass, tiled every ~10 m. */
-function proceduralGrassTexture(scene) {
-  const size = 512;
-  const tex = new DynamicTexture("grassTex", { width: size, height: size }, scene, true);
-  const ctx = tex.getContext();
-  ctx.fillStyle = "#5f6e3f";
+  ctx.fillStyle = "#e6e6e6";
   ctx.fillRect(0, 0, size, size);
-  const r = rng(7);
-  for (let i = 0; i < 2500; i++) {
-    const x = r() * size, y = r() * size, rad = 2 + r() * 14;
-    const shade = r() < 0.5 ? `rgba(70,84,40,${0.15 + r() * 0.25})` : `rgba(128,140,82,${0.1 + r() * 0.2})`;
-    ctx.fillStyle = shade;
+  const r = rng(11);
+  for (let i = 0; i < 220; i++) {
+    const x = r() * size, y = r() * size, rad = 10 + r() * 38;
+    const v = r() < 0.6 ? 150 : 255; // mostly darker patches, a few brighter ones
     for (const [dx, dy] of [[0, 0], [size, 0], [-size, 0], [0, size], [0, -size]]) { // wrap edges so tiles are seamless
+      const g = ctx.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, rad);
+      g.addColorStop(0, `rgba(${v},${v},${v},${0.18 + r() * 0.2})`);
+      g.addColorStop(1, `rgba(${v},${v},${v},0)`);
+      ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(x + dx, y + dy, rad, 0, Math.PI * 2); ctx.fill();
     }
   }
   tex.update();
-  tex.uScale = tex.vScale = 200; // 2000 m plane / 200 = 10 m per tile
   tex.anisotropicFilteringLevel = 8;
+  return tex;
+}
+
+/**
+ * Soft darkening of the ground where the overcast sky is blocked: a rounded rectangle under the
+ * raised house (the IBL/hemi light otherwise leaves the ground beneath it fully lit) and a disc
+ * under every tree. Unlit, alpha-blended decals just above the ground; the sun's shadow map still
+ * adds the directional shadow on top. Call again after more trees are planted — trees that
+ * already have a decal are skipped.
+ * @param footprint  { min, max } (Vector3, x/z used) of the house, or null to only do trees
+ * @param y          height of the decals (just above the ground / paving they sit on)
+ */
+const occluded = new WeakSet();
+let treeDecal = null;
+export function addGroundOcclusion(scene, { footprint = null, y }) {
+  if (footprint) {
+    const margin = 1.2;
+    const w = footprint.max.x - footprint.min.x + margin * 2, d = footprint.max.z - footprint.min.z + margin * 2;
+    const house = tag(CreateGround("houseOcclusion", { width: w, height: d }, scene));
+    house.position.set((footprint.min.x + footprint.max.x) / 2, y, (footprint.min.z + footprint.max.z) / 2);
+    house.material = decalMaterial(scene, "houseOcclusionMat", roundedRectFalloff(scene, w, d, margin * 1.6), 0.62);
+  }
+  if (!treeDecal) {
+    treeDecal = tag(CreateGround("treeOcclusion", { width: 1, height: 1 }, scene));
+    treeDecal.material = decalMaterial(scene, "treeOcclusionMat", roundedRectFalloff(scene, 1, 1, 0.5), 0.4);
+    treeDecal.isVisible = false; // template; instances are drawn
+  }
+  let added = 0;
+  for (const m of scene.meshes) {
+    const src = m.sourceMesh;
+    if (!src || occluded.has(m) || !/^(pine|fir|cypress)[A-Z]$|^broadleafTpl\d+$/.test(src.name)) continue;
+    occluded.add(m);
+    // Canopy radius: broadleaves spread widest, cypresses are narrow; scaled like the tree.
+    const rad = (/^broadleaf/.test(src.name) ? 3.4 : /^cypress/.test(src.name) ? 1.0 : 2.0) * m.scaling.y;
+    const dcl = tag(treeDecal.createInstance(`treeOcc${m.name}`));
+    dcl.position.set(m.position.x, y, m.position.z);
+    dcl.scaling.set(rad * 2, 1, rad * 2);
+    added++;
+  }
+  return added;
+}
+
+/** Black decal material whose opacity comes from `tex` (alpha), capped at `opacity`. */
+function decalMaterial(scene, name, tex, opacity) {
+  const mat = new StandardMaterial(name, scene);
+  mat.diffuseColor = Color3.Black();
+  mat.specularColor = Color3.Black();
+  mat.emissiveColor = Color3.Black();
+  mat.disableLighting = true;
+  mat.opacityTexture = tex;
+  mat.alpha = opacity;
+  mat.zOffset = -2; // win the depth test against the ground a few cm below, even far away
+  mat.backFaceCulling = true;
+  return mat;
+}
+
+/** Alpha texture: opaque inside a w×d rectangle inset by `fade` metres, smoothly fading to 0 at its edge. */
+function roundedRectFalloff(scene, w, d, fade) {
+  const W = 256, H = Math.max(16, Math.round(256 * d / w));
+  const tex = new DynamicTexture("occlusionFalloff", { width: W, height: H }, scene, true);
+  const ctx = tex.getContext();
+  const img = ctx.createImageData(W, H);
+  const hx = w / 2 - fade, hz = d / 2 - fade; // inner (fully dark) half-extents
+  for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+    const px = Math.abs(((i + 0.5) / W - 0.5) * w) - hx, pz = Math.abs(((j + 0.5) / H - 0.5) * d) - hz;
+    const dist = Math.hypot(Math.max(px, 0), Math.max(pz, 0)); // metres outside the inner rectangle
+    const t = Math.min(dist / fade, 1);
+    const a = 1 - t * t * (3 - 2 * t); // smoothstep falloff
+    const k = (j * W + i) * 4;
+    img.data[k] = img.data[k + 1] = img.data[k + 2] = 0;
+    img.data[k + 3] = Math.round(a * 255);
+  }
+  ctx.putImageData(img, 0, 0);
+  tex.update();
+  tex.hasAlpha = true;
+  tex.getAlphaFromRGB = false;
+  tex.wrapU = tex.wrapV = 0; // Texture.CLAMP_ADDRESSMODE
   return tex;
 }
 
@@ -274,6 +309,162 @@ export function buildPerimeter(scene, min, max, groundY, frontZ = 1, foliage = {
   }
 
   return { houses: houseCount, trees };
+}
+
+/**
+ * Alpine setting (the default look): no neighbours, just a wet asphalt lane along the front and
+ * a misty pine forest — tall pines, firs and a few columnar cypresses — closing in around the lot,
+ * densest behind the house. Same signature as buildPerimeter, plus `mirror` (the wet-ground planar
+ * reflection from mood.js) for the lane.
+ */
+export function buildForest(scene, min, max, groundY, frontZ = 1, foliage = { trees: [], bushes: [] }, { mirror = null } = {}) {
+  const r = rng(20260919);
+  const cx = (min.x + max.x) / 2, cz = (min.z + max.z) / 2;
+  const blocked = [];
+  const margin = 3;
+  blocked.push({ x0: min.x - margin, x1: max.x + margin, z0: min.z - margin, z1: max.z + margin });
+  const free = (x0, x1, z0, z1) => !blocked.some((b) => x0 < b.x1 && x1 > b.x0 && z0 < b.z1 && z1 > b.z0);
+
+  // --- Private lane along the front of the lot ---------------------------------------------------
+  const LANE_W = 5, LANE_LEN = 420;
+  const laneZ = (frontZ > 0 ? max.z : min.z) + frontZ * 6;
+  const lane = tag(CreateGround("lane", { width: LANE_LEN, height: LANE_W }, scene));
+  lane.position.set(cx, groundY + 0.02, laneZ);
+  const laneMat = wetSurface(scene, "asphalt_07", { metres: 2.5, uvMetresPerUnit: LANE_LEN, darken: 0.42, roughness: 0.45 });
+  laneMat.albedoTexture.vScale = laneMat.bumpTexture.vScale = laneMat.metallicTexture.vScale = LANE_W / 2.5;
+  if (mirror) laneMat.reflectionTexture = mirror;
+  lane.material = laneMat;
+  lane.receiveShadows = true;
+  blocked.push({ x0: cx - LANE_LEN / 2, x1: cx + LANE_LEN / 2, z0: laneZ - LANE_W / 2 - 1.5, z1: laneZ + LANE_W / 2 + 1.5 });
+
+  // --- Conifers (instanced) --------------------------------------------------------------------------
+  const kinds = createPineTemplates(scene);
+  let trees = 0;
+  const addTree = (x, z, kind) => {
+    const rad = kind === "cypress" ? 0.8 : kind === "fir" ? 1.8 : 2.2;
+    if (!free(x - rad, x + rad, z - rad, z + rad)) return false;
+    const list = kinds[kind];
+    const t = tag(list[Math.floor(r() * list.length)].createInstance(`${kind}${trees++}`));
+    const s = 0.75 + r() * 0.55;
+    t.scaling.set(s * (0.9 + r() * 0.2), s, s * (0.9 + r() * 0.2));
+    t.rotation.y = r() * Math.PI * 2;
+    t.position.set(x, groundY - 0.05, z);
+    blocked.push({ x0: x - rad * 0.6, x1: x + rad * 0.6, z0: z - rad * 0.6, z1: z + rad * 0.6 });
+    return true;
+  };
+  const pick = () => { const v = r(); return v < 0.5 ? "pine" : v < 0.88 ? "fir" : "cypress"; };
+  // Mid/far forest mixes in broadleaf trees (models/props/broadleaf_trees.glb). They load after the
+  // tour is ready, so here we only reserve their spots; addBroadleafTrees() fills them later.
+  const lotR = Math.max(max.x - cx, max.z - cz);
+  const broadleafSlots = [];
+  const reserveBroadleaf = (x, z) => {
+    const rad = 2.8;
+    if (!free(x - rad, x + rad, z - rad, z + rad)) return;
+    broadleafSlots.push({ x, z, s: 0.8 + r() * 0.5, rot: r() * Math.PI * 2, v: r() });
+    blocked.push({ x0: x - rad * 0.6, x1: x + rad * 0.6, z0: z - rad * 0.6, z1: z + rad * 0.6 });
+  };
+  // Close ring: a few specimen trees framing the house (like the reference's garden pines/cypresses).
+  for (let i = 0; i < 40; i++) {
+    const ang = r() * Math.PI * 2, dist = Math.max(max.x - cx, max.z - cz) + 4 + r() * 10;
+    addTree(cx + Math.cos(ang) * dist, cz + Math.sin(ang) * dist, r() < 0.3 ? "cypress" : "pine");
+  }
+  // Forest: denser with distance, thickest behind the house; the lane side stays open for the view.
+  const backDir = -frontZ;
+  for (let i = 0; i < 1400; i++) {
+    const ang = r() * Math.PI * 2, dist = 14 + Math.pow(r(), 0.8) * 170;
+    const x = cx + Math.cos(ang) * dist, z = cz + Math.sin(ang) * dist;
+    const inFront = (z - cz) * frontZ > 0;
+    if (inFront && Math.abs(x - cx) < 60 && (z - cz) * frontZ < 45 && r() < 0.8) continue; // keep the view open
+    if (dist - lotR > 20 && r() < 0.35) reserveBroadleaf(x, z);
+    else addTree(x, z, pick());
+  }
+  for (let x = min.x - 40; x <= max.x + 40; x += 2.5 + r() * 2.5) { // wall of trees behind the lot
+    addTree(x + (r() - 0.5) * 2, (backDir > 0 ? max.z : min.z) + backDir * (7 + r() * 10), pick());
+  }
+
+  // --- Understorey: the model's own shrubs, scattered at the forest edge -------------------------
+  const bushes = foliage.bushes.map((m, i) => makeFoliageTemplate(m, `bushTpl${i}`));
+  if (bushes.length) {
+    for (let i = 0; i < 260; i++) {
+      const ang = r() * Math.PI * 2, dist = 9 + Math.pow(r(), 0.8) * 80;
+      const x = cx + Math.cos(ang) * dist, z = cz + Math.sin(ang) * dist;
+      if (!free(x - 0.8, x + 0.8, z - 0.8, z + 0.8)) continue;
+      const b = tag(bushes[Math.floor(r() * bushes.length)].createInstance(`bush${i}`));
+      b.scaling.setAll(0.8 + r() * 0.9);
+      b.rotation.y = r() * Math.PI * 2;
+      b.position.set(x, groundY, z);
+    }
+  }
+  // If the broadleaf model can't load, its spots get conifers instead (same deterministic layout).
+  const fillWithConifers = () => { for (const sl of broadleafSlots) addTree(sl.x, sl.z, sl.v < 0.6 ? "fir" : "pine"); };
+  return { trees, broadleafSlots, fillWithConifers };
+}
+
+/**
+ * Instance the broadleaf trees ("Low Poly Tree Scene Free" by Nicholas-3D, CC BY 4.0; trees-only
+ * extract in models/props/) into the spots buildForest reserved. The file holds 23 placed copies
+ * of two designs; each distinct design becomes one template (trunk + leaves merged, base at origin).
+ */
+export async function addBroadleafTrees(scene, slots, groundY, url = "/models/props/broadleaf_trees.glb") {
+  const res = await ImportMeshAsync(url, scene);
+  const byDesign = new Map(); // source geometry ids → one tree node that uses them
+  for (const node of res.transformNodes.concat(res.meshes)) {
+    if (!/^tree\d+$/.test(node.name)) continue;
+    const parts = node.getChildMeshes(false).filter((m) => m.getTotalVertices() > 0);
+    const key = parts.map((m) => (m.sourceMesh || m).geometry?.uniqueId).sort().join(",");
+    const hasLeaves = parts.some((m) => /leaves/i.test((m.sourceMesh || m).material?.name || ""));
+    if (hasLeaves && !byDesign.has(key)) byDesign.set(key, parts); // skip the bare-trunk prop
+  }
+  const templates = [];
+  for (const parts of byDesign.values()) {
+    const baked = parts.map((m) => {
+      const src = m.sourceMesh || m;
+      const c = src.clone(`${src.name}Bake`, null, true);
+      c.makeGeometryUnique();
+      c.parent = null;
+      c.position.setAll(0); c.rotationQuaternion = null; c.rotation.setAll(0); c.scaling.setAll(1);
+      c.bakeTransformIntoVertices(m.computeWorldMatrix(true));
+      c.material = src.material;
+      return c;
+    });
+    const t = Mesh.MergeMeshes(baked, true, true, undefined, false, true);
+    t.refreshBoundingInfo();
+    let bb = t.getBoundingInfo().boundingBox;
+    t.bakeTransformIntoVertices(Matrix.Translation(-(bb.minimum.x + bb.maximum.x) / 2, -bb.minimum.y, -(bb.minimum.z + bb.maximum.z) / 2));
+    t.refreshBoundingInfo();
+    bb = t.getBoundingInfo().boundingBox;
+    const h = bb.maximum.y - bb.minimum.y;
+    // The designs are 7.5–9 m; mature broadleaves beside 13–18 m pines read better at ~12–13 m.
+    t.scaling.setAll(12.5 / h);
+    t.bakeCurrentTransformIntoVertices();
+    t.name = `broadleafTpl${templates.length}`;
+    t.isVisible = false;
+    t.checkCollisions = false;
+    templates.push(tag(t));
+  }
+  for (const m of res.meshes) m.dispose(false, false); // the imported layout; materials live on in the templates
+  for (const n of res.transformNodes) n.dispose();
+  // Wet, overcast look to match mood.js: deeper, less yellow leaves; matte (weak sky specular).
+  for (const mat of new Set(templates.flatMap((t) => t.material?.subMaterials || [t.material]))) {
+    if (!mat || !("albedoColor" in mat)) continue;
+    const leaves = /leaves/i.test(mat.name);
+    mat.albedoColor = leaves ? new Color3(0.55, 0.64, 0.5) : new Color3(0.62, 0.6, 0.58);
+    mat.metallic = 0;
+    mat.roughness = 0.9;
+    mat.metallicF0Factor = 0.3;
+    mat.environmentIntensity = 0.75;
+    if (leaves) { mat.backFaceCulling = false; mat.twoSidedLighting = true; }
+  }
+  // Bigger design is the canopy tree; the smaller one reads as younger growth — weight toward the big one.
+  templates.sort((a, b) => b.getTotalVertices() - a.getTotalVertices());
+  slots.forEach((sl, i) => {
+    const tpl = templates[sl.v < 0.65 || templates.length < 2 ? 0 : 1];
+    const inst = tag(tpl.createInstance(`broadleaf${i}`));
+    inst.scaling.set(sl.s * (0.9 + (sl.v * 7 % 1) * 0.2), sl.s, sl.s);
+    inst.rotation.y = sl.rot;
+    inst.position.set(sl.x, groundY - 0.05, sl.z);
+  });
+  return { templates: templates.length, trees: slots.length };
 }
 
 /**

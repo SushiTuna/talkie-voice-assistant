@@ -15,6 +15,7 @@ const crosshairEl = byId("crosshair");
 const anchorBarEl = byId("anchorBar");
 const fsBtnEl = byId("fsBtn");
 const fsLabelEl = byId("fsLabel");
+const rainBtnEl = byId("rainBtn");
 
 // ---- tunables (kept from the standalone tour) ----
 const WALK_SPEED = 0.34;     // FreeCamera speed units; ≈1.5 m/s at real scale
@@ -23,18 +24,20 @@ const EYE_HEIGHT = 1.6;      // metres; eye sits at the top of the collision ell
 const STEP_HEIGHT = 0.35;    // metres; lower obstacles are stepped onto, not collided with
 const GRAVITY = 9.81;
 const CEILING_HEIGHT = 2.6;  // metres; used to infer real-world scale from the interior
-const SKY_TOP = "#3f7fc4";
-const SKY_HORIZON = "#cfe3f2";
+const SKY_TOP = "#7d858c";     // fallback gradient sky until the HDRI (mood.js) has loaded
+const SKY_HORIZON = "#9da2a2";
 const GO_TO_MS = 700;        // animated camera move between anchors
 const ROOM_RADIUS = 4.5;     // walking within this (XZ) of an anchor marks its pill active
 
 const B = {}; // Babylon namespace, filled by loadBabylon()
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-let engine = null, scene = null, fpCam = null, arcCam = null, sun = null;
+let engine = null, scene = null, fpCam = null, arcCam = null, sun = null, hemi = null;
+let modelMeshes = [], rain = null;
 let spawnPoint = null, mode = "walk", jogging = false, fallSpeed = 0;
 let captured = false, ready = false, animating = false, pseudoFs = false;
 let loadPromise = null;
+let unsplitModel = () => {};
 
 /* ------------------------------------------------------------------ lazy start */
 
@@ -56,59 +59,7 @@ lazyIO.observe(tourEl);
 
 async function loadBabylon() {
   if (B.Engine) return;
-  const [
-    engineMod, sceneMod, mathVectorMod, mathColorMod, rayMod, freeCamMod, arcCamMod,
-    hemiMod, dirMod, loaderMod, sphereMod, groundMod, stdMatMod, dynTexMod, drpMod,
-    ssaoMod, shadowMod, , ipcMod, , perimMod, , , ,
-  ] = await Promise.all([
-    import("@babylonjs/core/Engines/engine.js"),
-    import("@babylonjs/core/scene.js"),
-    import("@babylonjs/core/Maths/math.vector.js"),
-    import("@babylonjs/core/Maths/math.color.js"),
-    import("@babylonjs/core/Culling/ray.js"),
-    import("@babylonjs/core/Cameras/freeCamera.js"),
-    import("@babylonjs/core/Cameras/arcRotateCamera.js"),
-    import("@babylonjs/core/Lights/hemisphericLight.js"),
-    import("@babylonjs/core/Lights/directionalLight.js"),
-    import("@babylonjs/core/Loading/sceneLoader.js"),
-    import("@babylonjs/core/Meshes/Builders/sphereBuilder.js"),
-    import("@babylonjs/core/Meshes/Builders/groundBuilder.js"),
-    import("@babylonjs/core/Materials/standardMaterial.js"),
-    import("@babylonjs/core/Materials/Textures/dynamicTexture.js"),
-    import("@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/defaultRenderingPipeline.js"),
-    import("@babylonjs/core/PostProcesses/RenderPipeline/Pipelines/ssao2RenderingPipeline.js"),
-    import("@babylonjs/core/Lights/Shadows/shadowGenerator.js"),
-    import("@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent.js"), // side effect
-    import("@babylonjs/core/Materials/imageProcessingConfiguration.js"),
-    import("@babylonjs/core/Collisions/collisionCoordinator.js"), // side effect: camera collisions
-    import("./perimeter.js"),
-    import("@babylonjs/loaders/glTF/index.js"),
-    import("@babylonjs/loaders/OBJ/index.js"),
-    import("@babylonjs/loaders/FBX/index.js"),
-  ]);
-  Object.assign(B, {
-    Engine: engineMod.Engine,
-    Scene: sceneMod.Scene,
-    Vector3: mathVectorMod.Vector3,
-    Ray: rayMod.Ray,
-    Color3: mathColorMod.Color3,
-    Color4: mathColorMod.Color4,
-    FreeCamera: freeCamMod.FreeCamera,
-    ArcRotateCamera: arcCamMod.ArcRotateCamera,
-    HemisphericLight: hemiMod.HemisphericLight,
-    DirectionalLight: dirMod.DirectionalLight,
-    ImportMeshAsync: loaderMod.ImportMeshAsync,
-    CreateSphere: sphereMod.CreateSphere,
-    CreateGround: groundMod.CreateGround,
-    StandardMaterial: stdMatMod.StandardMaterial,
-    DynamicTexture: dynTexMod.DynamicTexture,
-    DefaultRenderingPipeline: drpMod.DefaultRenderingPipeline,
-    SSAO2RenderingPipeline: ssaoMod.SSAO2RenderingPipeline,
-    ShadowGenerator: shadowMod.ShadowGenerator,
-    ImageProcessingConfiguration: ipcMod.ImageProcessingConfiguration,
-    buildPerimeter: perimMod.buildPerimeter,
-    makeGrassMaterial: perimMod.makeGrassMaterial,
-  });
+  Object.assign(B, await import("./engine.js"));
 }
 
 function setProgress(pct, msg) {
@@ -129,16 +80,20 @@ async function loadTour() {
   posterEl.classList.add("loading");
   setProgress(2, "Loading 3D engine…");
   try {
+    // The engine code and the model download in parallel; the model is parsed once both are here.
+    const fileP = findModelFile();
+    const bytesP = fileP.then((file) => (file && /\.glb$/i.test(file) ? fetchModel(file) : null));
+    bytesP.catch(() => {}); // awaited below; don't flag it as unhandled while the engine loads
     await loadBabylon();
     buildWorld();
-    const file = await findModelFile();
+    const file = await fileP;
     if (!file) {
       loadPromise = null;
       showError("No 3D model found", "Place a .glb / .gltf / .obj / .fbx file in models/ and reload.");
       return;
     }
     setProgress(6, `Fetching ${file}…`);
-    const count = await loadModel(file);
+    const count = await loadModel(file, await bytesP);
     if (!count) throw new Error("no meshes in file");
     setProgress(97, "Preparing walkthrough…");
     buildCameras();
@@ -174,27 +129,15 @@ function buildWorld() {
   window.__engine = engine; // debugging hooks (also used by tests)
   window.__scene = scene;
 
-  const horizon = B.Color3.FromHexString(SKY_HORIZON);
-  scene.clearColor = B.Color4.FromColor3(horizon, 1);
-  scene.fogMode = B.Scene.FOGMODE_EXP2; // soft haze melts the ground edge into the horizon
-  scene.fogDensity = 0.003;
-  scene.fogColor = horizon;
   scene.collisionsEnabled = true;
   scene.skipPointerMovePicking = true;
-  scene.imageProcessingConfiguration.toneMappingEnabled = true;
-  scene.imageProcessingConfiguration.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
-  scene.imageProcessingConfiguration.exposure = 1.2;
-  scene.imageProcessingConfiguration.contrast = 1.1;
 
-  const hemi = new B.HemisphericLight("hemi", new B.Vector3(0, 1, 0), scene);
-  hemi.intensity = 0.75;
-  hemi.groundColor = new B.Color3(0.55, 0.55, 0.55); // default black made ceilings pitch black
+  hemi = new B.HemisphericLight("hemi", new B.Vector3(0, 1, 0), scene);
   sun = new B.DirectionalLight("sun", new B.Vector3(-0.4, -1, 0.35), scene);
-  sun.intensity = 1.1;
   sun.position.set(10, 15, -10);
-  scene.ambientColor = new B.Color3(0.3, 0.3, 0.33);
-
-  buildSky();
+  // Overcast HDRI sky + image-based light, misty mountains, fog and the colour grade (mood.js);
+  // the gradient dome shows until the HDRI has loaded.
+  B.mood.setupAtmosphere(scene, { hemi, sun, fallbackSky: buildSky() });
   engine.runRenderLoop(() => {
     // Never let an exception escape: Babylon stops re-scheduling RAF if a frame throws.
     try {
@@ -300,25 +243,6 @@ function buildSky() {
   return sky;
 }
 
-/** The model's ground material (largest land/grass/terrain mesh) and how many metres its texture spans. */
-function findModelGrass() {
-  let best = null;
-  for (const m of scene.meshes) {
-    const tex = m.material?.albedoTexture || m.material?.diffuseTexture;
-    if (!tex || !/land|grass|terrain|ground|lawn/i.test(m.name) || m.metadata?.perimeter) continue;
-    const b = m.getBoundingInfo().boundingBox;
-    const sizeX = b.maximumWorld.x - b.minimumWorld.x;
-    const area = sizeX * (b.maximumWorld.z - b.minimumWorld.z);
-    if (best && area <= best.area) continue;
-    const uv = m.getVerticesData("uv");
-    let u0 = Infinity, u1 = -Infinity;
-    for (let i = 0; uv && i < uv.length; i += 2) { u0 = Math.min(u0, uv[i]); u1 = Math.max(u1, uv[i]); }
-    const uSpan = uv ? (u1 - u0) * (tex.uScale || 1) : 1;
-    best = { material: m.material, tileMeters: sizeX / Math.max(uSpan, 1e-3), area };
-  }
-  return best;
-}
-
 /** Billboard trees and bushes in the model (alpha-textured, low-poly), split by height. */
 function findModelFoliage() {
   const trees = [], bushes = [];
@@ -335,10 +259,10 @@ function findModelFoliage() {
 }
 
 /** Large grass plane just under the lot so the model doesn't float in a void. */
-function buildSurroundingGround(y, grass) {
+function buildSurroundingGround(y) {
   const ground = B.CreateGround("surroundings", { width: 2000, height: 2000 }, scene);
   ground.position.y = y;
-  ground.material = B.makeGrassMaterial(scene, grass?.material, grass?.tileMeters);
+  ground.material = B.makeGrassMaterial(scene, 2000);
   ground.checkCollisions = true; // walk around the lot instead of falling off its edge
   ground.isPickable = false;
   return ground;
@@ -360,9 +284,27 @@ function buildCameras() {
   const size = max.subtract(min);
   const center = min.add(max).scale(0.5);
   spawnPoint = findSpawn(min, max);
-  buildSurroundingGround(spawnPoint.y - 0.08, findModelGrass());
-  // Street goes on the side of the lot where the tour starts; planting reuses the model's own foliage.
-  B.buildPerimeter(scene, min, max, spawnPoint.y - 0.08, spawnPoint.z >= center.z ? 1 : -1, findModelFoliage());
+  const groundY = spawnPoint.y - 0.08;
+  buildSurroundingGround(groundY);
+  // Dark bronze facade, clear glass, wet pavers with planar reflections, warm interior light.
+  const { mirror } = B.mood.restyleModel(scene, { modelMeshes, anchors: ROOM_ANCHORS, groundY });
+  // Lane on the side of the lot where the tour starts; pine forest all around; the model's shrubs as understorey.
+  const forest = B.buildForest(scene, min, max, groundY, spawnPoint.z >= center.z ? 1 : -1, findModelFoliage(), { mirror });
+  // Soft sky occlusion on the ground under the raised house and under each tree (the sun's
+  // shadow map alone leaves the ground beneath the house lit by the overcast sky).
+  const roof = modelMeshes.find((m) => /^Roof_/.test(m.material?.name || ""));
+  const rb = roof?.getBoundingInfo().boundingBox;
+  const slab = modelMeshes.find((m) => /ED_CONCRETE/.test(m.name)); // by mesh name: restyleModel swapped its material
+  const decalY = Math.max(groundY, slab ? slab.getBoundingInfo().boundingBox.maximumWorld.y : groundY) + 0.02;
+  const occlude = () => B.addGroundOcclusion(scene, { y: groundY + 0.02 });
+  occlude(); // conifers first, at grass height; the house call below then finds no new trees
+  B.addGroundOcclusion(scene, { footprint: rb && { min: rb.minimumWorld, max: rb.maximumWorld }, y: decalY });
+  // Broadleaf trees for the mid/far forest stream in after the tour is ready (5 MB); conifers if that fails.
+  B.addBroadleafTrees(scene, forest.broadleafSlots, groundY).then(occlude, (err) => {
+    console.warn("broadleaf trees unavailable, planting conifers instead:", err);
+    forest.fillWithConifers();
+    occlude();
+  });
 
   fpCam = new B.FreeCamera("fp", spawnPoint.add(new B.Vector3(0, EYE_HEIGHT + 0.05, 0)), scene);
   fpCam.checkCollisions = true;
@@ -404,6 +346,15 @@ function buildCameras() {
 
   scene.activeCamera = fpCam;
   setupRenderQuality([fpCam, arcCam]);
+  // Ferrari SF90 + Porsche 911 under the carport, where the model's own cars were (~23 MB, streamed in).
+  if (slab) {
+    import("./cars.js").then((m) => m.addGarageCars(scene, {
+      ref: slab, floorY: slab.getBoundingInfo().boundingBox.maximumWorld.y, shadows: sun.getShadowGenerator(), mirror,
+    })).catch((err) => console.warn("garage cars unavailable:", err));
+  }
+  rain = B.mood.createRain(scene, { bounds: { min, max }, groundY, enabled: !reduceMotion.matches });
+  unsplitModel(); // last probe ray is cast; back to one draw call per mesh
+  updateRainBtn();
   // The SSAO/post pipelines only attach to these two cameras — never render with a third one;
   // that is why goTo() animates the existing fp camera instead of creating a new one.
 }
@@ -411,17 +362,20 @@ function buildCameras() {
 /** Shadows, ambient occlusion, anti-aliasing, tone mapping and texture filtering. */
 function setupRenderQuality(cameras) {
   // Only the house casts shadows (keeps the shadow map sharp); the neighbourhood just receives them.
-  const modelMeshes = scene.meshes.filter((m) => m.name !== "sky" && m.name !== "surroundings" && !m.metadata?.perimeter && m.getTotalVertices() > 0);
+  // Meshes entirely below the surrounding ground (the model's buried soil block) are left out:
+  // they can't shadow anything visible and would stretch the shadow frustum, blurring the shadows.
+  const groundY = scene.getMeshByName("surroundings")?.position.y ?? -Infinity;
+  const casters = modelMeshes.filter((m) => m.getTotalVertices() > 0 && m.getBoundingInfo().boundingBox.maximumWorld.y > groundY);
 
   // Soft sun shadows (PCF). The light's shadow frustum is fitted to the casters automatically.
   sun.autoCalcShadowZBounds = true;
   const shadows = new B.ShadowGenerator(2048, sun);
   shadows.usePercentageCloserFiltering = true;
-  shadows.filteringQuality = B.ShadowGenerator.QUALITY_MEDIUM;
+  shadows.filteringQuality = B.ShadowGenerator.QUALITY_HIGH;
   shadows.bias = 0.0005;
   shadows.normalBias = 0.02;
-  shadows.setDarkness(0.35); // 0 = pitch-black shadows; keep some fill so undersides aren't black
-  for (const m of modelMeshes) { shadows.addShadowCaster(m, false); m.receiveShadows = true; }
+  shadows.setDarkness(0.25); // overcast: soft shadows, but readable (0 = pitch black)
+  for (const m of casters) { shadows.addShadowCaster(m, false); m.receiveShadows = true; }
   for (const m of scene.meshes) if (m.name === "surroundings" || m.metadata?.perimeter) m.receiveShadows = true;
 
   // Crisp textures at grazing angles (floors, grass).
@@ -448,17 +402,98 @@ function setupRenderQuality(cameras) {
   pipeline.sharpenEnabled = true;
   pipeline.sharpen.edgeAmount = 0.15;
   pipeline.imageProcessingEnabled = true;
+  B.mood.tunePost(pipeline); // wider bloom for glowing windows + film grain
 }
 
-async function loadModel(file) {
+/**
+ * Setup casts several thousand probe rays (spawn search, storey height, rain height map), and
+ * Babylon tests every triangle of a mesh whose bounds a ray touches. Meanwhile, split the big
+ * meshes into ~CHUNK-triangle submeshes so rays skip whole chunks by their bounding boxes: same
+ * triangles, same order, same hits, several times faster. Returns a function that restores the
+ * original submeshes (one draw call per mesh again); call it before the first frame.
+ */
+function splitForPicking(meshes, CHUNK = 64) {
+  // Ray.intersectsTriangle accepts hits up to `epsilon` (barycentric) outside a triangle, so a tight
+  // chunk box could cull a hit the whole mesh would return. Test each chunk against its box grown
+  // by 4·epsilon·(its longest edge), which covers them all.
+  const eps = new B.Ray(B.Vector3.Zero(), B.Vector3.Up()).epsilon;
+  const saved = [];
+  for (const m of meshes) {
+    const tris = m.getTotalIndices() / 3;
+    if (m.subMeshes?.length !== 1 || tris < CHUNK * 2 || m.skeleton || m.morphTargetManager) continue;
+    const pos = m.getVerticesData("position");
+    const idx = m.getIndices();
+    if (!pos || !idx) continue;
+    const { materialIndex, verticesStart, verticesCount, indexStart, indexCount } = m.subMeshes[0];
+    saved.push({ m, sub: [materialIndex, verticesStart, verticesCount, indexStart, indexCount] });
+    // Exact index ranges (Mesh.subdivide() can leave the last few triangles out of every chunk).
+    m.releaseSubMeshes();
+    for (let start = 0; start < indexCount; start += CHUNK * 3) {
+      B.SubMesh.CreateFromIndices(materialIndex, indexStart + start, Math.min(CHUNK * 3, indexCount - start), m);
+    }
+    m.refreshBoundingInfo();
+    m.synchronizeInstances();
+    for (const sm of m.subMeshes) {
+      const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+      let edge = 0;
+      for (let t = sm.indexStart; t < sm.indexStart + sm.indexCount; t += 3) {
+        for (let k = 0; k < 3; k++) {
+          const a = idx[t + k] * 3, b = idx[t + ((k + 1) % 3)] * 3;
+          edge = Math.max(edge, Math.hypot(pos[a] - pos[b], pos[a + 1] - pos[b + 1], pos[a + 2] - pos[b + 2]));
+          for (let c = 0; c < 3; c++) { lo[c] = Math.min(lo[c], pos[a + c]); hi[c] = Math.max(hi[c], pos[a + c]); }
+        }
+      }
+      const pad = 4 * eps * edge;
+      const min = new B.Vector3(lo[0] - pad, lo[1] - pad, lo[2] - pad);
+      const max = new B.Vector3(hi[0] + pad, hi[1] + pad, hi[2] + pad);
+      sm.canIntersects = (ray) => ray.intersectsBoxMinMax(min, max); // rays arrive in mesh-local space
+    }
+  }
+  return () => {
+    for (const { m, sub } of saved) {
+      m.releaseSubMeshes();
+      new B.SubMesh(...sub, m);
+      m.synchronizeInstances();
+    }
+  };
+}
+
+/** Download a self-contained .glb with a progress bar (6–94 %); resolves to its bytes. */
+async function fetchModel(file) {
+  const res = await fetch(`/models/${encodeURIComponent(file)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${file}`);
+  // Content-Length is the compressed size when the server gzips; it sends the real one alongside.
+  const total = Number(res.headers.get("x-decoded-length") || (res.headers.get("content-encoding") ? 0 : res.headers.get("content-length")));
+  if (!res.body || !total) return new Uint8Array(await res.arrayBuffer());
+  const out = new Uint8Array(total);
+  const reader = res.body.getReader();
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (loaded + value.length > total) throw new Error(`${file}: more bytes than announced`);
+    out.set(value, loaded);
+    loaded += value.length;
+    setProgress(6 + (loaded / total) * 88);
+  }
+  return loaded === total ? out : out.subarray(0, loaded);
+}
+
+async function loadModel(file, bytes) {
   const before = new Set(scene.meshes.map((m) => m.uniqueId));
-  await B.ImportMeshAsync(file, scene, {
-    rootUrl: "/models/",
-    onProgress: (event) => {
-      if (event.total && event.loaded) setProgress(6 + (event.loaded / event.total) * 88);
-    },
-  });
+  if (bytes) {
+    await B.ImportMeshAsync(bytes, scene, { pluginExtension: ".glb" });
+  } else {
+    await B.ImportMeshAsync(file, scene, {
+      rootUrl: "/models/",
+      onProgress: (event) => {
+        if (event.total && event.loaded) setProgress(6 + (event.loaded / event.total) * 88);
+      },
+    });
+  }
   const fresh = scene.meshes.filter((m) => !before.has(m.uniqueId));
+  modelMeshes = fresh;
+  unsplitModel = splitForPicking(fresh); // undone at the end of buildCameras()
   const freshIds = new Set(fresh.map((m) => m.uniqueId));
   // True roots: no fresh mesh anywhere in the ancestor chain (intermediate
   // glTF TransformNodes aren't in scene.meshes, so check parents recursively).
@@ -611,11 +646,22 @@ function updateHud() {
   if (!ready) return;
   badgeEl.innerHTML = mode === "walk"
     ? (captured
-      ? "<b>Walk mode</b> — WASD move · mouse look · Shift run · <b>V</b> dollhouse · Esc release"
+      ? "<b>Walk mode</b> — WASD move · mouse look · Shift run · <b>V</b> dollhouse · <b>R</b> rain · Esc release"
       : "<b>Walk mode</b> — click the view to take control")
     : (captured
       ? "<b>Dollhouse view</b> — drag orbit · wheel zoom · <b>V</b> back to walk"
       : "<b>Dollhouse view</b> — click the view to orbit · <b>V</b> back to walk");
+}
+
+function toggleRain() {
+  if (!rain) return;
+  rain.setEnabled(!rain.isEnabled());
+  updateRainBtn();
+}
+
+function updateRainBtn() {
+  rainBtnEl.setAttribute("aria-pressed", String(!!rain?.isEnabled()));
+  rainBtnEl.querySelector("span").textContent = rain?.isEnabled() ? "Rain on" : "Rain off";
 }
 
 function setMode(next) {
@@ -783,9 +829,11 @@ function wireTour() {
   byId("startBtn").addEventListener("click", () => ensureTour());
   byId("retryBtn")?.addEventListener("click", () => location.reload());
   fsBtnEl.addEventListener("click", () => (fsActive() ? exitFullscreen() : enterFullscreen()));
+  rainBtnEl.addEventListener("click", () => toggleRain());
   canvas.addEventListener("click", () => { if (ready) capture(); });
   canvas.addEventListener("keydown", (e) => {
     if (e.code === "KeyV" && !e.repeat && ready) setMode(mode === "walk" ? "dollhouse" : "walk");
+    if (e.code === "KeyR" && !e.repeat && rain) toggleRain();
     if (e.key === "Shift") jogging = true;
     if (e.key === "Escape") release();
   });
