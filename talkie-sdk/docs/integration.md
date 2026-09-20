@@ -35,6 +35,21 @@ import { HttpBackend } from '@talkie/voice-ui/backends/http-backend.js';
 const backend = new HttpBackend({ baseUrl: 'http://localhost:8000' });
 ```
 
+For the AssemblyAI Voice Agent API — one socket covering recognition, the model turn and speech —
+use the agent adapter instead. It needs only a route of yours that mints a short-lived token:
+
+```js
+import { VoiceAgentBackend } from '@talkie/voice-ui/backends/voice-agent-backend.js';
+
+const backend = new VoiceAgentBackend({
+  tokenUrl: 'https://your-server/agent/token',
+  systemPrompt: 'You are Talkie, a concise product assistant.',
+});
+```
+
+See the [README](../README.md#voiceagentbackend--one-socket-for-the-whole-turn) for the token route
+and the behavioural trade-offs of mapping a continuous agent onto push-to-talk.
+
 To wire a different stack, implement the four methods yourself:
 
 ```js
@@ -62,7 +77,6 @@ import { CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
   template: `
     <talkie-widget
       [backend]="backend"
-      mode="auto"
       (talkie-error)="onError($event)"
     ></talkie-widget>
   `,
@@ -85,7 +99,7 @@ so the backend contract works without any escape hatch.
 ```vue
 <!-- App.vue -->
 <template>
-  <talkie-widget :backend="backend" mode="auto" @talkie-error="onError" />
+  <talkie-widget :backend="backend" @talkie-error="onError" />
 </template>
 
 <script setup>
@@ -127,7 +141,7 @@ function App() {
   const backend = useRef({ /* see backend config above */ }).current;
 
   return (
-    <talkie-widget backend={backend} mode="auto" onTalkieError={(e) => console.error(e.detail?.reason)} />
+    <talkie-widget backend={backend} onTalkieError={(e) => console.error(e.detail?.reason)} />
   );
 }
 ```
@@ -170,7 +184,7 @@ function App() {
     return () => el.removeEventListener('talkie-error', onError);
   }, []); // run once on mount
 
-  return <talkie-widget ref={widgetRef} mode="auto" />;
+  return <talkie-widget ref={widgetRef} />;
 }
 ```
 

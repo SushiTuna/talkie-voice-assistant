@@ -10,11 +10,13 @@
     "./core/backend.js": "./src/core/backend.js",
     "./backends/mock-backend.js": "./src/backends/mock-backend.js",
     "./backends/http-backend.js": "./src/backends/http-backend.js",
-    "./audio/mic-capture.js": "./src/audio/mic-capture.js"
+    "./backends/voice-agent-backend.js": "./src/backends/voice-agent-backend.js",
+    "./audio/mic-capture.js": "./src/audio/mic-capture.js",
+    "./audio/pcm-codec.js": "./src/audio/pcm-codec.js"
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs"
+    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs && node tests/pcm-codec.mjs && node tests/voice-agent-backend.mjs"
   },
   "dependencies": {
     "lit": "^3.3.3",

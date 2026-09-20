@@ -2,6 +2,7 @@ import '../src/define/talkie-widget.js';
 import '../src/define/talkie-launcher.js';
 import { MockBackend, SCRIPT, chunkText } from '../src/backends/mock-backend.js';
 import { HttpBackend } from '../src/backends/http-backend.js';
+import { VoiceAgentBackend } from '../src/backends/voice-agent-backend.js';
 import { TalkieBackendError } from '../src/core/backend.js';
 
 /* ── State metadata (matches mockup palette) ─────────────────────── */
@@ -201,37 +202,31 @@ function initWidget() {
     }
   });
 
-  /* Space/Esc conveniences */
+  /* Space opens the widget; once open, the widget owns Space itself (start /
+     stop) and Escape (cancel), so the harness must not also act on them. */
   document.addEventListener('keydown', (e) => {
-    if (e.code !== 'Space') return;
+    if (e.code !== 'Space' || widgetInstance.open) return;
     e.preventDefault();
-    if (!widgetInstance.open) {
-      widgetInstance.show();
-    } else if (widgetInstance.state === 'idle') {
-      widgetInstance.startListening('keyboard-space');
-    }
-  });
-  document.addEventListener('keyup', (e) => {
-    if (e.code === 'Space' && widgetInstance.state === 'listening') {
-      widgetInstance.releaseListening('space-release');
-    }
+    widgetInstance.show();
   });
 
+  // Capture phase on purpose: the widget cancels its own in-flight work on Escape
+  // from a bubble-phase listener, so by the time a bubble-phase handler here ran,
+  // the state would already read 'idle' and one keypress would both cancel and
+  // close. Reading the state first keeps the two presses distinct.
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape') return;
-    if (!widgetInstance.open) return;
+    if (e.key !== 'Escape' || !widgetInstance.open) return;
+    if (widgetInstance.state !== 'idle') return;  // widget cancels its own work
     e.preventDefault();
-    if (widgetInstance.state !== 'idle') {
-      // Cancel in-flight conversation
-      widgetInstance.reset();
-    } else {
-      widgetInstance.hide('esc close');
-    }
-  });
+    widgetInstance.hide('esc close');
+  }, true);
 }
 
 /** @type {HttpBackend | null} Disposed before each new live run. */
 let liveBackend = null;
+
+/** @type {VoiceAgentBackend | null} Disposed before each new voice-agent run. */
+let agentBackend = null;
 
 /* ── Scenario-driven navigation ────────────────────────────────
  * The rail triggers end-to-end scenarios through the real public API surface:
@@ -272,10 +267,75 @@ function goLive() {
   });
 }
 
+/**
+ * Scenario 8 — AssemblyAI Voice Agent API: one socket for recognition, the model turn
+ * and speech, instead of the voice server's three separate calls.
+ *
+ * Needs a route that mints a short-lived agent token, because the vendor API key must
+ * never reach the browser. Point at it with ?agentTokenUrl=<url>, or ?agentApi=<origin>
+ * to use that origin's /agent/token. Like scenario 7 this touches the microphone, so it
+ * stays behind an explicit click.
+ */
+async function goVoiceAgent() {
+  clearConversationTimer();
+  listenActive = true;
+  const params = new URLSearchParams(location.search);
+  const origin = params.get('agentApi') || 'http://localhost:8000';
+  const tokenUrl = params.get('agentTokenUrl') || `${origin}/agent/token`;
+
+  // The persona and the property facts come from the server, not from this page, so the
+  // agent's knowledge can change without rebuilding the bundle. A failure here is not
+  // fatal: the agent still answers, just without the listing in front of it.
+  // ?profile= picks one of the server's agent profiles (property, finance, it-support…).
+  const profile = params.get('profile');
+  let context = null;
+  try {
+    const url = `${origin}/agent/context${profile ? `?profile=${encodeURIComponent(profile)}` : ''}`;
+    const res = await fetch(url);
+    if (res.ok) context = await res.json();
+    else appendLog(now(), 'AGENT', `Context ${res.status} from ${url}`, '#ff6b6b');
+  } catch { /* server not running, or no context route */ }
+  appendLog(now(), 'AGENT',
+    context ? `Profile "${context.profile}" — ${context.description || 'no description'}, ${context.keyterms.length} keyterms`
+            : `No /agent/context from ${origin} — running without domain knowledge`,
+    context ? '#7fb5ff' : '#ffc96b');
+
+  agentBackend?.dispose();
+  agentBackend = new VoiceAgentBackend({
+    tokenUrl,
+    // ?agentWsUrl= points the socket somewhere other than the vendor, which is how this
+    // scenario gets exercised against a local stand-in without a vendor key.
+    ...(params.get('agentWsUrl') ? { wsUrl: params.get('agentWsUrl') } : {}),
+    // `greeting` is deliberately not passed: the agent speaks it on session.ready, which
+    // in a press-to-talk widget lands while the caller is already being listened to.
+    systemPrompt: context?.system_prompt
+      ?? 'You are a concise voice assistant. Answer in one or two sentences.',
+    keyterms: context?.keyterms ?? undefined,
+    ...(context?.voice ? { voice: context.voice } : {}),
+  });
+  widgetInstance.backend = agentBackend;
+  widgetInstance.reset();
+  widgetInstance.show();
+
+  // Warm the token and the audio graph before listening starts; the socket is opened on
+  // the press, since the token is single-use and short-lived.
+  appendLog(now(), 'AGENT', `Warming up — token from ${tokenUrl}…`, '#7fb5ff');
+  agentBackend.prewarm({ mic: true }).then((warm) => {
+    appendLog(now(), 'AGENT',
+      `Ready — token:${warm.token} audio:${warm.audio} mic:${warm.mic}. Speak, then click again or press Space to send.`,
+      '#7fb5ff');
+    widgetInstance.startListening('rail');
+  });
+}
+
 /** Scenario 6 — close widget and clear state. */
 function goReset() {
   clearConversationTimer();
   listenActive = false;
+  // Ending the agent session here matters: the vendor otherwise holds it open for its
+  // resume window, and repeated runs stack up abandoned sessions.
+  agentBackend?.dispose();
+  agentBackend = null;
   widgetInstance.reset();
   widgetInstance.hide('manual reset');
   setClosedUI();
@@ -292,15 +352,15 @@ function goFullConversation() {
   autoReleaseIn(1500);
 }
 
-/** Scenario 2 — stays listening until released (no auto-release timer). */
-function goHoldListening() {
+/** Scenario 2 — stays recording until stopped (no auto-release timer). */
+function goOpenRecording() {
   clearConversationTimer();
   listenActive = true;
   widgetInstance.backend = new MockBackend();
   widgetInstance.reset();
   widgetInstance.show();
   widgetInstance.startListening('rail');
-  appendLog(now(), 'RAIL', 'Hold-listening active — click again or press Space to release', '#ff8a4c');
+  appendLog(now(), 'RAIL', 'Recording — press Stop, the space bar, or click this again to send', '#ff8a4c');
 }
 
 /** Scenario 3 — parks on thinking via slow-thinking backend. */
@@ -349,10 +409,10 @@ function setHint(open) {
   const el = document.getElementById('hint');
   while (el.firstChild) el.removeChild(el.firstChild);
   if (open) {
-    el.appendChild(document.createTextNode('Hold '));
+    el.appendChild(document.createTextNode('Press '));
     const kbd1 = document.createElement('kbd'); kbd1.textContent = 'Space';
     el.appendChild(kbd1);
-    el.appendChild(document.createTextNode(' or tap the button to talk · '));
+    el.appendChild(document.createTextNode(' or the button to start, again to send · '));
     const kbd2 = document.createElement('kbd'); kbd2.textContent = 'E';
     el.appendChild(kbd2);
     el.appendChild(document.createTextNode(' error · '));
@@ -409,12 +469,13 @@ function buildRail() {
 
   const items = [
     { go: 'full-conversation',  num: '01', label: 'Full conversation',  desc: 'Ask, think, answer — end to end',  action: goFullConversation },
-    { go: 'hold-listening',     num: '02', label: 'Hold listening',     desc: 'Stays listening until you release', action: goHoldListening },
+    { go: 'open-recording',     num: '02', label: 'Open recording',     desc: 'Keeps recording until you stop it', action: goOpenRecording },
     { go: 'slow-answer',        num: '03', label: 'Slow answer',        desc: "Parks on 'Finding the right answer…'", action: goSlowAnswer },
     { go: 'mic-blocked',        num: '04', label: 'Mic blocked',        desc: "Permission denied error",            action: goMicBlocked },
     { go: 'offline',            num: '05', label: 'Offline',            desc: 'Network failure error',              action: goOffline },
     { go: 'reset',              num: '06', label: 'Reset',              desc: 'Close the widget and clear state', action: goReset },
     { go: 'live',               num: '07', label: 'Live backend',      desc: 'Real mic + server (?live or ?api=)', action: goLive },
+    { go: 'voice-agent',        num: '08', label: 'Voice Agent API',   desc: 'Server-configured agent on one socket (?profile=)', action: goVoiceAgent },
   ];
 
   items.forEach(item => {
@@ -439,12 +500,12 @@ function buildRail() {
 
     btn.addEventListener('click', () => {
       /* Scenario #2 is a toggle — click again while running to release */
-      if (item.go === 'hold-listening' && listenActive) {
+      if (item.go === 'open-recording' && listenActive) {
         widgetInstance.releaseListening('rail-release');
         listenActive = false;
         return;
       }
-      if (item.go === 'hold-listening') listenActive = true;
+      if (item.go === 'open-recording') listenActive = true;
       item.action();
       setActiveRail(item.go);
     });

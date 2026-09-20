@@ -86,6 +86,7 @@ The SDK ships two backends:
 |---|---|
 | `MockBackend` | Replays four scripted Q&A pairs with simulated timing (950 ms transcribe + 1500 ms think). Zero network, zero permissions — the default for the demo harness and tests. |
 | `HttpBackend` | Talks to a running Talkie voice server: real microphone capture, streaming speech recognition, a streaming LLM answer and synthesised speech. |
+| `VoiceAgentBackend` | Talks to the [AssemblyAI Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api): one WebSocket that does recognition, the model turn and speech synthesis. Your server only mints a token. |
 
 ### `HttpBackend` — the real thing
 
@@ -113,7 +114,7 @@ widget.backend = new HttpBackend({
 | `dispose()` | Stops the mic, closes the socket, and ends the server session so the post-call webhook fires. |
 
 Audio goes **straight from the browser to the speech vendor**, not through your server — the
-transcript is ready the instant the user releases the button. Your server only mints the token,
+transcript is ready the instant the user presses Stop. Your server only mints the token,
 so the vendor API key never reaches the browser.
 
 **Errors** arrive as `TalkieBackendError` with a `reason` the widget maps directly onto its error
@@ -131,6 +132,117 @@ Implement these to point `HttpBackend` at your own stack:
 | `POST` | `/chat/ask` | `text/event-stream` of `data: {"delta": "..."}`, ending `data: [DONE]` |
 | `POST` | `/tts` | audio bytes (`audio/mpeg`) |
 | `POST` | `/chat/session/{id}/end` | post-call summary |
+
+### `VoiceAgentBackend` — one socket for the whole turn
+
+Where `HttpBackend` coordinates three vendors behind your own server, this speaks to
+[AssemblyAI's Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api):
+a single duplex WebSocket that transcribes, runs the model turn and synthesises the reply.
+
+```js
+import { VoiceAgentBackend } from '@talkie/voice-ui/backends/voice-agent-backend.js';
+
+widget.backend = new VoiceAgentBackend({
+  tokenUrl: 'https://your-server/agent/token',   // mints the short-lived token
+  systemPrompt: 'You are Talkie, a concise product assistant.',
+  voice: 'anna',
+  keyterms: ['WanderSafe'],                      // bias recognition toward rare words
+  tools: [{ type: 'function', name: 'get_price', description: '…', parameters: {…} }],
+  onToolCall: async ({ name, arguments: args }) => runTool(name, args),
+});
+```
+
+Pass `agentId: '<id>'` instead of the inline fields to use an agent you created with the
+Agents REST API. The two are mutually exclusive and combining them throws immediately,
+rather than failing the session on the wire.
+
+**Keeping the persona off the page.** `systemPrompt` is just a string, so where it comes
+from is your choice — but hard-coding it in the bundle means a rebuild per edit, and
+anything in the page can be tampered with. The demo instead fetches it from the voice
+server:
+
+```js
+const ctx = await fetch(`${origin}/agent/context?profile=it-support`).then(r => r.json());
+widget.backend = new VoiceAgentBackend({
+  tokenUrl: `${origin}/agent/token`,
+  systemPrompt: ctx.system_prompt,
+  keyterms: ctx.keyterms,
+  voice: ctx.voice,
+});
+```
+
+Each profile is a JSON file on the server — persona, knowledge, boundaries, style — and is
+re-read when it changes, so editing one takes effect on the next page load. The schema is
+domain-neutral; see *Configuring the voice agent* in the voice server's README.
+
+**How each contract method is carried:**
+
+| Method | Transport |
+|---|---|
+| `startCapture()` | Fetches a token, opens `wss://agents.assemblyai.com/v1/ws?token=…`, sends one `session.update`, waits for `session.ready`, then streams 24 kHz mono PCM as base64 `input.audio` frames. Later turns reuse the open socket. |
+| `stopCapture()` | Stops the mic, pads the stream with PCM silence until the agent closes the turn, and returns the joined `transcript.user` text. |
+| `ask(text, signal)` | Sends nothing — the agent started replying when it closed the turn. Yields the `transcript.agent` text that the message handler has been buffering. |
+| `speak(text, signal)` | Wraps the buffered `reply.audio` PCM in a WAV container and plays it. No second synthesis request. |
+| `dispose()` | Sends `session.end` and closes the socket, so the vendor does not hold the session for its 30 s resume window. |
+
+The socket stays open across turns — the reply arrives on it, and the conversation's context
+lives in the session. That is the opposite of `HttpBackend`, which closes its speech socket per
+turn precisely to avoid idle time.
+
+**The token route.** The vendor API key must never reach the browser, so `tokenUrl` points at a
+route of yours that proxies
+[`GET https://agents.assemblyai.com/v1/token`](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/generate-voice-agent-token)
+and returns its `{ token, expires_in_seconds }` verbatim. Tokens are **single-use** and last at
+most 600 seconds, so mint a fresh one per connection:
+
+```js
+// Express, for illustration. Keep ASSEMBLYAI_API_KEY server-side.
+app.get('/agent/token', async (_req, res) => {
+  const upstream = await fetch('https://agents.assemblyai.com/v1/token?expires_in_seconds=300', {
+    headers: { Authorization: `Bearer ${process.env.ASSEMBLYAI_API_KEY}` },
+  });
+  res.status(upstream.status).json(await upstream.json());
+});
+```
+
+Pass `fetchToken: async () => ({ token, expires_in_seconds })` instead if the credential comes
+from somewhere other than a GET, and `tokenUrl` is ignored. With neither option the default is
+`${baseUrl}/agent/token`.
+
+**Why the silence padding.** The agent decides end-of-turn itself, and its client event list has
+no "commit turn" event. Releasing the button stops audio altogether, which is not the same as
+silence, so `stopCapture()` keeps the socket open and feeds it 400 ms of explicit zeroes. That is
+what closes the turn when someone releases the button *mid-sentence*; override it with
+`endOfTurnPadMs`.
+
+**The agent will usually answer before you release.** Measured against the live service: the same
+utterance was replayed at `min_silence: 2000` and at `min_silence: 200`, and the turn closed
+2301 ms after speech began in both runs — roughly 210 ms after the speech itself ended, identically.
+The documented silence thresholds did not move end-of-turn timing at all, so this adapter leaves
+them at the service's defaults rather than pretending to control them. `turnDetection` is still
+passed straight through if you want to experiment.
+
+The practical consequence is that **the button is a backstop, not the trigger**: stop speaking and
+the agent begins its reply on its own, typically before the press lands. One press can also produce
+more than one turn if the caller pauses long enough to look finished. The widget handles this
+correctly — the reply is buffered whenever it arrives — but if you need the press to be the sole
+turn boundary, this API cannot currently give you that: there is no way to disable turn detection
+and no client event to commit a turn.
+
+**Behaviour worth knowing before you ship it:**
+
+- The answer arrives as one `transcript.agent` frame, sent *after* all reply audio, so `ask()`
+  yields once and the widget's word-paced reveal supplies the streaming feel.
+- Barge-in is off (`interrupt_response: false`): push-to-talk closes the mic during the reply, so
+  nothing can interrupt it, and leaving it on only risks the agent cutting itself off on room noise.
+- Turn detection cannot be disabled and there is no commit-turn event, so the agent's own
+  end-of-turn decision always wins over the button. See the measurement above.
+- `greeting` is spoken on `session.ready`, which in a push-to-talk widget lands while the caller is
+  already being listened to. It is omitted by default for that reason.
+- `session.resume` is not used. A reconnect needs a fresh single-use token anyway, and the vendor's
+  window is only 30 seconds.
+- Errors arrive as `TalkieBackendError`, same as `HttpBackend`: an unreachable socket or a transient
+  `server_error` maps to `offline`, auth and config failures to `backend-failure`.
 
 ### Trying it live
 
@@ -213,12 +325,31 @@ widget.addEventListener('talkie-state-change', ev => {
 });
 ```
 
+## Interaction model
+
+Recording is **start / stop**, not press-and-hold: press **Start Recording**, speak for as long as
+you need, then press **Stop & Send**. A press-and-hold gesture caps an utterance at how long
+someone is willing to keep a finger down, is awkward on touch, and has no accessible equivalent —
+holding a key is not something every input device can do.
+
+| Input | Start | Stop and send | Discard |
+|---|---|---|---|
+| Pointer / touch | Start Recording | Stop & Send | Discard |
+| Keyboard | <kbd>Space</kbd>, or <kbd>Enter</kbd>/<kbd>Space</kbd> on the focused button | <kbd>Space</kbd>, or the button | <kbd>Esc</kbd> |
+
+While an answer is playing, <kbd>Space</kbd>, <kbd>Esc</kbd>, **Stop** and **Ask another** all cut
+the audio short — every exit from the speaking state aborts the `speak()` signal, so the backend
+stops playback rather than talking over the next question.
+
+While recording, the widget shows a live `mm:ss` clock so a long answer never looks stalled.
+Discarding (or <kbd>Esc</kbd>) closes the microphone and the speech socket without sending the
+transcript.
+
 ## Public API
 
 | Property / Method | Type                | Description                              |
 |-------------------|---------------------|------------------------------------------|
 | `backend`         | `TalkieBackend`     | Set before showing the widget.           |
-| `mode`            | `'hold' \| 'toggle' \| 'auto'` | Input mode (default: `'auto'`). |
 | `open`            | `boolean` (reflect) | Current open/closed state.               |
 | `state`           | `string` (reflect)  | Current FSM state — read-only.           |
 | `show()`          | `void`              | Open widget; resets any in-flight state. |
@@ -233,15 +364,16 @@ These are intentionally out of scope for the current release. See linked issues 
   transcript panel for previous turns is planned.
 - **No text-input fallback.** The error view copy says "or type your question" but there is no text
   input element yet. This would need a `<talkie-text-input>` component or a prop injection.
-- **Only `MockBackend` ships.** Wiring ASR / LLM / TTS is required for production use. The SDK
-  provides the interface and tests but not an adapter.
+- **No continuous, hands-free conversation.** `VoiceAgentBackend` maps the agent API onto the
+  widget's push-to-talk model, which costs the agent's own turn detection, barge-in and spoken
+  greeting. A continuous mode would need the widget to cycle states from backend events.
 - **Browser polyfills.** The scoped-elements polyfill is documented but not installed by the
   package. Consumers add it to their project when needed.
 
 ## Testing
 
 ```bash
-npm test          # 79 tests — state machine + mock backend (zero dependencies)
+npm test          # 272 tests — state machine, backends, audio codecs (zero dependencies)
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

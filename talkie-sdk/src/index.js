@@ -9,7 +9,9 @@ export { StateMachine, VALID_STATES, ERROR_REASONS, TRANSITIONS, TRANSITION_LABE
 export { TalkieBackendError } from './core/backend.js';
 export { MockBackend } from './backends/mock-backend.js';
 export { HttpBackend } from './backends/http-backend.js';
+export { VoiceAgentBackend } from './backends/voice-agent-backend.js';
 export { MicCapture } from './audio/mic-capture.js';
+export { encodeBase64, decodeBase64, silenceFrame, pcmToWavBytes, pcmToWavBlob } from './audio/pcm-codec.js';
 export { TalkieWidget }           from './components/talkie-widget.js';
 export { TalkieLauncher }         from './components/talkie-launcher.js';
 export { TalkieWaveform }         from './components/talkie-waveform.js';

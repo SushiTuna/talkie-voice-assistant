@@ -4,6 +4,7 @@ import { svg } from 'lit-html';
 import { LionButton } from '@lion/ui/button.js';
 import { LitElement } from 'lit';
 import { TalkieTranscript } from './talkie-transcript.js';
+import { TalkieWaveform } from './talkie-waveform.js';
 import { StateMachine } from '../core/state-machine.js';
 
 /** Minimum dwell time so the user actually sees the transcribing state. */
@@ -20,6 +21,12 @@ function abortableSleep(ms, signal) {
   });
 }
 
+/** mm:ss for the recording clock. */
+function formatElapsed(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
 /** Human-readable error messages keyed on state-machine reason values. */
 const ERROR_MESSAGES = /** @type {Record<string,{title:string;sub:string}>} */ ({
   'mic-permission-denied': {
@@ -28,7 +35,7 @@ const ERROR_MESSAGES = /** @type {Record<string,{title:string;sub:string}>} */ (
   },
   'no-speech-detected': {
     title: "I didn't catch that.",
-    sub: 'Hold the button and speak, then release to send.',
+    sub: 'Press Start, say your question, then press Stop to send.',
   },
   offline: {
     title: 'You appear to be offline.',
@@ -93,12 +100,12 @@ export class TalkieWidget extends ScopedLitElement {
   #abortThink = null;
   /** @type {AbortController|null} Speak abort */
   #abortSpeak = null;
-  /** @type {NodeJS.Timeout[]} Timers created by pointer handlers */
+  /** @type {NodeJS.Timeout[]} Timers scheduled for the current listening turn */
   #chunkTimers = [];
-  /** @type {boolean} Whether a pointerdown intent is active */
-  #hasIntent = false;
-  /** @type {number|null} Timestamp of pointer down */
-  #listenTime = 0;
+  /** @type {NodeJS.Timeout|null} Interval that ticks the recording clock */
+  #elapsedTimer = null;
+  /** @type {number} Timestamp recording started, for the elapsed clock */
+  #startedAt = 0;
   /** @type {boolean} Whether mic capture is active */
   #isListening = false;
   /** @type {string|null} How listening was initiated (for stop button rendering) */
@@ -114,7 +121,6 @@ export class TalkieWidget extends ScopedLitElement {
 
   static properties = {
     backend: { type: Object },
-    mode:   { type: String, attribute: 'mode' },
     open:   { type: Boolean, reflect: true },
     state:  { type: String, reflect: true },
     _tx:    { type: String, state: true },
@@ -124,10 +130,19 @@ export class TalkieWidget extends ScopedLitElement {
     // Number of answer words revealed so far. Must be reactive: the reveal timer
     // advances it and the speaking view re-renders from it.
     _shown: { type: Number, state: true },
+    // Seconds recorded so far. Reactive so the clock in the listening view ticks.
+    _elapsed: { type: Number, state: true },
   };
 
   static get scopedElements() {
-    return { 'lion-button': LionButton, 'talkie-transcript': TalkieTranscript };
+    // talkie-waveform belongs here too: without a scoped registration the tag in
+    // the recording view stays an un-upgraded HTMLElement, collapses to zero
+    // height, and the recording view shows no motion at all.
+    return {
+      'lion-button': LionButton,
+      'talkie-transcript': TalkieTranscript,
+      'talkie-waveform': TalkieWaveform,
+    };
   }
 
   static get styles() {
@@ -256,6 +271,29 @@ export class TalkieWidget extends ScopedLitElement {
         cursor: pointer;
         transition: transform .15s, box-shadow .25s;
       }
+      .rec-clock {
+        display: inline-block;
+        margin-left: 10px;
+        font-variant-numeric: tabular-nums;
+        font-size: 20px;
+        font-weight: 600;
+        opacity: .55;
+      }
+      .link-btn {
+        /* No margin: .center-layout's gap already spaces it, and any extra pushes
+           the column into the absolutely positioned hint line at the bottom. */
+        background: none;
+        border: none;
+        padding: 4px 8px;
+        font-family: inherit;
+        font-size: 13px;
+        color: var(--talkie-ink, #101d20);
+        opacity: .55;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        cursor: pointer;
+      }
+      .link-btn:hover { opacity: .9; }
       .btn-stop .sq {
         width: 9px;
         height: 9px;
@@ -407,8 +445,9 @@ export class TalkieWidget extends ScopedLitElement {
   constructor() {
     super();
     this.backend = undefined;
-    this.mode    = 'auto';
     this.open    = false;
+    /** @type {number} Seconds recorded so far */
+    this._elapsed = 0;
     /** @type {string} Reflective read-only — synced from state machine */
     this.state   = '';
 
@@ -416,14 +455,13 @@ export class TalkieWidget extends ScopedLitElement {
 
     this._onSmChange   = this._onSmChange.bind(this);
     this._onStartActivate = this._onStartActivate.bind(this);
-    this._onPointerDown = this._onPointerDown.bind(this);
-    this._onPointerUp   = this._onPointerUp.bind(this);
     this._onBtnClick    = this._onBtnClick.bind(this);
     this._onCloseClick  = this._onCloseClick.bind(this);
     this._onRetryClick  = this._onRetryClick.bind(this);
     this._onStopClick   = this._onStopClick.bind(this);
     this._onAskAnotherClick = this._onAskAnotherClick.bind(this);
-    this._onTapStopClick= this._onTapStopClick.bind(this);
+    this._onStopSendClick = this._onStopSendClick.bind(this);
+    this._onCancelRecordingClick = this._onCancelRecordingClick.bind(this);
     this._onKeydown     = this._onKeydown.bind(this);
 
     this.#sm.onChange(this._onSmChange);
@@ -435,16 +473,16 @@ export class TalkieWidget extends ScopedLitElement {
 
   connectedCallback() {
     super.connectedCallback();
-    this.addEventListener('pointerdown', this._onPointerDown);
-    this.addEventListener('pointerup', this._onPointerUp);
-    this.addEventListener('keydown', this._onKeydown);
+    // Document-level, not host-level: once recording starts the button that had
+    // focus is replaced, focus falls back to <body>, and a host listener would
+    // never see the key that is supposed to stop the recording. Every handler
+    // below is gated on `this.open`, so a closed widget swallows nothing.
+    document.addEventListener('keydown', this._onKeydown);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.removeEventListener('pointerdown', this._onPointerDown);
-    this.removeEventListener('pointerup', this._onPointerUp);
-    this.removeEventListener('keydown', this._onKeydown);
+    document.removeEventListener('keydown', this._onKeydown);
     this.#disposeAll();
   }
 
@@ -556,12 +594,10 @@ export class TalkieWidget extends ScopedLitElement {
   _syncHint() {
     switch (this.#sm.state) {
       case 'idle':
-        this._hint = this.mode === 'toggle'
-          ? 'Tap the button to talk'
-          : 'Hold Space or the button to talk · release to send';
+        this._hint = 'Press Start or the space bar to record';
         break;
       case 'listening':
-        this._hint = '';
+        this._hint = 'Space sends · Esc discards';
         break;
       case 'transcribing':
         this._hint = '';
@@ -580,69 +616,48 @@ export class TalkieWidget extends ScopedLitElement {
     }
   }
 
-  /* ── Hold / Tap handlers ────────────────────── */
+  /* ── Start / Stop handlers ──────────────────── */
 
   /**
-   * Keyboard activation of the talk button. Listening otherwise starts on
-   * pointerdown, which Enter/Space never produce — so a keyboard user could focus
-   * the button and get nothing (WCAG 2.1.1). LionButton dispatches a click for
-   * Enter and Space; a keyboard-generated click reports detail === 0, which is how
-   * we tell it apart from the click that trails our own pointer sequence.
+   * Start recording. Bound to the idle button's click, which covers pointer,
+   * touch and the keyboard (LionButton turns Enter and Space into a click), so
+   * every input path lands here (WCAG 2.1.1).
    */
-  _onStartActivate(e) {
-    if (e.detail !== 0) return;          // pointer-driven: already handled
+  _onStartActivate() {
     if (this.#sm.state !== 'idle') return;
-    this.startListening('keyboard');
+    this.startListening('button-start');
   }
 
-  _onPointerDown(e) {
-    if (e.button !== 0) return;
+  /** Stop recording and send what was captured. */
+  _onStopSendClick() {
+    this.releaseListening('button-stop');
+  }
+
+  /** Discard the recording without sending it. */
+  _onCancelRecordingClick() {
+    if (this.#sm.state !== 'listening') return;
+    this.#cancelConversation('recording discarded');
+  }
+
+  /**
+   * Space bar is a shortcut for the on-screen button: press to start, press
+   * again to stop and send. Skipped when the press originates on a button,
+   * which already turns Space into a click of its own.
+   */
+  _onSpaceToggle(e) {
+    const origin = e.composedPath?.()[0];
+    if (origin && origin !== this) {
+      // A button already turns Space into a click of its own, and a text field
+      // needs the space character far more than we need the shortcut.
+      if (origin.closest?.('lion-button, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+    }
     e.preventDefault();
-    this.#hasIntent = true;
-
-    if (this.mode === 'toggle' && this.#sm.state === 'idle') {
-      this.startListening('tap-toggle');
-      return;
-    }
-
-    if ((this.mode === 'auto' || this.mode === 'hold') && this.#sm.state === 'idle') {
-      this.#listenTime = Date.now();
-      const timer = setTimeout(() => {
-        if (this.#hasIntent && this.#sm.state === 'idle') {
-          this.startListening('hold-to-talk');
-        }
-      }, 240);
-      this.#chunkTimers.push(timer);
-    }
-  }
-
-  _onPointerUp(e) {
-    if (!this.#hasIntent) return;
-    // Only act if the pointer was down inside this component
-    if (e.target?.assignedSlot?.parentNode?.getRootNode() !== this.shadowRoot
-        && e.target.getRootNode?.() !== this.shadowRoot
-        && !this.contains(e.target)) return;
-
-    const held = Date.now() - this.#listenTime;
-    const isTap = held < 240;
-
-    if (isTap) {
-      if (this.mode === 'auto') {
-        // Defect 3 fix: auto mode — short tap toggles listening
-        this.startListening('tap-toggle');
-        this.#chunkTimers.forEach(clearTimeout);
-        this.#chunkTimers = [];
-      } else {
-        // hold mode: sub-threshold tap is a cancelled hold
-        this.#cleanupListen();
-        this.#sm.transition('idle');
-      }
-    } else {
-      // Held long enough — release in any mode
-      this.releaseListening('hold-release');
-    }
-
-    this.#hasIntent = false;
+    if (this.#sm.state === 'idle') this.startListening('space-start');
+    else if (this.#sm.state === 'listening') this.releaseListening('space-stop');
+    // Space is the primary action key, so while an answer is playing it does what
+    // the on-screen Stop button does: cut the audio short. Pressing it once more
+    // then starts the next recording.
+    else if (this.#sm.state === 'speaking') this._stopSpeaking();
   }
 
   /* ── Conversation flow ──────────────────────── */
@@ -655,6 +670,7 @@ export class TalkieWidget extends ScopedLitElement {
     this.#abortSpeak   = new AbortController();
     this.#listenSource = src;
     try { this.#sm.transition('listening'); } catch (_) { return; }
+    this.#startElapsedTimer();
 
     // Actually open the mic. Without this the backend's startCapture() is never
     // invoked, so a real ASR adapter never records and a denied permission — the
@@ -778,6 +794,12 @@ export class TalkieWidget extends ScopedLitElement {
 
   #cancelConversation(reason) {
     this.#stopSpeakTimer();
+    // Abandoning a recording still has to close the mic and the ASR socket; the
+    // abort controllers below only unwind this component's own work. The
+    // transcript is deliberately discarded.
+    if (this.#sm.state === 'listening' && this.backend?.stopCapture) {
+      Promise.resolve().then(() => this.backend.stopCapture()).catch(() => {});
+    }
     this.#disposeAll();
     if (this.#sm.state !== 'idle') {
       this.#sm.transition('idle');
@@ -785,6 +807,13 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   _handleError(err) {
+    // A failed turn usually produces several rejections — the mic, the socket and
+    // the in-flight fetch all unwind — and the state machine has no error→error
+    // edge, so a second call used to throw "Illegal transition error→error". That
+    // exception replaced the real reason in the console with a useless one. The
+    // first error is the cause; the rest are its wake, so keep the first.
+    if (this.#sm.state === 'error') return;
+
     let reason = 'unknown';
     if (err?.reason) {
       reason = err.reason;
@@ -848,7 +877,7 @@ export class TalkieWidget extends ScopedLitElement {
     this.#stopSpeakTimer();
     this.#chunkTimers.forEach(clearTimeout);
     this.#chunkTimers = [];
-    this.#hasIntent = false;
+    this.#stopElapsedTimer();
 
     if (this.#abortListen) { this.#abortListen.abort(); this.#abortListen = null; }
     if (this.#abortTrans) { this.#abortTrans.abort();   this.#abortTrans   = null; }
@@ -867,7 +896,24 @@ export class TalkieWidget extends ScopedLitElement {
     if (this.#abortListen) { this.#abortListen.abort(); this.#abortListen = null; }
     this.#chunkTimers.forEach(clearTimeout);
     this.#chunkTimers = [];
-    this.#hasIntent = false;
+    this.#stopElapsedTimer();
+  }
+
+  /** Tick the recording clock once a second while capture is live. */
+  #startElapsedTimer() {
+    this.#stopElapsedTimer();
+    this.#startedAt = Date.now();
+    this._elapsed = 0;
+    this.#elapsedTimer = setInterval(() => {
+      this._elapsed = (Date.now() - this.#startedAt) / 1000;
+    }, 250);
+  }
+
+  #stopElapsedTimer() {
+    if (this.#elapsedTimer) {
+      clearInterval(this.#elapsedTimer);
+      this.#elapsedTimer = null;
+    }
   }
 
   /* ── Button handlers ────────────────────────── */
@@ -910,7 +956,12 @@ export class TalkieWidget extends ScopedLitElement {
 
   _onAskAnotherClick() {
     if (this.#sm.state !== 'speaking') return;
-    this.#sm.transition('idle');
+    // The answer text finishes revealing before the audio finishes playing, so
+    // this button is on screen while speak() is still running. Go through
+    // _stopSpeaking() rather than transitioning straight to idle: it aborts the
+    // speak signal, which is what actually pauses the audio element in the
+    // backend. Without it the previous answer kept talking over the next question.
+    this._stopSpeaking();
     this._tx = '';
     this._rp = '';
     this._shown = 0;
@@ -929,23 +980,17 @@ export class TalkieWidget extends ScopedLitElement {
     }
   }
 
-  /** Tap-started listening: stop capture and send */
-  /**
-   * Tap-started listening ends via this button ("Stop & Send"). The conversation
-   * that follows is identical to a hold-release, so delegate rather than duplicate:
-   * an earlier copy of this pipeline drifted out of sync and crashed on a nulled
-   * AbortController.
-   */
-  async _onTapStopClick() {
-    this.releaseListening('tap-stop');
-  }
-
   /* ── Escape key handler (Defect 6) ──────────── */
 
   _onKeydown(e) {
-    if (e.key === 'Escape' && this.open) {
+    if (!this.open) return;
+    if (e.key === 'Escape') {
       e.preventDefault();
       this.#cancelConversation('escaped');
+      return;
+    }
+    if (e.key === ' ' || e.key === 'Spacebar') {
+      this._onSpaceToggle(e);
     }
   }
 
@@ -990,24 +1035,23 @@ export class TalkieWidget extends ScopedLitElement {
         <lion-button class="btn-primary" id="startBtn" data-action="start"
             @click=${this._onStartActivate}
             style="--talkie-state:${this._getStateColor()}">
-          ${iconMic()} Hold&nbsp;to&nbsp;Talk
+          ${iconMic()} Start&nbsp;Recording
         </lion-button>
         <p class="sub">Ask about features, pricing, integrations, or compatibility.</p>
       </div>`;
   }
 
   _renderListening() {
-    // Show stop button only when listening began via tap (toggle or auto-tap)
-    const isTap = this.#listenSource === 'tap-toggle';
     return html`
       <div class="center-layout">
-        <h2 class="status-text" aria-hidden="true">Listening…</h2>
+        <h2 class="status-text" aria-hidden="true">
+          Recording<span class="rec-clock">${formatElapsed(this._elapsed)}</span>
+        </h2>
         <talkie-waveform .enabled=${true} .color="${this._getStateColor()}"></talkie-waveform>
-        ${isTap
-          ? html`<lion-button class="btn-stop" @click=${this._onTapStopClick}>
-              <span class="sq"></span>Stop &amp; Send
-            </lion-button>`
-          : html`<p class="hintline">Release to send</p>`}
+        <lion-button class="btn-stop" id="stopSendBtn" data-action="stop-send" @click=${this._onStopSendClick}>
+          <span class="sq"></span>Stop &amp; Send
+        </lion-button>
+        <button type="button" class="link-btn" @click=${this._onCancelRecordingClick}>Discard</button>
       </div>`;
   }
 
