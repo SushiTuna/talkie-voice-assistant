@@ -252,10 +252,11 @@ async function testSessionErrorIsMapped() {
 }
 
 // ── startCapture failure path ───────────────────────────────────────────────
-async function testStartCaptureClosesSocketOnMicFailure() {
-  // No mediaDevices here, so MicCapture fails the way it would in a headless or
-  // permission-denied browser. The socket opened moments earlier must not be left
-  // dangling — an idle vendor session is billed for its full lifetime.
+async function testStartCaptureFailsBeforeOpeningSocket() {
+  // Node has no AudioContext, so MicCapture.prepare() fails the way it would in a
+  // browser that cannot build the audio graph. That now happens BEFORE the speech
+  // socket is opened, which matters: the vendor bills for the whole time a socket
+  // stays open, so a doomed turn must not open one.
   class FakeSocket {
     static OPEN = 1;
     constructor() {
@@ -268,30 +269,90 @@ async function testStartCaptureClosesSocketOnMicFailure() {
     close() { this.readyState = 3; this.listeners.close?.forEach((f) => f()); }
   }
   const originalWs = globalThis.WebSocket;
-  let sock = null;
-  globalThis.WebSocket = class extends FakeSocket { constructor(u) { super(u); sock = this; } };
+  let opened = 0;
+  globalThis.WebSocket = class extends FakeSocket { constructor(u) { super(u); opened++; } };
   globalThis.WebSocket.OPEN = 1;
 
   try {
     const b = new HttpBackend({ baseUrl: 'http://x', sessionId: 's9' });
     await withFetch(async (url) => {
       if (String(url).endsWith('/stt/token')) {
-        return { ok: true, status: 200, json: async () => ({ ws_url: 'wss://fake', sample_rate: 16000, encoding: 'pcm_s16le' }) };
+        return { ok: true, status: 200, json: async () => ({ ws_url: 'wss://fake', expires_in_seconds: 60, sample_rate: 16000, encoding: 'pcm_s16le' }) };
       }
       return SESSION_OK;
     }, async () => {
       let err = null;
       try { await b.startCapture(); } catch (e) { err = e; }
-      check('startCapture surfaces a mic failure as a TalkieBackendError',
+      check('startCapture surfaces an audio-graph failure as a TalkieBackendError',
         err instanceof TalkieBackendError, String(err));
-      check('a mic failure closes the speech socket',
-        sock !== null && sock.readyState === 3);
+      check('no speech socket is opened when the audio graph cannot be built',
+        opened === 0, `opened=${opened}`);
     });
     check('stopCapture with no recognised speech raises no-speech-detected',
       await b.stopCapture().then(() => false, (e) => e.reason === 'no-speech-detected'));
   } finally {
     globalThis.WebSocket = originalWs;
   }
+}
+
+// ── prewarm ─────────────────────────────────────────────────────────────────
+async function testPrewarm() {
+  const calls = [];
+  await withFetch(async (url, opts) => {
+    const path = new URL(url).pathname;
+    calls.push(`${opts?.method ?? 'GET'} ${path}`);
+    if (path === '/stt/token') {
+      return { ok: true, status: 200, json: async () => ({ ws_url: 'wss://fake', expires_in_seconds: 60, sample_rate: 16000 }) };
+    }
+    return SESSION_OK;
+  }, async () => {
+    const b = new HttpBackend({ baseUrl: 'http://x' });
+    const warmed = await b.prewarm();
+    check('prewarm creates the session', warmed.session === true);
+    check('prewarm fetches a token', warmed.token === true);
+    // Node cannot build an AudioContext, so the audio leg is expected to fail here.
+    check('prewarm reports the audio leg honestly', warmed.audio === false);
+    check('prewarm does not open the microphone unless asked', warmed.mic === false);
+    check('prewarm does NOT open a speech socket (the vendor bills for it)',
+      !calls.some((c) => c.includes('ws')), calls.join(', '));
+    check('prewarm survives a failing leg without throwing', true);
+  });
+}
+
+async function testTokenIsCachedThenConsumed() {
+  let tokenCalls = 0;
+  await withFetch(async (url) => {
+    const path = new URL(url).pathname;
+    if (path === '/stt/token') {
+      tokenCalls++;
+      return { ok: true, status: 200, json: async () => ({ ws_url: 'wss://fake', expires_in_seconds: 60, sample_rate: 16000 }) };
+    }
+    return SESSION_OK;
+  }, async () => {
+    const b = new HttpBackend({ baseUrl: 'http://x' });
+    await b.prewarm();
+    await b.prewarm();
+    check('a warm token is reused rather than re-minted', tokenCalls === 1, `calls=${tokenCalls}`);
+  });
+}
+
+async function testExpiredTokenIsRefetched() {
+  let tokenCalls = 0;
+  await withFetch(async (url) => {
+    const path = new URL(url).pathname;
+    if (path === '/stt/token') {
+      tokenCalls++;
+      // A 15 s window is exactly the safety margin, leaving zero budget, so the
+      // cache must be treated as already stale on the next call.
+      return { ok: true, status: 200, json: async () => ({ ws_url: 'wss://fake', expires_in_seconds: 15, sample_rate: 16000 }) };
+    }
+    return SESSION_OK;
+  }, async () => {
+    const b = new HttpBackend({ baseUrl: 'http://x' });
+    await b.prewarm();
+    await b.prewarm();
+    check('a token too close to expiry is re-minted', tokenCalls === 2, `calls=${tokenCalls}`);
+  });
 }
 
 // ── dispose ─────────────────────────────────────────────────────────────────
@@ -325,7 +386,10 @@ await testAskPropagatesAbort();
 await testAskMapsNetworkFailure();
 await testSessionIsCreatedOnce();
 await testSessionErrorIsMapped();
-await testStartCaptureClosesSocketOnMicFailure();
+await testStartCaptureFailsBeforeOpeningSocket();
+await testPrewarm();
+await testTokenIsCachedThenConsumed();
+await testExpiredTokenIsRefetched();
 await testDispose();
 
 console.log(`\n${passed} passed, ${failed} failed`);

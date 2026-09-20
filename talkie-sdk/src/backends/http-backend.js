@@ -36,6 +36,8 @@ export class HttpBackend {
   /** @type {string | null} */ #audioUrl = null;
   /** @type {boolean} */ #disposed = false;
   /** @type {Promise<void> | null} */ #wsClosed = null;
+  /** @type {{ cred: object, at: number } | null} */ #tokenCache = null;
+  /** @type {boolean} */ #keepMicWarm = false;
 
   /**
    * @param {object} options
@@ -45,6 +47,9 @@ export class HttpBackend {
    * @param {string} [options.productFocus] - Product to prioritise.
    * @param {object} [options.prompts] - Per-session prompt config override.
    * @param {boolean} [options.speakEnabled=true] - Set false for a text-only widget.
+   * @param {boolean} [options.keepMicWarm=false] - Hold the mic open between turns.
+   *   Removes the per-turn permission round-trip, at the cost of the browser showing
+   *   its recording indicator for the whole conversation.
    */
   constructor({
     baseUrl = 'http://localhost:8000',
@@ -53,12 +58,15 @@ export class HttpBackend {
     productFocus = null,
     prompts = null,
     speakEnabled = true,
+    keepMicWarm = false,
   } = {}) {
     this.#baseUrl = baseUrl.replace(/\/+$/, '');
     this.#sessionId = sessionId;
     this.caller = caller;
     this.productFocus = productFocus;
     this.prompts = prompts;
+    this.#keepMicWarm = keepMicWarm;
+    this.#mic = new MicCapture();
     // The widget checks `typeof backend.speak === 'function'`, so opting out has to
     // remove the method rather than just flag it.
     if (!speakEnabled) this.speak = undefined;
@@ -87,6 +95,64 @@ export class HttpBackend {
     return this.#sessionId;
   }
 
+  /**
+   * Do the slow parts of `startCapture()` ahead of the press.
+   *
+   * Without this, a press pays for the session POST, the token fetch, the
+   * AudioContext and the worklet module before any audio is captured — about 1.4 s,
+   * which swallows the caller's first word. Call it when the widget opens, or on
+   * hover over the launcher.
+   *
+   * The speech socket is deliberately **not** opened here: the vendor bills for the
+   * whole time a socket stays open, so it is opened on the press and closed on release.
+   *
+   * @param {object} [options]
+   * @param {boolean} [options.mic=false] - Also open the microphone now. The browser
+   *   shows its recording indicator until capture ends, so this is opt-in.
+   * @returns {Promise<{ session: boolean, audio: boolean, token: boolean, mic: boolean }>}
+   *   What actually warmed up; a failure here is never fatal, since `startCapture()`
+   *   redoes any step that did not land.
+   */
+  async prewarm({ mic = false } = {}) {
+    if (this.#disposed) return { session: false, audio: false, token: false, mic: false };
+    const done = { session: false, audio: false, token: false, mic: false };
+
+    const settled = await Promise.allSettled([
+      this.ensureSession().then(() => { done.session = true; }),
+      this.#mic.prepare().then(() => { done.audio = true; }),
+      this.#fetchToken().then(() => { done.token = true; }),
+      mic ? this.#mic.openMic().then(() => { done.mic = true; }) : Promise.resolve(),
+    ]);
+    for (const r of settled) {
+      if (r.status === 'rejected') {
+        // Warming is best-effort; the press path will surface any real problem.
+        console.debug?.('[talkie] prewarm step failed:', r.reason?.message ?? r.reason);
+      }
+    }
+    return done;
+  }
+
+  /**
+   * Fetch a streaming credential, reusing a cached one while it is still redeemable.
+   *
+   * The token must be used to open the socket within `expires_in_seconds` of issue,
+   * so the cache is dropped well before that — a stale token fails the handshake and
+   * costs a whole turn.
+   *
+   * @returns {Promise<object>}
+   */
+  async #fetchToken() {
+    const cached = this.#tokenCache;
+    if (cached) {
+      const ageMs = Date.now() - cached.at;
+      const budgetMs = Math.max(0, (cached.cred.expires_in_seconds ?? 60) * 1000 - 15000);
+      if (ageMs < budgetMs) return cached.cred;
+    }
+    const cred = await this.#json('GET', '/stt/token');
+    this.#tokenCache = { cred, at: Date.now() };
+    return cred;
+  }
+
   // ── TalkieBackend contract ────────────────────────────────────────────────
 
   /**
@@ -97,12 +163,19 @@ export class HttpBackend {
     this.#assertLive();
     this.#turns.clear();
 
-    await this.ensureSession();
-    const cred = await this.#json('GET', '/stt/token');
+    // Warm the audio graph and the session in parallel with the token fetch; each is
+    // a no-op when prewarm() already did it.
+    const [, cred] = await Promise.all([
+      this.ensureSession(),
+      this.#fetchToken(),
+      this.#mic.prepare(),
+    ]);
+    // A token is single-use for one socket, so drop it once redeemed.
+    this.#tokenCache = null;
 
     await this.#openSocket(cred.ws_url);
 
-    this.#mic = new MicCapture({ sampleRate: cred.sample_rate ?? 16000 });
+    this.#mic.sampleRate = cred.sample_rate ?? 16000;
     try {
       await this.#mic.start((chunk) => {
         if (this.#ws?.readyState === WebSocket.OPEN) this.#ws.send(chunk);
@@ -121,8 +194,7 @@ export class HttpBackend {
    * @throws {TalkieBackendError} `no-speech-detected` when nothing was recognised.
    */
   async stopCapture() {
-    await this.#mic?.stop();
-    this.#mic = null;
+    await this.#mic.stop({ keepMic: this.#keepMicWarm });
 
     if (this.#ws?.readyState === WebSocket.OPEN) {
       try {
@@ -256,8 +328,8 @@ export class HttpBackend {
   /** Release every resource this backend holds. */
   dispose() {
     this.#disposed = true;
-    this.#mic?.stop();
-    this.#mic = null;
+    this.#mic.release().catch(() => {});
+    this.#tokenCache = null;
     this.#closeSocket();
     this.#stopAudio();
 

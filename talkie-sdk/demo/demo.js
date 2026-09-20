@@ -260,8 +260,16 @@ function goLive() {
   widgetInstance.backend = liveBackend;
   widgetInstance.reset();
   widgetInstance.show();
-  widgetInstance.startListening('rail');
-  appendLog(now(), 'LIVE', `Streaming to ${api} — speak, then click again or press Space to send`, '#8be28b');
+
+  // Warm the session, token and audio graph before listening starts. Without it the
+  // press pays ~1.4s of setup and the first word is clipped.
+  appendLog(now(), 'LIVE', `Warming up ${api}…`, '#8be28b');
+  liveBackend.prewarm({ mic: true }).then((warm) => {
+    appendLog(now(), 'LIVE',
+      `Ready — session:${warm.session} token:${warm.token} audio:${warm.audio} mic:${warm.mic}. Speak, then click again or press Space to send.`,
+      '#8be28b');
+    widgetInstance.startListening('rail');
+  });
 }
 
 /** Scenario 6 — close widget and clear state. */
