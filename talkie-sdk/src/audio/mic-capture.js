@@ -69,10 +69,13 @@ export class MicCapture {
     }
 
     try {
-      // Ask for the target rate directly: when the browser honours it the worklet's
-      // resampler becomes a pass-through. Safari ignores this, hence the fallback.
+      // Take the hardware's native rate and let the worklet resample. Asking for
+      // `{ sampleRate: 16000 }` makes Chrome reconfigure the audio device off its
+      // native 48 kHz, which measured at 2-10 s on a MacBook — long enough that the
+      // caller finishes speaking before capture starts. The worklet downsamples in
+      // ~0 time, so there is nothing to gain from forcing the rate here.
       const Ctor = window.AudioContext || window.webkitAudioContext;
-      this.#ctx = new Ctor({ sampleRate: this.sampleRate });
+      this.#ctx = new Ctor();
       if (this.#ctx.state === 'suspended') await this.#ctx.resume();
 
       await this.#ctx.audioWorklet.addModule(createWorkletUrl());
