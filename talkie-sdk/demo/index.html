@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Talkie Voice UI — Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600..700&family=Instrument+Sans:wght@400&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+  :root {
+    --disp: 'Space Grotesk', sans-serif;
+    --body: 'Instrument Sans', sans-serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --bg: #081619;
+    --panel: rgba(255,255,255,.035);
+    --line: rgba(255,255,255,.09);
+    --text: #dcebe7;
+    --muted: #8aa39e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--body); color: var(--text); background: var(--bg);
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  header {
+    display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    padding: 16px 28px; border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .mark {
+    width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center;
+    background: linear-gradient(145deg, #1e5f5a, #0d3532);
+    box-shadow: 0 6px 18px -6px rgba(95,217,198,.4);
+  }
+  .brand h1 {
+    font-family: var(--disp); font-size: 16px; font-weight: 700; letter-spacing: .3px; color: #f0f7f4;
+  }
+  .brand small {
+    display: block; font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px;
+    color: var(--muted); margin-top: 2px;
+  }
+  .hright { display: flex; align-items: center; gap: 14px; }
+  .live {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px; color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .live i {
+    width: 7px; height: 7px; border-radius: 50%; background: #8be28b;
+    animation: pulse 1.6s infinite;
+  }
+  .chip {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 1.5px; padding: 7px 14px;
+    border: 1px solid var(--line); border-radius: 999px;
+    display: flex; align-items: center; gap: 8px; color: #eaf4f1;
+    transition: border-color .3s;
+  }
+  .chip::before {
+    content: ""; width: 8px; height: 8px; border-radius: 50%;
+    background: var(--state, #8aa39e); box-shadow: 0 0 10px var(--state, #8aa39e);
+    transition: background .3s, box-shadow .3s;
+  }
+  .clock { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  /* ── Layout ──────────────────────────────── */
+  main {
+    flex: 1; display: grid;
+    grid-template-columns: 290px minmax(0,1fr) 320px;
+    gap: 22px; padding: 26px 28px; max-width: 1460px; width: 100%; margin: 0 auto; align-items: stretch;
+  }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px; }
+  .panel h3 {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px; color: var(--muted);
+    text-transform: uppercase; padding: 6px 10px 12px;
+  }
+
+  /* ── State rail ──────────────────────────── */
+  .rail { display: flex; flex-direction: column; gap: 4px; }
+  .rail button {
+    all: unset; cursor: pointer;
+    display: grid; grid-template-columns: 30px 1fr; gap: 2px 10px;
+    padding: 12px 14px; border-radius: 10px;
+    transition: background .2s, box-shadow .2s;
+  }
+  .rail button:hover { background: rgba(255,255,255,.05); }
+  .rail button.active {
+    background: color-mix(in srgb, var(--state) 11%, transparent);
+    box-shadow: inset 3px 0 0 var(--state);
+  }
+  .rail .num { font-family: var(--mono); font-size: 10px; color: var(--muted); padding-top: 3px; }
+  .rail .nm  { font-family: var(--disp); font-weight: 600; font-size: 14px; color: #eef6f3; }
+  .rail .ds  { grid-column: 2; font-size: 11.5px; color: var(--muted); line-height: 1.45; }
+  .rail button.active .nm { color: #fff; }
+
+  /* ── Stage ───────────────────────────────── */
+  .stage-wrapper {
+    position: absolute; left: 0; right: 20px; top: 36px; transform: none;
+    padding: 20px 8px 16px; z-index: 1; max-width: calc(100% - 220px);
+  }
+  .timeline {
+    list-style: none; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .5px;
+    border-top: 1px solid var(--line); padding-top: 10px; margin: 0;
+    justify-content: center;
+  }
+  .timeline li {
+    display: flex; align-items: baseline; gap: 4px; opacity: .35;
+    color: var(--muted); cursor: default; transition: opacity .25s, color .3s;
+    white-space: nowrap;
+  }
+  .timeline li.on { opacity: 1; font-weight: 700; color: var(--state, #8aa39e); }
+  @media (max-width: 1120px) {
+    .timeline { flex-wrap: wrap; }
+  }
+  .stage {
+    position: relative; display: grid; place-items: center;
+    min-height: 540px; padding: 40px 20px; overflow: hidden;
+  }
+  .stateNum {
+    position: absolute; top: 6px; right: 18px;
+    font-family: var(--disp); font-weight: 700; font-size: 84px;
+    line-height: 1; color: var(--state, #8aa39e); opacity: .07;
+    letter-spacing: -4px; pointer-events: none; transition: color .35s;
+  }
+  .specTag {
+    position: absolute; top: 16px; left: 20px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+    color: var(--state, #8aa39e);
+    border: 1px solid color-mix(in srgb, var(--state, #8aa39e) 45%, transparent);
+    padding: 5px 11px; border-radius: 6px; background: rgba(8,22,25,.5);
+    transition: color .3s, border-color .3s;
+  }
+  .ripples { position: absolute; width: 560px; height: 560px; pointer-events: none; }
+  .ripples span {
+    position: absolute; inset: 0; border: 1.5px solid var(--state, #8aa39e);
+    border-radius: 50%; opacity: 0;
+    animation: rip 3.4s linear infinite;
+  }
+  .ripples span:nth-child(2) { animation-delay: 1.15s; }
+  .ripples span:nth-child(3) { animation-delay: 2.3s; }
+  @keyframes rip {
+    0%   { transform: scale(.55); opacity: calc(var(--rip, .16)); }
+    100% { transform: scale(1.45); opacity: 0; }
+  }
+  [data-open="false"] .ripples { display: none; }
+
+  /* Container for slotted component */
+  .widget-slot {
+    position: relative; width: min(430px, 100%); min-height: 330px;
+    z-index: 1;
+  }
+
+  /* ── Event log ───────────────────────────── */
+  .logbody {
+    padding: 2px 10px 10px; display: flex; flex-direction: column; gap: 8px;
+    max-height: 520px; overflow: auto;
+  }
+  .entry {
+    font-family: var(--mono); font-size: 11px; line-height: 1.5;
+    display: flex; gap: 8px; animation: rise .25s both;
+  }
+  .entry .t { color: var(--muted); flex: none; }
+  .entry .tag { flex: none; }
+  .entry .m  { color: #cfe3df; word-break: break-word; flex: 1; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ── Floating launcher ───────────────────── */
+  .launcher-wrap {
+    position: fixed; right: 28px; bottom: 28px; z-index: 60;
+    transition: opacity .3s ease, transform .35s cubic-bezier(.2,.8,.2,1);
+  }
+  [data-open="true"] .launcher-wrap {
+    opacity: 0; transform: scale(.55) translateY(24px); pointer-events: none;
+  }
+  .hint-line {
+    position: absolute; bottom: 14px; left: 0; right: 0; text-align: center;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .5px;
+    color: var(--muted);
+  }
+  kbd {
+    border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px;
+    padding: 1px 6px; font-family: var(--mono); font-size: 10px; color: #cfe3df;
+  }
+
+  /* ── Responsive ──────────────────────────── */
+  @media (max-width: 1120px) {
+    main { grid-template-columns: 1fr; }
+    .stage { order: -1; min-height: 480px; }
+    .rail { flex-direction: row; overflow-x: auto; }
+    .rail button { min-width: 220px; }
+    .stateNum { font-size: 80px; }
+  }
+</style>
+</head>
+<body data-state="idle" data-open="false">
+<header>
+  <div class="brand">
+    <div class="mark" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5fd9c6" stroke-width="2.4" stroke-linecap="round">
+        <line x1="4" y1="9" x2="4" y2="15"/><line x1="9" y1="5" x2="9" y2="19"/>
+        <line x1="14" y1="8" x2="14" y2="16"/><line x1="19" y1="11" x2="19" y2="13"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Product Expert — Voice Interface</h1>
+      <small>DEMO · PICK A SCENARIO</small>
+    </div>
+  </div>
+  <div class="hright">
+    <span class="live"><i></i>LIVE</span>
+    <span class="chip" id="chip">STANDBY</span>
+    <span class="clock" id="clock">--:--:--</span>
+  </div>
+</header>
+
+<main>
+  <!-- State rail -->
+  <aside class="panel">
+    <h3>Scenarios</h3>
+    <div class="rail" id="rail"></div>
+  </aside>
+
+  <!-- Stage -->
+  <section class="stage">
+    <div class="stateNum" id="stateNum" aria-hidden="true">—</div>
+    <div class="specTag" id="specTag">STANDBY · WIDGET CLOSED</div>
+    <div class="stage-wrapper"><ol class="timeline" id="timeline" aria-label="Conversation state"></ol></div>
+    <div class="ripples" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="widget-slot" id="widgetSlot"></div>
+    <p class="hint-line" id="hint">Pick a scenario on the left, or tap the floating icon to open.</p>
+  </section>
+
+  <!-- Event log -->
+  <aside class="panel">
+    <h3>Event log</h3>
+    <div class="logbody" id="log"></div>
+  </aside>
+</main>
+
+<!-- Floating launcher (outside widget, drives it) -->
+<div class="launcher-wrap" id="launcherWrap">
+  <talkie-launcher id="launcher" label="Product Expert · Voice"></talkie-launcher>
+</div>
+
+<script type="module" src="/demo-bundle.js"></script>
+</body>
+</html>
