@@ -26,7 +26,16 @@ render but Lion elements won't be styled or functional without it).
 ## Backend configuration
 
 Every integration must set the `backend` property on `<talkie-widget>`. This is the single point
-where you wire your ASR / LLM / TTS stack:
+where you wire your ASR / LLM / TTS stack. For a real stack pointed at a Talkie voice server, use
+the shipped adapter:
+
+```js
+import { HttpBackend } from '@talkie/voice-ui/backends/http-backend.js';
+
+const backend = new HttpBackend({ baseUrl: 'http://localhost:8000' });
+```
+
+To wire a different stack, implement the four methods yourself:
 
 ```js
 const backend = {
@@ -37,6 +46,9 @@ const backend = {
 };
 // Set via property binding or imperatively (see React ≤18 below).
 ```
+
+Because `backend` is a property and not an attribute, every framework below differs only in how it
+passes an object rather than a string.
 
 ## Angular
 

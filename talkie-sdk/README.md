@@ -80,57 +80,71 @@ The widget never talks directly to a speech or language vendor. It speaks one co
 /** @property {() => void} [dispose] */
 ```
 
-The SDK ships **only `MockBackend`**, which replays four scripted Q&A pairs with simulated timing
-(950 ms transcribe + 1500 ms think). Wiring a real ASR / LLM / TTS pipeline is the host app's job
-and the typical integration effort.
+The SDK ships two backends:
 
-### Worked example: a stub adapter
+| Backend | Use |
+|---|---|
+| `MockBackend` | Replays four scripted Q&A pairs with simulated timing (950 ms transcribe + 1500 ms think). Zero network, zero permissions — the default for the demo harness and tests. |
+| `HttpBackend` | Talks to a running Talkie voice server: real microphone capture, streaming speech recognition, a streaming LLM answer and synthesised speech. |
+
+### `HttpBackend` — the real thing
 
 ```js
-import { SpeechRecognition } from './my-asr.js';    // your browser speech API wrapper
-import { queryLLM } from './my-llm.js';             // your REST / SSE client
+import { HttpBackend } from '@talkie/voice-ui/backends/http-backend.js';
 
-class RealBackend {
-  #recognition = null;
-
-  async startCapture(signal) {
-    this.#recognition = new SpeechRecognition();
-    return new Promise((resolve, reject) => {
-      this.#recognition.onresult = () => resolve();  // actual transcript collected incrementally
-      this.#recognition.onerror = (e) => reject(new TalkieBackendError('no-speech-detected', e.error));
-      this.#recognition.start();
-    });
-  }
-
-  async stopCapture() {
-    const transcript = this.#recognition?.resultText ?? '';
-    this.#recognition?.abort?.();
-    return transcript;
-  }
-
-  async *ask(transcript, signal) {
-    // Stream tokens from an SSE endpoint
-    const res = await fetch('/api/ask', {
-      method: 'POST', body: JSON.stringify({ text: transcript }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done || signal.aborted) break;
-        const chunk = decoder.decode(value, { stream: true });
-        yield* chunk.split(/\s+/).filter(Boolean);  // word-level chunks
-      }
-    } finally { reader.cancel().catch(() => {}); }
-  }
-
-  dispose() {
-    this.#recognition?.abort?.();
-  }
-}
+const widget = document.querySelector('talkie-widget');
+widget.backend = new HttpBackend({
+  baseUrl: 'http://localhost:8000',      // your voice server origin
+  caller: { name: 'Juan', email: 'juan@example.com' },  // optional, passed to the agent
+  productFocus: 'WanderSafe',            // optional
+  prompts: null,                         // optional per-session persona override
+  speakEnabled: true,                    // false renders text only
+});
 ```
+
+**How each contract method is carried:**
+
+| Method | Transport |
+|---|---|
+| `startCapture()` | Creates a server session, fetches a short-lived token from `GET /stt/token`, opens the vendor WebSocket, and streams 16 kHz mono PCM from an `AudioWorklet`. |
+| `stopCapture()` | Stops the mic, sends `Terminate`, waits briefly for the closing turn, and returns the joined transcript. |
+| `ask(text, signal)` | `POST /chat/ask` as SSE; yields each `{"delta": "..."}` as it arrives. The `AbortSignal` is passed to `fetch`, so pressing Esc cancels the model call server-side, not just in the UI. |
+| `speak(text, signal)` | `POST /tts`, plays the returned audio. The widget only calls this once the full answer has streamed. |
+| `dispose()` | Stops the mic, closes the socket, and ends the server session so the post-call webhook fires. |
+
+Audio goes **straight from the browser to the speech vendor**, not through your server — the
+transcript is ready the instant the user releases the button. Your server only mints the token,
+so the vendor API key never reaches the browser.
+
+**Errors** arrive as `TalkieBackendError` with a `reason` the widget maps directly onto its error
+state: `mic-permission-denied` (blocked or no input device), `no-speech-detected` (nothing
+recognised), `offline` (network or socket failure), `backend-failure` (anything else).
+
+### Server endpoints it expects
+
+Implement these to point `HttpBackend` at your own stack:
+
+| Method | Path | Returns |
+|---|---|---|
+| `POST` | `/chat/session` | `{ session_id, opening_greeting, model }` |
+| `GET` | `/stt/token` | `{ ws_url, expires_in_seconds, sample_rate, encoding }` |
+| `POST` | `/chat/ask` | `text/event-stream` of `data: {"delta": "..."}`, ending `data: [DONE]` |
+| `POST` | `/tts` | audio bytes (`audio/mpeg`) |
+| `POST` | `/chat/session/{id}/end` | post-call summary |
+
+### Trying it live
+
+```bash
+# terminal 1 — the voice server
+cd ../../voice && uv run uvicorn server:app --port 8000
+
+# terminal 2 — the SDK demo
+npm start
+```
+
+Then open `http://localhost:8081/demo/index.html` and pick **Live backend** on the rail, or
+`?api=https://your-server` to point somewhere else. That scenario is the only one that touches the
+microphone, so the browser will ask for permission.
 
 See [`docs/integration.md`](docs/integration.md) for Angular, Vue, React, and plain HTML snippets.
 

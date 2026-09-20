@@ -1,18 +1,20 @@
 {
   "name": "@talkie/voice-ui",
   "version": "0.1.0",
-  "description": "Talkie Voice UI SDK — framework-agnostic voice interface components",
+  "description": "Talkie Voice UI SDK \u2014 framework-agnostic voice interface components",
   "type": "module",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
     "./core/state-machine.js": "./src/core/state-machine.js",
     "./core/backend.js": "./src/core/backend.js",
-    "./backends/mock-backend.js": "./src/backends/mock-backend.js"
+    "./backends/mock-backend.js": "./src/backends/mock-backend.js",
+    "./backends/http-backend.js": "./src/backends/http-backend.js",
+    "./audio/mic-capture.js": "./src/audio/mic-capture.js"
   },
   "scripts": {
     "start": "node server.mjs",
-    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs"
+    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs"
   },
   "dependencies": {
     "lit": "^3.3.3",

@@ -1,6 +1,7 @@
 import '../src/define/talkie-widget.js';
 import '../src/define/talkie-launcher.js';
 import { MockBackend, SCRIPT, chunkText } from '../src/backends/mock-backend.js';
+import { HttpBackend } from '../src/backends/http-backend.js';
 import { TalkieBackendError } from '../src/core/backend.js';
 
 /* ── State metadata (matches mockup palette) ─────────────────────── */
@@ -229,6 +230,9 @@ function initWidget() {
   });
 }
 
+/** @type {HttpBackend | null} Disposed before each new live run. */
+let liveBackend = null;
+
 /* ── Scenario-driven navigation ────────────────────────────────
  * The rail triggers end-to-end scenarios through the real public API surface:
  *   - widget.backend  (swap backend instances)
@@ -238,6 +242,27 @@ function initWidget() {
  * No "jump-to-state" method is added to the library.
  * For states unreachable by the happy path, we use demo-only backends.
  * ─────────────────────────────────────────────────────────────── */
+
+/**
+ * Scenario 7 — live backend against the real voice server.
+ *
+ * Opt in with ?live (defaults to http://localhost:8000) or ?api=<origin>. This is the
+ * only scenario that touches the microphone and real vendors, so it stays behind a
+ * query flag rather than firing on page load.
+ */
+function goLive() {
+  clearConversationTimer();
+  listenActive = true;
+  const api = new URLSearchParams(location.search).get('api') || 'http://localhost:8000';
+
+  liveBackend?.dispose();
+  liveBackend = new HttpBackend({ baseUrl: api, caller: { name: 'Demo User' } });
+  widgetInstance.backend = liveBackend;
+  widgetInstance.reset();
+  widgetInstance.show();
+  widgetInstance.startListening('rail');
+  appendLog(now(), 'LIVE', `Streaming to ${api} — speak, then click again or press Space to send`, '#8be28b');
+}
 
 /** Scenario 6 — close widget and clear state. */
 function goReset() {
@@ -381,6 +406,7 @@ function buildRail() {
     { go: 'mic-blocked',        num: '04', label: 'Mic blocked',        desc: "Permission denied error",            action: goMicBlocked },
     { go: 'offline',            num: '05', label: 'Offline',            desc: 'Network failure error',              action: goOffline },
     { go: 'reset',              num: '06', label: 'Reset',              desc: 'Close the widget and clear state', action: goReset },
+    { go: 'live',               num: '07', label: 'Live backend',      desc: 'Real mic + server (?live or ?api=)', action: goLive },
   ];
 
   items.forEach(item => {
