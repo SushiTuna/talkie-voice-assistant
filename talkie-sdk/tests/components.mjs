@@ -125,6 +125,161 @@ for (const [tag, importPath] of TAGS) {
     !/:host\s*\{[^}]*padding\s*:/.test(css),
     ':host should not carry padding',
   );
+  // LionButton slots its children into its own shadow flex box, so a `gap` on the button
+  // never reaches the icon — it rendered flush against the label. The icon carries the space.
+  check(
+    'layout guard: the Start icon carries its own spacing',
+    /\.btn-primary svg\s*\{[^}]*margin-right\s*:/.test(css),
+    '.btn-primary svg missing margin-right',
+  );
+  check(
+    'layout guard: the Stop square carries its own spacing',
+    /\.btn-stop \.sq\s*\{[^}]*margin-right\s*:/.test(css),
+    '.btn-stop .sq missing margin-right',
+  );
+  // The footer hint is a sentence; tracked monospace spread it out letter by letter.
+  const hintRule = css.match(/\.hintline\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('layout guard: the footer hint has no letter-spacing',
+    hintRule !== '' && !/letter-spacing\s*:/.test(hintRule), hintRule.trim());
+  check('layout guard: the footer hint is not monospace',
+    hintRule !== '' && !/monospace|font-mono/.test(hintRule), hintRule.trim());
+})();
+
+// ── Ask another goes straight into the next recording ───────────────────
+await (async function checkAskAnotherRecords() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  if (typeof WidgetCtor !== 'function') return;
+
+  const w = new WidgetCtor();
+  const states = [];
+  w.addEventListener('talkie-state-change', (e) => states.push(e.detail.to));
+  let captures = 0;
+  w.backend = {
+    startCapture: async () => { captures++; },
+    stopCapture: async () => 'first question',
+    async *ask() { yield 'Short answer.'; },
+    // Never settles: the button is on screen while the answer is still playing.
+    speak: () => new Promise(() => {}),
+  };
+
+  w.startListening('test');
+  w.releaseListening('test');
+  for (let i = 0; i < 60 && !states.includes('speaking'); i++) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  check('ask-another: the first turn reaches speaking', states.includes('speaking'),
+    states.join(' > '));
+
+  const before = states.length;
+  w._onAskAnotherClick();
+  await new Promise((r) => setTimeout(r, 20));
+  const after = states.slice(before);
+  check('ask-another: goes straight to listening, not back to the Start screen',
+    after[after.length - 1] === 'listening', after.join(' > '));
+  check('ask-another: reopens the mic for the new question', captures === 2,
+    `startCapture called ${captures}x`);
+})();
+
+// ── Streaming audio: speak when the voice starts, not when the text arrives ──
+await (async function checkSpeaksOnFirstAudio() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  if (typeof WidgetCtor !== 'function') return;
+
+  const w = new WidgetCtor();
+  const states = [];
+  w.addEventListener('talkie-state-change', (e) => states.push(e.detail.to));
+
+  // Audio starts at once; the text only comes when the whole reply has been spoken.
+  let releaseText;
+  const textArrives = new Promise((r) => { releaseText = r; });
+  w.backend = {
+    startCapture: async () => {},
+    stopCapture: async () => 'How much is it?',
+    speechStarted: async () => {},
+    async *ask() { await textArrives; yield 'The price is available on request.'; },
+    speak: () => new Promise(() => {}),
+  };
+
+  w.startListening('test');
+  w.releaseListening('test');
+  for (let i = 0; i < 60 && !states.includes('speaking'); i++) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  check('streaming audio: the widget moves to speaking when the voice starts',
+    states.includes('speaking'), states.join(' > '));
+  check('streaming audio: ...before any reply text exists', w._rp === '', JSON.stringify(w._rp));
+
+  releaseText();
+  await new Promise((r) => setTimeout(r, 20));
+  check('streaming audio: speaking is entered once, not again when the text lands',
+    states.filter((s) => s === 'speaking').length === 1, states.join(' > '));
+  check('streaming audio: the late text is shown whole, not paced out behind the voice',
+    w._shown === 6 && w._rp === 'The price is available on request.', `shown ${w._shown}: ${w._rp}`);
+})();
+
+// A backend without speechStarted keeps the old behaviour: speak when the text arrives.
+await (async function checkTextFirstBackendUnchanged() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  if (typeof WidgetCtor !== 'function') return;
+
+  const w = new WidgetCtor();
+  const states = [];
+  w.addEventListener('talkie-state-change', (e) => states.push(e.detail.to));
+  let releaseText;
+  const textArrives = new Promise((r) => { releaseText = r; });
+  w.backend = {
+    startCapture: async () => {},
+    stopCapture: async () => 'Hi',
+    async *ask() { await textArrives; yield 'Hello there, friend.'; },
+    speak: () => new Promise(() => {}),
+  };
+  w.startListening('test');
+  w.releaseListening('test');
+  for (let i = 0; i < 60 && !states.includes('thinking'); i++) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  await new Promise((r) => setTimeout(r, 50));
+  check('text-first backend: stays thinking until the text arrives', !states.includes('speaking'),
+    states.join(' > '));
+  releaseText();
+  await new Promise((r) => setTimeout(r, 20));
+  check('text-first backend: speaks on the text', states.includes('speaking'), states.join(' > '));
+  check('text-first backend: still reveals word by word', w._shown < 3, `shown ${w._shown}`);
+  w.hide?.('test done');
+})();
+
+// Word-by-word text alongside the voice.
+await (async function checkWordsStreamIn() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  if (typeof WidgetCtor !== 'function') return;
+
+  const w = new WidgetCtor();
+  const states = [];
+  w.addEventListener('talkie-state-change', (e) => states.push(e.detail.to));
+  const gate = [];
+  const next = () => new Promise((r) => gate.push(r));
+  w.backend = {
+    startCapture: async () => {},
+    stopCapture: async () => 'Tell me',
+    speechStarted: () => next(),
+    async *ask() { for (const word of ['The', 'price', 'is', 'on', 'request.']) { await next(); yield word; } },
+    speak: () => new Promise(() => {}),
+  };
+  const release = async () => { gate.shift()?.(); await new Promise((r) => setTimeout(r, 10)); };
+
+  w.startListening('test');
+  w.releaseListening('test');
+  for (let i = 0; i < 60 && gate.length < 2; i++) await new Promise((r) => setTimeout(r, 50));
+  check('word stream: still thinking until the voice starts', states.at(-1) === 'thinking', states.join(' > '));
+  await release();                      // the voice starts
+  check('word stream: speaking once the voice starts', states.at(-1) === 'speaking', states.join(' > '));
+  await release();
+  await release();
+  check('word stream: the answer grows a word at a time', w._rp === 'The price', JSON.stringify(w._rp));
+  check('word stream: Stop stays available while the voice is still going', w._shown === 2);
+  await release(); await release(); await release();
+  await new Promise((r) => setTimeout(r, 20));
+  check('word stream: the full answer is shown by the end', w._rp === 'The price is on request.', JSON.stringify(w._rp));
 })();
 
 console.log(`\n${passed}/${passed + failed} tests passed`);

@@ -276,6 +276,26 @@ function goLive() {
  * to use that origin's /agent/token. Like scenario 7 this touches the microphone, so it
  * stays behind an explicit click.
  */
+/**
+ * Print one turn-phase mark from the agent backend, as `at` ms since the release.
+ *
+ * The two numbers that answer "why is it slow": `first-audio-frame` is when the reply
+ * could have started playing, `playback-start` is when it actually did. A large gap
+ * between them that grows with `audioMs` is the cost of buffering the whole reply; a
+ * large `at` on `reply-started` instead means the wait is upstream, before the answer.
+ *
+ * @param {string} mark
+ * @param {{ at: number } & Record<string, unknown>} detail
+ */
+function logTurnTiming(mark, { at, ...rest }) {
+  const extras = Object.entries(rest).map(([k, v]) => `${k}=${v}`).join(' ');
+  const slow = mark === 'playback-start' && at > 1500;
+  appendLog(now(), 'TIME', `+${String(at).padStart(5)}ms  ${mark}${extras ? `  ${extras}` : ''}`,
+    slow ? '#ffc96b' : '#8f8fa8');
+  // Also to the console, where the marks survive a cleared log and can be copied out.
+  console.debug?.(`[talkie:timing] +${at}ms ${mark}`, rest);
+}
+
 async function goVoiceAgent() {
   clearConversationTimer();
   listenActive = true;
@@ -312,6 +332,7 @@ async function goVoiceAgent() {
       ?? 'You are a concise voice assistant. Answer in one or two sentences.',
     keyterms: context?.keyterms ?? undefined,
     ...(context?.voice ? { voice: context.voice } : {}),
+    onTiming: logTurnTiming,
   });
   widgetInstance.backend = agentBackend;
   widgetInstance.reset();

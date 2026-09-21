@@ -10,6 +10,7 @@
 import { VoiceAgentBackend } from '../src/backends/voice-agent-backend.js';
 import { TalkieBackendError } from '../src/core/backend.js';
 import { encodeBase64 } from '../src/audio/pcm-codec.js';
+import { mock } from 'node:test';
 
 let passed = 0;
 let failed = 0;
@@ -67,9 +68,13 @@ class FakeSocket {
 /**
  * Stub the browser surface MicCapture, the codec and playback touch, run `fn`, restore.
  *
- * @param {(ctx: { played: string[] }) => Promise<void>} fn
+ * With `streaming: true` the audio context can schedule buffer sources, so the backend
+ * takes its streaming-playback path; otherwise it falls back to one buffered clip.
+ *
+ * @param {(ctx: { played: string[], contexts: object[] }) => Promise<void>} fn
+ * @param {{ streaming?: boolean }} [options]
  */
-async function withBrowser(fn) {
+async function withBrowser(fn, { streaming = false } = {}) {
   const saved = {
     WebSocket: globalThis.WebSocket,
     window: globalThis.window,
@@ -83,17 +88,38 @@ async function withBrowser(fn) {
   };
   const played = [];
 
+  const contexts = [];
   class FakeAudioContext {
     state = 'running';
     audioWorklet = { addModule: async () => {} };
+    constructor() { contexts.push(this); }
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     async resume() {}
     async close() {}
   }
+  class StreamingAudioContext extends FakeAudioContext {
+    currentTime = 0;
+    destination = {};
+    sources = [];
+    createBuffer(channels, length, rate) {
+      const data = new Float32Array(length);
+      return { duration: length / rate, getChannelData: () => data };
+    }
+    createBufferSource() {
+      const src = {
+        buffer: null, onended: null, startAt: null, stopped: false,
+        connect() {}, disconnect() {},
+        start(t) { src.startAt = t; },
+        stop() { src.stopped = true; },
+      };
+      this.sources.push(src);
+      return src;
+    }
+  }
 
   globalThis.WebSocket = FakeSocket;
   globalThis.WebSocket.OPEN = FakeSocket.OPEN;
-  globalThis.window = { AudioContext: FakeAudioContext };
+  globalThis.window = { AudioContext: streaming ? StreamingAudioContext : FakeAudioContext };
   Object.defineProperty(globalThis, 'navigator', {
     value: { mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) } },
     configurable: true,
@@ -115,7 +141,7 @@ async function withBrowser(fn) {
   globalThis.URL.revokeObjectURL = () => {};
 
   try {
-    await fn({ played });
+    await fn({ played, contexts });
   } finally {
     globalThis.WebSocket = saved.WebSocket;
     globalThis.window = saved.window;
@@ -652,6 +678,573 @@ async function testDisposeMidReplyUnblocksAsk() {
   });
 }
 
+
+// ── the timing probe ────────────────────────────────────────────────────────
+async function testTimingMarks() {
+  await withBrowser(async () => {
+    const marks = [];
+    const b = makeBackend({ onTiming: (mark, detail) => marks.push({ mark, ...detail }) });
+    const ws = await connect(b);
+
+    ws.frame({ type: 'transcript.user', text: 'How much?' });
+    const transcript = await b.stopCapture();
+
+    const names = marks.map((m) => m.mark);
+    check('the release opens the timeline', names[0] === 'release', names.join(','));
+    check('the padding is marked once it has been sent', names.includes('pad-sent'));
+    check('a transcript that already arrived costs no grace wait',
+      marks.find((m) => m.mark === 'user-transcript')?.waited === 0);
+
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    // 24000 samples of 16-bit mono = exactly 1000 ms of audio, in two frames.
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array(12000).buffer) });
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array(12000).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'Pro is $24.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+
+    for await (const _ of b.ask(transcript, new AbortController().signal)) { /* drain */ }
+    await b.speak('Pro is $24.', new AbortController().signal);
+
+    const byName = Object.fromEntries(marks.map((m) => [m.mark, m]));
+    check('the first audio frame is marked, not just the last',
+      byName['first-audio-frame'] !== undefined);
+    check('only the first audio frame is marked',
+      marks.filter((m) => m.mark === 'first-audio-frame').length === 1);
+    check('playback-start carries the reply length that the wait is compared against',
+      byName['playback-start']?.audioMs === 1000, String(byName['playback-start']?.audioMs));
+    check('audio-complete counts the frames it buffered',
+      byName['audio-complete']?.frames === 2, String(byName['audio-complete']?.frames));
+    check('the agent text mark carries its length',
+      byName['agent-text']?.chars === 11, String(byName['agent-text']?.chars));
+    check('every mark is timed from the release',
+      marks.every((m) => Number.isFinite(m.at) && m.at >= 0));
+    check('the marks run in order',
+      marks.every((m, i) => i === 0 || m.at >= marks[i - 1].at));
+    const finalNames = marks.map((m) => m.mark);
+    check('playback is the last mark of the turn',
+      finalNames[finalNames.length - 1] === 'playback-done', finalNames.join(','));
+
+    b.dispose();
+  });
+}
+
+async function testTimingIsOptional() {
+  await withBrowser(async ({ played }) => {
+    // No onTiming: the turn must behave exactly as it does in testFullTurn.
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hello' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array([1, 2, 3]).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'Hi there.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    for await (const _ of b.ask(transcript, new AbortController().signal)) { /* drain */ }
+    await b.speak('Hi there.', new AbortController().signal);
+    check('a turn with no timing listener still completes', played.length === 1);
+    b.dispose();
+  });
+}
+
+async function testTimingListenerCannotBreakATurn() {
+  await withBrowser(async ({ played }) => {
+    const b = makeBackend({ onTiming: () => { throw new Error('probe exploded'); } });
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hello' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array([1, 2, 3]).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'Hi there.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    for await (const _ of b.ask(transcript, new AbortController().signal)) { /* drain */ }
+    await b.speak('Hi there.', new AbortController().signal);
+    check('a throwing timing listener does not cost the caller their turn',
+      played.length === 1, JSON.stringify(played));
+    b.dispose();
+  });
+}
+
+async function testAudioMsFromChunks() {
+  const secondOfAudio = [new Int16Array(24000).buffer];
+  check('audioMs reads 16-bit mono at the session rate',
+    VoiceAgentBackend.audioMs(secondOfAudio) === 1000,
+    String(VoiceAgentBackend.audioMs(secondOfAudio)));
+  check('audioMs of nothing is zero', VoiceAgentBackend.audioMs([]) === 0);
+}
+
+// ── streaming playback ──────────────────────────────────────────────────────
+/** 10 ms of the agent's silent lead-in, the frame size the live agent sends. */
+const replyFrame = () => encodeBase64(new Int16Array(240).buffer);
+
+/** 10 ms of the synthesised voice: loud enough to count as speech. */
+const speechFrame = () => encodeBase64(new Int16Array(240).fill(3000).buffer);
+
+/** The output context: the one the player scheduled sources on. */
+const outputOf = (contexts) => contexts.find((c) => c.sources?.length) ?? { sources: [] };
+
+async function testStreamsAsFramesArrive() {
+  await withBrowser(async ({ played, contexts }) => {
+    const b = makeBackend();
+    check('speechStarted is offered when the browser can stream', typeof b.speechStarted === 'function');
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'What does it cost?' });
+    const transcript = await b.stopCapture();
+
+    // The first frame lands before the widget has called ask(), as it does live.
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+
+    const signal = new AbortController().signal;
+    let heard = false;
+    b.speechStarted(signal).then(() => { heard = true; });
+    const words = [];
+    const asking = (async () => { for await (const w of b.ask(transcript, signal)) words.push(w); })();
+    await tick();
+
+    const out = outputOf(contexts);
+    check('audio that arrived before ask() starts playing as soon as ask() runs',
+      out.sources.length === 1, `scheduled ${out.sources.length}`);
+
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    check('each later frame is scheduled the moment it lands', out.sources.length === 2);
+    check('frames are joined back to back, with no gap',
+      Math.abs(out.sources[1].startAt - (out.sources[0].startAt + 0.01)) < 1e-9,
+      `${out.sources[0].startAt} → ${out.sources[1].startAt}`);
+
+    // The silent lead-in plays out; the voice has not started.
+    out.currentTime = out.sources[1].startAt + 0.01;
+    await tick(60);
+    check('the silent lead-in does not count as the caller hearing the answer', heard === false);
+
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    out.currentTime = out.sources[2].startAt + 0.005;
+    await tick(60);
+    check('speechStarted resolves when the voice itself starts playing', heard === true);
+
+    ws.frame({ type: 'transcript.agent', text: 'Price on request.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    check('without word deltas, the reply text still arrives whole through ask()',
+      words.join(' ') === 'Price on request.', JSON.stringify(words));
+
+    let spoke = false;
+    const speaking = b.speak(words.join(' '), signal).then(() => { spoke = true; });
+    await tick();
+    check('speak() does not replay the answer as a second clip', played.length === 0,
+      JSON.stringify(played));
+    check('speak() waits while streamed audio is still playing', spoke === false);
+    for (const src of out.sources) src.onended?.();
+    await speaking;
+    check('speak() resolves once the streamed audio has played out', spoke === true);
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testNoSpeechStartedWithoutStreaming() {
+  await withBrowser(async ({ played }) => {
+    const b = makeBackend();
+    check('without Web Audio scheduling, speechStarted is not offered',
+      b.speechStarted === undefined);
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    await b.stopCapture();
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'Hello.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    for await (const _ of b.ask('Hi', new AbortController().signal)) { /* drain */ }
+    await b.speak('Hello.', new AbortController().signal);
+    check('...and the reply falls back to one buffered clip', played.length === 1);
+    b.dispose();
+  });
+}
+
+async function testTextOnlyBackendDoesNotStream() {
+  await withBrowser(async () => {
+    const b = makeBackend({ speakEnabled: false });
+    check('a text-only backend offers neither speak nor speechStarted',
+      b.speak === undefined && b.speechStarted === undefined);
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testCancelMidReplyDropsTheTail() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Tell me everything' });
+    const t1 = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+
+    const first = new AbortController();
+    const asking = (async () => { for await (const _ of b.ask(t1, first.signal)) { /* drain */ } })();
+    await tick();
+    const out = outputOf(contexts);
+    first.abort(); // the caller presses Stop, or Ask another, mid-answer
+    let caught = null;
+    try { await asking; } catch (err) { caught = err; }
+    check('cancelling mid-reply unwinds ask() as an abort', caught?.name === 'AbortError', String(caught));
+    check('cancelling mid-reply silences what was already scheduled', out.sources.every((s) => s.stopped));
+
+    // The agent keeps sending the reply it was cut off in.
+    const before = out.sources.length;
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'The old, long answer.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    check('the rest of a cancelled reply is not played', out.sources.length === before);
+
+    // The next question gets its own answer, and only its own.
+    await b.startCapture();
+    ws.frame({ type: 'transcript.user', text: 'Short question' });
+    const t2 = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'New answer.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const chunks = [];
+    for await (const c of b.ask(t2, new AbortController().signal)) chunks.push(c);
+    check('the next turn gets its own text, not the cancelled one',
+      chunks.join(' ') === 'New answer.', JSON.stringify(chunks));
+    check('the next turn plays its own audio',
+      out.sources.length === before + 1 && !out.sources[before].stopped);
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testCancelBeforeReplyBeganDropsThatReply() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'First' });
+    const t1 = await b.stopCapture();
+
+    // Cancelled while still "thinking": the agent has not started this reply yet.
+    const first = new AbortController();
+    const asking = (async () => { for await (const _ of b.ask(t1, first.signal)) { /* drain */ } })();
+    await tick();
+    first.abort();
+    try { await asking; } catch { /* AbortError, as covered above */ }
+
+    // ...but it arrives anyway, afterwards.
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'Answer nobody wants now.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const out = outputOf(contexts);
+    check('a reply to a turn cancelled before it began is dropped whole', out.sources.length === 0,
+      `scheduled ${out.sources.length}`);
+
+    await b.startCapture();
+    ws.frame({ type: 'transcript.user', text: 'Second' });
+    const t2 = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'The answer you asked for.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const chunks = [];
+    for await (const c of b.ask(t2, new AbortController().signal)) chunks.push(c);
+    check('the following reply is delivered normally',
+      chunks.join(' ') === 'The answer you asked for.', JSON.stringify(chunks));
+    check('...and heard', outputOf(contexts).sources.length === 1);
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testSpeechStartedHonoursAbort() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    await b.stopCapture();
+    const ctrl = new AbortController();
+    const waiting = b.speechStarted(ctrl.signal);
+    ctrl.abort();
+    let caught = null;
+    try { await waiting; } catch (err) { caught = err; }
+    check('speechStarted rejects with AbortError when the turn is cancelled first',
+      caught?.name === 'AbortError', String(caught));
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testStreamedTimingMarks() {
+  await withBrowser(async ({ contexts }) => {
+    const marks = [];
+    const b = makeBackend({ onTiming: (mark, d) => marks.push({ mark, ...d }) });
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    const signal = new AbortController().signal;
+    const it = b.ask('Hi', signal)[Symbol.asyncIterator]();
+    const text = it.next();
+    await tick();
+    ws.frame({ type: 'transcript.agent', text: 'Hello.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await text;
+    const playbackStart = marks.find((m) => m.mark === 'playback-start');
+    const agentText = marks.find((m) => m.mark === 'agent-text');
+    check('streamed playback is marked as streamed', playbackStart?.streamed === true);
+    check('streamed playback starts before the reply text arrives',
+      marks.indexOf(playbackStart) < marks.indexOf(agentText),
+      marks.map((m) => m.mark).join(','));
+    const speaking = b.speak('Hello.', signal);
+    for (const src of outputOf(contexts).sources) src.onended?.();
+    await speaking;
+    check('the end of streamed playback is marked', marks.some((m) => m.mark === 'playback-done' && m.streamed));
+    b.dispose();
+  }, { streaming: true });
+}
+
+// ── the reply timeout is about silence, not length ──────────────────────────
+/** Let pending promise callbacks run without touching the (mocked) timers. */
+const flush = () => new Promise((r) => setImmediate(r));
+
+async function testLongReplyDoesNotTimeOut() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Tell me everything' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+
+    mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
+    try {
+      let outcome = 'pending';
+      const asking = (async () => {
+        const out = [];
+        for await (const c of b.ask(transcript, new AbortController().signal)) out.push(c);
+        return out.join(' ');
+      })().then((t) => { outcome = t; }, (err) => { outcome = err; });
+
+      // A 50 s answer: audio keeps arriving the whole time, well past the 30 s limit.
+      for (let s = 0; s < 50; s++) {
+        ws.frame({ type: 'reply.audio', data: replyFrame() });
+        mock.timers.tick(1000);
+        await flush();
+      }
+      check('a reply that is still streaming is not timed out, however long it runs',
+        outcome === 'pending', String(outcome?.message ?? outcome));
+
+      ws.frame({ type: 'transcript.agent', text: 'A very long answer.' });
+      ws.frame({ type: 'reply.done', status: 'completed' });
+      await flush();
+      await asking;
+      check('...and its text is delivered when it finally arrives',
+        outcome === 'A very long answer.', String(outcome?.message ?? outcome));
+    } finally {
+      mock.timers.reset();
+    }
+    b.dispose();
+  });
+}
+
+async function testSilentReplyStillTimesOut() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hello?' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+
+    mock.timers.enable({ apis: ['setTimeout', 'Date'], now: Date.now() });
+    try {
+      let caught = null;
+      const asking = (async () => {
+        for await (const _ of b.ask(transcript, new AbortController().signal)) { /* drain */ }
+      })().catch((err) => { caught = err; });
+      await flush();
+      mock.timers.tick(29_000);
+      await flush();
+      check('a reply is not given up on before the limit', caught === null, String(caught));
+      mock.timers.tick(1_500);
+      await flush();
+      await asking;
+      check('a reply that goes quiet for the whole limit still fails, rather than hanging',
+        caught instanceof TalkieBackendError && caught.reason === 'backend-failure', String(caught));
+    } finally {
+      mock.timers.reset();
+    }
+    b.dispose();
+  });
+}
+
+// ── word-by-word text, in step with the voice ──────────────────────────────
+/** Send a burst of word deltas the way the live agent does: all at once, before the voice. */
+function sendWords(ws, words) {
+  for (const [delta, start_ms] of words) {
+    ws.frame({ type: 'transcript.agent.delta', reply_id: 'r1', delta, start_ms, end_ms: start_ms + 300 });
+  }
+}
+
+async function testWordsFollowPlayback() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Say three words' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+
+    const words = [];
+    const signal = new AbortController().signal;
+    const asking = (async () => { for await (const w of b.ask(transcript, signal)) words.push(w); })();
+    await tick();
+
+    // 50 ms of lead-in, then the word burst, then 1 s of voice.
+    for (let i = 0; i < 5; i++) ws.frame({ type: 'reply.audio', data: replyFrame() });
+    sendWords(ws, [['Three ', 300], ['little ', 700], ['words.', 1100]]);
+    for (let i = 0; i < 100; i++) ws.frame({ type: 'reply.audio', data: speechFrame() });
+
+    const out = outputOf(contexts);
+    const t0 = out.sources[0].startAt;          // where stream position 0 plays
+    const playTo = async (ms) => { out.currentTime = t0 + ms / 1000; await tick(60); };
+
+    await playTo(40);
+    check('no words appear during the silent lead-in, though they have all arrived',
+      words.length === 0, JSON.stringify(words));
+    await playTo(60);
+    check('the first word appears as the voice starts', words.join(' ') === 'Three', JSON.stringify(words));
+    await playTo(400);
+    check('the next word waits for its moment in the audio', words.length === 1, JSON.stringify(words));
+    await playTo(500);
+    check('...and appears once playback reaches it', words.join(' ') === 'Three little', JSON.stringify(words));
+    await playTo(900);
+    check('the last word follows the voice too', words.join(' ') === 'Three little words.', JSON.stringify(words));
+
+    ws.frame({ type: 'transcript.agent', text: 'Three little words.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    check('the final transcript does not repeat words already shown',
+      words.join(' ') === 'Three little words.', JSON.stringify(words));
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testWordsArriveAtOnceWithoutStreaming() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    const words = [];
+    const asking = (async () => {
+      for await (const w of b.ask(transcript, new AbortController().signal)) words.push(w);
+    })();
+    await tick();
+    sendWords(ws, [['Hello ', 100], ['there.', 400]]);
+    await tick(60);
+    check('without streaming playback, words show as soon as they arrive',
+      words.join(' ') === 'Hello there.', JSON.stringify(words));
+    ws.frame({ type: 'transcript.agent', text: 'Hello there.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    check('...and are not repeated at the end', words.length === 2, JSON.stringify(words));
+    b.dispose();
+  });
+}
+
+async function testTranscriptCompletesShortDeltas() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Price?' });
+    const transcript = await b.stopCapture();
+    sendWords(ws, [['Price ', 100], ['is ', 300]]);
+    ws.frame({ type: 'transcript.agent', text: 'Price is on request.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const words = [];
+    for await (const w of b.ask(transcript, new AbortController().signal)) words.push(w);
+    check('words the deltas missed are filled in from the final transcript',
+      words.join(' ') === 'Price is on request.', JSON.stringify(words));
+    b.dispose();
+  });
+}
+
+async function testStalledClockStillReleasesText() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    const transcript = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    const words = [];
+    const asking = (async () => {
+      for await (const w of b.ask(transcript, new AbortController().signal)) words.push(w);
+    })();
+    await tick();
+    // A suspended output context: frames are scheduled but the clock never moves.
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    sendWords(ws, [['Still ', 0], ['here.', 200]]);
+    ws.frame({ type: 'transcript.agent', text: 'Still here.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(100);
+    check('text waits for playback while it might still come', words.length === 0, JSON.stringify(words));
+    await asking;  // released after the flush grace
+    check('if playback never moves, the text is released anyway rather than hanging',
+      words.join(' ') === 'Still here.', JSON.stringify(words));
+    check('...that is a real stall being simulated', outputOf(contexts).currentTime === 0);
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testCancelledReplyWordsDropped() {
+  await withBrowser(async () => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'First' });
+    const t1 = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    const first = new AbortController();
+    const asking = (async () => { for await (const _ of b.ask(t1, first.signal)) { /* drain */ } })();
+    await tick();
+    first.abort();
+    try { await asking; } catch { /* AbortError */ }
+    sendWords(ws, [['Stale ', 0], ['words.', 200]]);
+    ws.frame({ type: 'reply.done', status: 'completed' });
+
+    await b.startCapture();
+    ws.frame({ type: 'transcript.user', text: 'Second' });
+    const t2 = await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    sendWords(ws, [['Fresh ', 0], ['answer.', 200]]);
+    ws.frame({ type: 'transcript.agent', text: 'Fresh answer.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const words = [];
+    for await (const w of b.ask(t2, new AbortController().signal)) words.push(w);
+    check('words from a cancelled reply never reach the next answer',
+      words.join(' ') === 'Fresh answer.', JSON.stringify(words));
+    b.dispose();
+  });
+}
+
+async function testSpeechOnsetDetection() {
+  // Via the public surface: a reply whose audio never gets loud never "starts speaking".
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend();
+    const ws = await connect(b);
+    ws.frame({ type: 'transcript.user', text: 'Hi' });
+    await b.stopCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    // Near-silence at the level measured live (peak |2|), not exact zeros.
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array(240).fill(2).buffer) });
+    const signal = new AbortController().signal;
+    let heard = false;
+    b.speechStarted(signal).then(() => { heard = true; });
+    const asking = (async () => { for await (const _ of b.ask('Hi', signal)) { /* drain */ } })();
+    await tick();
+    const out = outputOf(contexts);
+    out.currentTime = out.sources[0].startAt + 0.01;
+    await tick(60);
+    check('the agent\'s low-level lead-in noise is not mistaken for speech', heard === false);
+    ws.frame({ type: 'transcript.agent', text: 'Hi.' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    b.dispose();
+  }, { streaming: true });
+}
+
 // ── run ─────────────────────────────────────────────────────────────────────
 await testFullTurn();
 await testSecondTurnReusesSocket();
@@ -671,6 +1264,25 @@ await testTokenIsCachedThenConsumed();
 await testExpiredTokenIsRefetched();
 await testDisposedBackendRefuses();
 await testDisposeMidReplyUnblocksAsk();
+await testTimingMarks();
+await testTimingIsOptional();
+await testTimingListenerCannotBreakATurn();
+await testAudioMsFromChunks();
+await testStreamsAsFramesArrive();
+await testNoSpeechStartedWithoutStreaming();
+await testTextOnlyBackendDoesNotStream();
+await testCancelMidReplyDropsTheTail();
+await testCancelBeforeReplyBeganDropsThatReply();
+await testSpeechStartedHonoursAbort();
+await testStreamedTimingMarks();
+await testLongReplyDoesNotTimeOut();
+await testSilentReplyStillTimesOut();
+await testWordsFollowPlayback();
+await testWordsArriveAtOnceWithoutStreaming();
+await testTranscriptCompletesShortDeltas();
+await testStalledClockStillReleasesText();
+await testCancelledReplyWordsDropped();
+await testSpeechOnsetDetection();
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

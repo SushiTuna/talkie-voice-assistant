@@ -3,25 +3,89 @@
 Import the components into any framework using one of the two registration strategies below.
 All frameworks share the same runtime API: properties in, events out.
 
-## Quick setup (all frameworks)
+## Drop-in embed (any web page, no build step)
 
-Load the scoped-elements polyfill as your **first** import so that multiple versions of a
-component can coexist on the same page:
+The fastest route, and the only one that needs no bundler. Build the one-file bundle:
+
+```bash
+npm run build        # → dist/talkie-embed.js (~88 KiB, every dependency inlined)
+```
+
+Host that file anywhere your page can load it, then add two lines:
+
+```html
+<script src="/path/to/talkie-embed.js" defer></script>
+<talkie-assistant api="http://localhost:8000"></talkie-assistant>
+```
+
+`<talkie-assistant>` mounts the floating launcher and the widget, positions them bottom-right,
+and builds a `VoiceAgentBackend` from its attributes. It fetches the persona from
+`${api}/agent/context` when the page loads and only mints a token when the visitor opens it.
+Closing the panel, removing the element or leaving the page ends the agent session.
+
+| Attribute | Default | Purpose |
+|---|---|---|
+| `api` | `http://localhost:8000` | Origin of the voice server |
+| `token-url` | `${api}/agent/token` | Token route, if it lives elsewhere |
+| `profile` | server default | Agent profile, sent as `?profile=` to `/agent/context` |
+| `system-prompt` | a short generic prompt | Used only when `/agent/context` is missing or fails |
+| `voice` | server's, else `anna` | Output voice |
+| `label` | `Product Expert · Voice` | Launcher hover label |
+| `fonts` | off | `google` loads Space Grotesk + Instrument Sans from Google Fonts |
+
+`fonts` is opt-in because the request sends each visitor's IP address to Google; without it the
+widget falls back to the page's sans-serif. Script access: `el.open()`, `el.close()`, and
+`el.widget` for the `talkie-*` events.
+
+A worked example lives at [`../examples/embed.html`](../examples/embed.html) — see
+[Running the example](#running-the-example).
+
+### What the host page's server needs
+
+- **CORS.** The voice server only answers origins listed in `TALKIE_ALLOWED_ORIGINS`
+  (comma-separated). Unset, it allows only the demo, `http://localhost:8081` and
+  `http://127.0.0.1:8081`. Add every origin that embeds the assistant.
+- **A secure context for the microphone.** Browsers expose `getUserMedia` only on HTTPS or
+  `localhost` ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#security)).
+- **CSP, if the host page sets one.** The audio worklet is loaded from a `blob:` URL, so a page
+  with a Content-Security-Policy must allow `blob:` in `script-src` (or `worker-src`), and must
+  allow the voice server in `connect-src` along with `wss://agents.assemblyai.com`.
+
+### Running the example
+
+```bash
+# 1. Voice server, allowing the example's origin (from the voice server's directory)
+TALKIE_ALLOWED_ORIGINS="http://localhost:8081,http://localhost:5173" \
+  .venv/bin/uvicorn server:app --port 8000
+
+# 2. Example host page on a different origin (from talkie-sdk/)
+npm run example      # builds, then serves on :5173
+```
+
+Open `http://localhost:5173/examples/embed.html`.
+
+## Module import (apps with a bundler)
+
+Register the elements you need and wire the backend yourself:
 
 ```html
 <script type="module">
-  import '@webcomponents/scoped-custom-element-registry'; // ← first!
-  import '@talkie/voice-ui/define/talkie-widget.js';       // registers <talkie-widget>
+  import '@talkie/voice-ui/define/talkie-widget.js';   // registers <talkie-widget>
+  // or, for the self-wiring launcher + widget:
+  import '@talkie/voice-ui/define/talkie-assistant.js';
 </script>
 ```
 
-### Why the polyfill?
+Until the package is published, install it from a local checkout: `npm install ../talkie-sdk`.
 
-The widget component uses `ScopedElementsMixin` from `@open-wc/scoped-elements`. When you render
-a `<lion-button>` inside the widget's shadow DOM, the mixin needs the Scoped Custom Element
-Registry to scope those children correctly. The polyfill is not yet installed by this package;
-consumers add it to their project when they hit a missing-registry error (the widget will
-render but Lion elements won't be styled or functional without it).
+### The scoped-registry polyfill is optional
+
+The components use `ScopedElementsMixin` from `@open-wc/scoped-elements` (v2) to render their
+internal `<lion-button>` and `<lion-icon>`. When the browser has no scoped custom-element
+registries, the mixin falls back to the global registry, which works on its own. The one case it
+cannot handle is a host page that has **already registered a different `lion-button`** class; it
+then logs an error. Only in that case, load `@webcomponents/scoped-custom-element-registry` before
+anything else on the page. The `dist/talkie-embed.js` bundle does not include it.
 
 ## Backend configuration
 
@@ -193,33 +257,25 @@ is unavailable.
 
 ## Plain HTML
 
+With no bundler, use the drop-in embed above — it is the plain-HTML route. To wire a widget to
+a backend of your own instead of using `<talkie-assistant>`, the same bundle exposes the classes
+on `window.Talkie`:
+
 ```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --talkie-paper: #f7f5ec; --talkie-ink: #101d20; --talkie-font-display: 'Space Grotesk', sans-serif;
-      --talkie-font-body: 'Instrument Sans', sans-serif; --talkie-font-mono: monospace;
-    }
-  </style>
+  <script src="/path/to/talkie-embed.js"></script>
 </head>
 <body>
-  <div id="container" style="position:fixed;bottom:80px;right:28px;">
+  <div style="position:fixed;bottom:80px;right:28px;">
     <talkie-widget id="widget"></talkie-widget>
   </div>
-
-  <!-- Import the scoped-elements polyfill first, then register the component -->
-  <script type="module">
-    import '@webcomponents/scoped-custom-element-registry';
-    import '@talkie/voice-ui/define/talkie-widget.js';
-    import { MockBackend } from '@talkie/voice-ui/backends/mock-backend.js';
-
+  <script>
     const widget = document.getElementById('widget');
-    widget.backend = new MockBackend();
+    widget.backend = new Talkie.MockBackend();
+    widget.show();
   </script>
 </body>
 </html>

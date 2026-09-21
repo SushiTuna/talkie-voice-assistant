@@ -34,6 +34,7 @@
 import { TalkieBackendError } from '../core/backend.js';
 import { MicCapture } from '../audio/mic-capture.js';
 import { encodeBase64, decodeBase64, silenceFrame, pcmToWavBlob } from '../audio/pcm-codec.js';
+import { PcmStreamPlayer } from '../audio/pcm-player.js';
 
 /** The vendor's socket endpoint. */
 const DEFAULT_WS_URL = 'wss://agents.assemblyai.com/v1/ws';
@@ -47,7 +48,14 @@ const SESSION_READY_TIMEOUT_MS = 10000;
 /** How long to wait after the silence padding for the closing `transcript.user`. */
 const FINAL_TRANSCRIPT_GRACE_MS = 2500;
 
-/** How long to wait for `transcript.agent` once `ask()` starts reading the turn. */
+/**
+ * How long a reply may go without any sign of life before it is given up on.
+ *
+ * An inactivity limit, not a total one: every audio frame restarts it. The reply text only
+ * arrives after the last audio frame, so a fixed limit timed out any answer longer than
+ * itself — a measured 37 s answer to an open question tripped the old 30 s cap and threw
+ * the widget into its error state mid-sentence.
+ */
 const REPLY_TIMEOUT_MS = 30000;
 
 /**
@@ -64,6 +72,25 @@ const REPLY_TIMEOUT_MS = 30000;
  */
 const END_OF_TURN_PAD_MS = 400;
 
+/**
+ * RMS level, on the 16-bit scale, above which a reply frame counts as speech.
+ *
+ * Each reply opens with seconds of near-silence while the agent works out its answer —
+ * measured at ~3.5 s, peaking at |2| — before the synthesised voice starts at an RMS in
+ * the hundreds. Anything between the two separates them; 100 leaves margin both ways.
+ */
+const SPEECH_RMS_THRESHOLD = 100;
+
+/** How often ask() checks the playback position for words that are now being spoken. */
+const WORD_POLL_MS = 40;
+
+/**
+ * Once the reply has fully arrived, how long past its expected end ask() waits before
+ * releasing any words playback has not reached — so a suspended audio context, which never
+ * advances, cannot hold the text back forever.
+ */
+const WORD_FLUSH_GRACE_MS = 1500;
+
 /** Silence is sent in frames this long, so a cancel can interrupt the padding. */
 const PAD_FRAME_MS = 50;
 
@@ -77,6 +104,9 @@ export class VoiceAgentBackend {
   /** @type {object} */ #sessionConfig;
   /** @type {number} */ #padMs;
   /** @type {boolean} */ #keepMicWarm;
+  /** @type {((mark: string, detail: object) => void) | null} */ #onTiming = null;
+  /** @type {number} Performance clock at the release that opened the current turn. */ #turnT0 = 0;
+  /** @type {boolean} Whether this turn has seen its first `reply.audio` frame yet. */ #sawFirstAudio = false;
   /** @type {((call: { name: string, arguments: object, call_id: string }) => any) | null} */ #onToolCall;
 
   /** @type {WebSocket | null} */ #ws = null;
@@ -95,6 +125,25 @@ export class VoiceAgentBackend {
 
   /** @type {HTMLAudioElement | null} */ #audio = null;
   /** @type {string | null} */ #audioUrl = null;
+
+  /** @type {PcmStreamPlayer | null} Streams the reply as it arrives; null without Web Audio. */
+  #player = null;
+  /** @type {ReplyTurn | null} The reply currently routed to the player. */ #streamingTurn = null;
+  /**
+   * True between cancelling a reply mid-stream and its `reply.done`. The agent keeps
+   * sending the rest of a reply the caller stopped, and nothing in `reply.audio` ties a
+   * frame to its reply, so without this those frames would play under the next answer.
+   * @type {boolean}
+   */
+  #discarding = false;
+  /**
+   * Set when a turn is cancelled before its reply has even started: that reply is still
+   * coming, so the next `reply.started` opens a discard rather than a new turn.
+   * @type {boolean}
+   */
+  #discardNext = false;
+  /** @type {{ promise: Promise<void>, resolve: () => void } | null} Settles when this turn's audio is first heard. */
+  #speechStart = null;
 
   /**
    * @param {object} options
@@ -121,6 +170,10 @@ export class VoiceAgentBackend {
    * @param {boolean} [options.speakEnabled=true] - Set false for a text-only widget.
    * @param {boolean} [options.keepMicWarm=false] - Hold the mic open between turns.
    * @param {number} [options.endOfTurnPadMs] - Override the silence padding length.
+   * @param {(mark: string, detail: object) => void} [options.onTiming] - Called at each
+   *   turn-phase boundary with `{ at, since, ... }` milliseconds, where `at` is measured
+   *   from the release that ended the caller's turn. Diagnostic only: nothing in the turn
+   *   path depends on it, and leaving it unset costs nothing.
    */
   constructor({
     baseUrl = 'http://localhost:8000',
@@ -139,6 +192,7 @@ export class VoiceAgentBackend {
     speakEnabled = true,
     keepMicWarm = false,
     endOfTurnPadMs = null,
+    onTiming = null,
   } = {}) {
     const origin = baseUrl.replace(/\/+$/, '');
     this.#tokenUrl = tokenUrl ?? `${origin}/agent/token`;
@@ -146,6 +200,7 @@ export class VoiceAgentBackend {
     this.#wsUrl = wsUrl;
     this.#keepMicWarm = keepMicWarm;
     this.#onToolCall = onToolCall;
+    this.#onTiming = onTiming;
 
     this.#sessionConfig = VoiceAgentBackend.buildSessionUpdate({
       agentId, systemPrompt, greeting, voice, keyterms, volume, turnDetection, tools,
@@ -157,6 +212,13 @@ export class VoiceAgentBackend {
     // The widget checks `typeof backend.speak === 'function'`, so opting out has to
     // remove the method rather than just flag it.
     if (!speakEnabled) this.speak = undefined;
+    if (speakEnabled && PcmStreamPlayer.isSupported()) {
+      this.#player = new PcmStreamPlayer({ sampleRate: PCM_SAMPLE_RATE });
+    } else {
+      // Without streaming playback the widget must not wait on it: it keys "speaking" off
+      // the reply text, as it does for every other backend.
+      this.speechStarted = undefined;
+    }
   }
 
   /** @returns {string | null} The vendor session id, once `session.ready` has arrived. */
@@ -252,6 +314,16 @@ export class VoiceAgentBackend {
         return { kind: 'reply-started', replyId: msg.reply_id ?? null };
       case 'reply.audio':
         return msg.data ? { kind: 'reply-audio', data: msg.data } : null;
+      case 'transcript.agent.delta':
+        // Not in the published spec, but sent on every live turn: one word at a time, with
+        // `start_ms` placing it within the synthesised speech. The whole reply's words come
+        // in one burst just before the voice starts, so they are revealed against playback
+        // rather than on arrival. Absent, the reply text still comes from transcript.agent.
+        return {
+          kind: 'agent-delta',
+          text: msg.delta ?? '',
+          startMs: Number.isFinite(msg.start_ms) ? msg.start_ms : null,
+        };
       case 'transcript.agent':
         return {
           kind: 'agent-transcript',
@@ -314,6 +386,7 @@ export class VoiceAgentBackend {
     const settled = await Promise.allSettled([
       this.#mic.prepare().then(() => { done.audio = true; }),
       this.#fetchToken().then(() => { done.token = true; }),
+      this.#player ? this.#player.prepare() : Promise.resolve(),
       mic ? this.#mic.openMic().then(() => { done.mic = true; }) : Promise.resolve(),
     ]);
     for (const r of settled) {
@@ -336,6 +409,10 @@ export class VoiceAgentBackend {
     this.#userTurns.clear();
     this.#userTurnSeq = 0;
     this.#turn = null;
+
+    // Inside the press, so autoplay policy lets the output context run. Not awaited on the
+    // critical path: a failure here only means the reply falls back to buffered playback.
+    this.#player?.prepare().catch(() => {});
 
     const socketWasOpen = this.connected;
     if (!socketWasOpen) {
@@ -365,7 +442,14 @@ export class VoiceAgentBackend {
    * @throws {TalkieBackendError} `no-speech-detected` when nothing was recognised.
    */
   async stopCapture() {
+    // Every mark in the turn is measured from here: the moment the caller stopped talking.
+    this.#turnT0 = performance.now();
+    this.#sawFirstAudio = false;
+    this.#speechStart = deferred();
+    this.#mark('release');
+
     await this.#mic.stop({ keepMic: this.#keepMicWarm });
+    this.#mark('mic-stopped');
 
     if (!this.connected) {
       // Cancelled before the socket came up, or the session already failed.
@@ -383,19 +467,31 @@ export class VoiceAgentBackend {
       this.#sendAudio(pad);
       await new Promise((r) => setTimeout(r, PAD_FRAME_MS));
     }
+    this.#mark('pad-sent', { padMs: this.#padMs, frames });
 
     // The closing words are still being recognised upstream; waiting for the final
     // transcript beats truncating the caller mid-sentence.
     if (this.connected && !this.#userTurns.size) {
+      const waitedFrom = performance.now();
+      let timedOut = false;
       await new Promise((resolve) => {
         const settle = () => {
           this.#awaitingUserTranscript = null;
           clearTimeout(timer);
           resolve();
         };
-        const timer = setTimeout(settle, FINAL_TRANSCRIPT_GRACE_MS);
+        const timer = setTimeout(() => { timedOut = true; settle(); }, FINAL_TRANSCRIPT_GRACE_MS);
         this.#awaitingUserTranscript = { resolve: settle };
       });
+      // A `timedOut: true` here is the expensive case: the full grace window spent waiting
+      // on a final transcript that never came, before the agent was even asked.
+      this.#mark('user-transcript', {
+        waited: Math.round(performance.now() - waitedFrom),
+        graceMs: FINAL_TRANSCRIPT_GRACE_MS,
+        timedOut,
+      });
+    } else {
+      this.#mark('user-transcript', { waited: 0, timedOut: false, alreadyHad: true });
     }
 
     const transcript = VoiceAgentBackend.joinTurns(this.#userTurns);
@@ -420,8 +516,125 @@ export class VoiceAgentBackend {
   async *ask(_transcript, signal) {
     this.#assertLive();
     const turn = this.#turn ?? this.#beginTurn();
-    const text = await turn.textReady(signal);
-    if (text) yield text;
+    this.#mark('ask-entered');
+    // ask() is the first call that carries the turn's abort signal, so it is where playback
+    // can safely begin: anything that cancels the turn can also silence it.
+    if (this.#player) this.#streamTurn(turn, signal);
+
+    const speechStart = this.#speechStart;
+    const spoken = [];
+    let emitted = 0;
+    let flushAt = null;
+
+    for (;;) {
+      if (signal?.aborted) throw abortError();
+      const pos = this.#playedMs(turn);
+
+      if (turn.onsetMs !== null && pos >= turn.onsetMs && speechStart && !speechStart.settled) {
+        speechStart.settled = true;
+        this.#mark('speech-audible');
+        speechStart.resolve();
+      }
+
+      const final = turn.done || turn.text !== null;
+      if (final && flushAt === null) {
+        // Everything has arrived; the rest is playback. Allow for it, plus a margin.
+        flushAt = Date.now() + Math.max(0, turn.receivedMs - Math.max(pos, 0)) + WORD_FLUSH_GRACE_MS;
+      }
+      const flush = flushAt !== null && Date.now() >= flushAt;
+
+      const due = flush ? turn.words.length : this.#dueWords(turn, pos);
+      while (emitted < due) {
+        const word = turn.words[emitted++].text.trim();
+        if (!word) continue;
+        if (spoken.length === 0) this.#mark('first-word');
+        spoken.push(word);
+        yield word;
+        if (signal?.aborted) throw abortError();
+      }
+
+      if (final && emitted >= turn.words.length) break;
+      await turn.changed(signal, WORD_POLL_MS);
+    }
+
+    const text = turn.text ?? '';
+    this.#mark('agent-text', { chars: text.length, words: spoken.length });
+    if (spoken.length === 0) {
+      // No word deltas — the undocumented event is gone, or this reply had none. The final
+      // transcript is the whole answer.
+      if (text) yield text;
+      return;
+    }
+    // Deltas have matched the final transcript exactly on every turn measured. If they ever
+    // fall short, finish with what the transcript has beyond them.
+    const finalWords = text.trim().split(/\s+/).filter(Boolean);
+    const matches = spoken.every((w, i) => finalWords[i] === w);
+    if (matches) {
+      for (const word of finalWords.slice(spoken.length)) yield word;
+    }
+  }
+
+  /**
+   * How far playback of `turn` has got, in milliseconds of reply audio. Infinity when the
+   * turn is not being streamed, so its words are shown as soon as they arrive.
+   * @param {ReplyTurn} turn
+   * @returns {number}
+   */
+  #playedMs(turn) {
+    if (!this.#player || !turn.streamed || this.#streamingTurn !== turn) return Infinity;
+    return this.#player.positionMs();
+  }
+
+  /**
+   * How many of `turn`'s words the caller has now heard begin.
+   *
+   * `start_ms` counts from the start of the synthesised speech, not from the start of the
+   * reply stream, which opens with the agent's silent lead-in. The speech onset found in the
+   * audio anchors the two: measured, onset minus the first word's `start_ms` placed the
+   * last word's end within 60 ms of where the voice actually stopped.
+   *
+   * @param {ReplyTurn} turn
+   * @param {number} pos - Playback position, from #playedMs.
+   * @returns {number}
+   */
+  #dueWords(turn, pos) {
+    const words = turn.words;
+    if (pos === Infinity) return words.length;
+    if (turn.onsetMs === null || words.length === 0 || pos < turn.onsetMs) return 0;
+    const first = words[0].startMs;
+    let n = 0;
+    while (n < words.length) {
+      const at = words[n].startMs;
+      // A word without timing is shown with the first moment of speech.
+      const dueAt = at === null || first === null ? turn.onsetMs : turn.onsetMs + (at - first);
+      if (dueAt > pos) break;
+      n++;
+    }
+    return n;
+  }
+
+  /**
+   * Resolve when the caller starts hearing this turn's reply — the voice itself, not the
+   * silent lead-in the agent streams while it works out the answer.
+   *
+   * Optional backend capability. The widget calls this alongside `ask()` and moves to
+   * `speaking` on whichever comes first. Absent when streaming playback is unavailable.
+   *
+   * @param {AbortSignal} [signal]
+   * @returns {Promise<void>}
+   */
+  async speechStarted(signal) {
+    this.#speechStart ??= deferred();
+    const { promise } = this.#speechStart;
+    if (signal?.aborted) throw abortError();
+    await new Promise((resolve, reject) => {
+      const onAbort = () => reject(abortError());
+      signal?.addEventListener('abort', onAbort, { once: true });
+      promise.then(() => {
+        signal?.removeEventListener('abort', onAbort);
+        resolve();
+      });
+    });
   }
 
   /**
@@ -436,9 +649,21 @@ export class VoiceAgentBackend {
     const turn = this.#turn;
     if (!turn) return;
 
+    if (turn.streamed) {
+      // Already playing since the first frame; nothing to start, just wait it out. An abort
+      // stops the player (see #streamTurn), which releases drained() at once.
+      await this.#player.drained();
+      this.#mark('playback-done', { streamed: true });
+      return;
+    }
+
     // `ask()` returns on transcript.agent, which the spec places after the last audio
     // frame — but reply.done is the actual end of the stream, so wait for it.
     await turn.audioComplete(signal);
+    this.#mark('audio-complete', {
+      frames: turn.audio.length,
+      audioMs: VoiceAgentBackend.audioMs(turn.audio),
+    });
     if (signal?.aborted) return;
 
     const chunks = turn.audio;
@@ -448,6 +673,8 @@ export class VoiceAgentBackend {
     this.#audioUrl = URL.createObjectURL(pcmToWavBlob(chunks, PCM_SAMPLE_RATE));
     const audio = new Audio(this.#audioUrl);
     this.#audio = audio;
+    // The headline number: silence between the caller releasing and hearing anything back.
+    this.#mark('playback-start', { audioMs: VoiceAgentBackend.audioMs(chunks) });
 
     await new Promise((resolve) => {
       const finish = () => {
@@ -462,6 +689,7 @@ export class VoiceAgentBackend {
       audio.addEventListener('error', finish, { once: true });
       audio.play().catch(finish);
     });
+    this.#mark('playback-done');
   }
 
   /** Release every resource this backend holds and end the agent session. */
@@ -475,6 +703,11 @@ export class VoiceAgentBackend {
     this.#awaitingUserTranscript = null;
     this.#endSession();
     this.#stopAudio();
+    this.#speechStart?.resolve();
+    this.#streamingTurn = null;
+    this.#discarding = false;
+    this.#discardNext = false;
+    this.#player?.close();
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -491,6 +724,38 @@ export class VoiceAgentBackend {
       .join(' ')
       .replace(/\s+/g, ' ')
       .trim();
+  }
+
+  /**
+   * Report one turn-phase boundary to `onTiming`, if anyone is listening.
+   *
+   * `at` is milliseconds since the release that ended the caller's turn, so the marks read
+   * as one timeline and the gap between any two is the cost of that phase. A throwing
+   * listener is swallowed: instrumentation must never break a live turn.
+   *
+   * @param {string} mark
+   * @param {object} [detail] - Extra fields worth seeing beside the timing.
+   */
+  #mark(mark, detail = {}) {
+    if (!this.#onTiming) return;
+    const at = this.#turnT0 ? Math.round(performance.now() - this.#turnT0) : 0;
+    try {
+      this.#onTiming(mark, { at, ...detail });
+    } catch { /* a broken probe must not cost the caller their turn */ }
+  }
+
+  /**
+   * Total duration of the buffered reply audio, in milliseconds.
+   *
+   * 16-bit mono, so two bytes per sample. Used to tell a long answer apart from a slow
+   * one: if playback lag tracks this number, the wait is the buffering, not the network.
+   *
+   * @param {ArrayBuffer[]} chunks
+   * @returns {number}
+   */
+  static audioMs(chunks) {
+    const bytes = chunks.reduce((sum, c) => sum + c.byteLength, 0);
+    return Math.round((bytes / 2 / PCM_SAMPLE_RATE) * 1000);
   }
 
   /**
@@ -638,16 +903,53 @@ export class VoiceAgentBackend {
         break;
 
       case 'reply-started':
+        if (this.#discardNext) {
+          // The reply to a turn the caller cancelled before it began. Drop all of it.
+          this.#discardNext = false;
+          this.#discarding = true;
+          break;
+        }
         // The reply begins before the widget calls ask(), so the buffer opens here.
-        this.#beginTurn();
+        this.#beginTurn().began = true;
+        // How long the service took to close the turn and start answering at all.
+        this.#mark('reply-started');
         break;
 
-      case 'reply-audio':
-        (this.#turn ?? this.#beginTurn()).audio.push(decodeBase64(evt.data));
+      case 'reply-audio': {
+        if (this.#discarding) break;
+        const turn = this.#turn ?? this.#beginTurn();
+        turn.began = true;
+        turn.touch();
+        const chunk = decodeBase64(evt.data);
+        if (turn.onsetMs === null && isSpeech(chunk)) turn.onsetMs = turn.receivedMs;
+        turn.receivedMs += (chunk.byteLength / 2 / PCM_SAMPLE_RATE) * 1000;
+        turn.audio.push(chunk);
+        if (this.#streamingTurn === turn) this.#player.push(chunk);
+        if (!this.#sawFirstAudio) {
+          this.#sawFirstAudio = true;
+          // The frame we could have started playing on. The gap between this and
+          // `playback-start` is what full-reply buffering costs.
+          this.#mark('first-audio-frame');
+        }
+        break;
+      }
+
+      case 'agent-delta':
+        if (this.#discarding) break;
+        {
+          const turn = this.#turn ?? this.#beginTurn();
+          turn.began = true;
+          turn.addWord(evt.text, evt.startMs);
+        }
         break;
 
       case 'agent-transcript':
-        (this.#turn ?? this.#beginTurn()).setText(evt.text);
+        if (this.#discarding) break;
+        {
+          const turn = this.#turn ?? this.#beginTurn();
+          turn.began = true;
+          turn.setText(evt.text);
+        }
         break;
 
       case 'reply-done':
@@ -655,7 +957,16 @@ export class VoiceAgentBackend {
         // answered with a tool call alone — still has to release ask(), or the widget
         // sits in `thinking` until the reply timeout for nothing. The turn is created
         // here when nothing else opened one, so ask() finds it already settled.
-        (this.#turn ?? this.#beginTurn()).finish();
+        if (this.#discarding) {
+          // The tail of a reply the caller cancelled. It is over; start listening again.
+          this.#discarding = false;
+          break;
+        }
+        {
+          const turn = this.#turn ?? this.#beginTurn();
+          turn.finish();
+          if (this.#streamingTurn === turn) this.#player.finish();
+        }
         break;
 
       case 'tool-call':
@@ -703,6 +1014,46 @@ export class VoiceAgentBackend {
   }
 
   /** @returns {ReplyTurn} A fresh reply buffer, replacing any finished one. */
+  /**
+   * Route `turn` to the player: whatever has already arrived plays now, and each frame
+   * after it plays as it lands. Cancelling the turn silences it and, if the agent is still
+   * sending, drops the rest of that reply rather than letting it leak into the next.
+   *
+   * @param {ReplyTurn} turn
+   * @param {AbortSignal} [signal]
+   */
+  #streamTurn(turn, signal) {
+    const player = this.#player;
+    player.reset();
+    turn.streamed = true;
+    this.#streamingTurn = turn;
+
+    player.whenStarted().then(() => {
+      // whenStarted() also settles when the player is stopped; only a real start counts.
+      // This is the first frame, usually the silent lead-in; speech-audible marks the voice.
+      if (!player.started || this.#streamingTurn !== turn) return;
+      this.#mark('playback-start', { streamed: true });
+    });
+
+    for (const chunk of turn.audio) player.push(chunk);
+    if (turn.settled) player.finish();
+
+    const onAbort = () => {
+      if (this.#streamingTurn === turn) {
+        this.#streamingTurn = null;
+        player.stop();
+      }
+      if (!turn.settled) {
+        // Mid-reply: drop the rest of it. Not yet begun: the whole reply is still coming.
+        if (turn.began) this.#discarding = true;
+        else this.#discardNext = true;
+        turn.fail(abortError());
+      }
+    };
+    if (signal?.aborted) onAbort();
+    else signal?.addEventListener('abort', onAbort, { once: true });
+  }
+
   #beginTurn() {
     if (this.#turn && !this.#turn.settled) return this.#turn;
     this.#turn = new ReplyTurn();
@@ -778,10 +1129,17 @@ export class VoiceAgentBackend {
  */
 class ReplyTurn {
   /** @type {ArrayBuffer[]} Decoded PCM chunks, in order. */ audio = [];
+  /** @type {boolean} Played through the streaming player rather than as one clip. */ streamed = false;
+  /** @type {boolean} The agent has started sending this reply. */ began = false;
+  /** @type {Array<{ text: string, startMs: number | null }>} Word deltas, in order. */ words = [];
+  /** @type {number} Milliseconds of reply audio received. */ receivedMs = 0;
+  /** @type {number | null} Where in the reply audio the voice starts; null until heard. */ onsetMs = null;
+  /** @type {number} Date.now() of the last sign the agent is still sending. */ #lastActivity = Date.now();
   /** @type {string | null} */ #text = null;
   /** @type {Error | null} */ #error = null;
   /** @type {boolean} */ #done = false;
   /** @type {Array<() => void>} */ #waiters = [];
+  /** @type {Set<() => void>} Restart each pending waiter's inactivity timer. */ #rearms = new Set();
 
   /** @returns {boolean} True once the reply has finished or failed. */
   get settled() {
@@ -791,7 +1149,67 @@ class ReplyTurn {
   /** @param {string} text */
   setText(text) {
     this.#text = text;
+    this.#lastActivity = Date.now();
     this.#wake();
+  }
+
+  /** The agent is still sending this reply: push every pending timeout back. */
+  touch() {
+    this.#lastActivity = Date.now();
+    for (const rearm of this.#rearms) rearm();
+  }
+
+  /** @returns {boolean} True once reply.done has arrived. */
+  get done() {
+    return this.#done;
+  }
+
+  /** @returns {string | null} The final transcript.agent text, once it has arrived. */
+  get text() {
+    return this.#text;
+  }
+
+  /**
+   * @param {string} text
+   * @param {number | null} startMs
+   */
+  addWord(text, startMs) {
+    this.words.push({ text, startMs });
+    this.touch();
+    this.#wake();
+  }
+
+  /**
+   * Resolve on the next change to this reply, or after `pollMs` — whichever is first.
+   * Rejects on the reply failing, on abort, or when the agent has sent nothing at all for
+   * REPLY_TIMEOUT_MS while the reply is unfinished.
+   *
+   * @param {AbortSignal} [signal]
+   * @param {number} pollMs
+   * @returns {Promise<void>}
+   */
+  changed(signal, pollMs) {
+    if (this.#error) return Promise.reject(this.#error);
+    if (signal?.aborted) return Promise.reject(abortError());
+    if (!this.settled && this.#text === null && Date.now() - this.#lastActivity >= REPLY_TIMEOUT_MS) {
+      return Promise.reject(new TalkieBackendError('backend-failure', 'The voice agent sent no reply.'));
+    }
+    return new Promise((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timer);
+        signal?.removeEventListener('abort', onAbort);
+        this.#waiters = this.#waiters.filter((w) => w !== onChange);
+      };
+      const onAbort = () => { cleanup(); reject(abortError()); };
+      const onChange = () => {
+        cleanup();
+        if (this.#error) reject(this.#error);
+        else resolve();
+      };
+      const timer = setTimeout(() => { cleanup(); resolve(); }, pollMs);
+      this.#waiters.push(onChange);
+      signal?.addEventListener('abort', onAbort, { once: true });
+    });
   }
 
   /** Mark the reply complete, releasing anything waiting on it. */
@@ -804,17 +1222,6 @@ class ReplyTurn {
   fail(error) {
     this.#error = error;
     this.#wake();
-  }
-
-  /**
-   * Resolve with the reply text once it arrives.
-   * @param {AbortSignal} [signal]
-   * @returns {Promise<string>}
-   */
-  async textReady(signal) {
-    await this.#wait(() => this.#text !== null || this.settled, signal, REPLY_TIMEOUT_MS,
-      'The voice agent sent no reply.');
-    return this.#text ?? '';
   }
 
   /**
@@ -846,16 +1253,23 @@ class ReplyTurn {
     if (signal?.aborted) return Promise.reject(abortError());
 
     return new Promise((resolve, reject) => {
+      let timer = null;
       const cleanup = () => {
         clearTimeout(timer);
+        this.#rearms.delete(rearm);
         signal?.removeEventListener('abort', onAbort);
         this.#waiters = this.#waiters.filter((w) => w !== check);
       };
       const onAbort = () => { cleanup(); reject(abortError()); };
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new TalkieBackendError('backend-failure', timeoutMessage));
-      }, timeoutMs);
+      const rearm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          cleanup();
+          reject(new TalkieBackendError('backend-failure', timeoutMessage));
+        }, timeoutMs);
+      };
+      rearm();
+      this.#rearms.add(rearm);
       const check = () => {
         if (this.#error) { cleanup(); reject(this.#error); return; }
         if (ready()) { cleanup(); resolve(); }
@@ -869,6 +1283,27 @@ class ReplyTurn {
   #wake() {
     for (const waiter of [...this.#waiters]) waiter();
   }
+}
+
+/**
+ * True when a PCM frame is loud enough to be the synthesised voice rather than the
+ * near-silence the agent streams before it.
+ * @param {ArrayBuffer} chunk - 16-bit little-endian mono PCM.
+ * @returns {boolean}
+ */
+function isSpeech(chunk) {
+  const samples = new Int16Array(chunk, 0, chunk.byteLength >> 1);
+  if (samples.length === 0) return false;
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+  return Math.sqrt(sum / samples.length) > SPEECH_RMS_THRESHOLD;
+}
+
+/** @returns {{ promise: Promise<void>, resolve: () => void, settled?: boolean }} */
+function deferred() {
+  let resolve;
+  const promise = new Promise((r) => { resolve = r; });
+  return { promise, resolve };
 }
 
 /** @returns {Error} A DOMException-shaped abort error the widget maps to idle. */

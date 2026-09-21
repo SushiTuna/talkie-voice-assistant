@@ -16,6 +16,22 @@ npm start          # -> http://localhost:8081
 Opens the demo harness: state rail, live event log, clock, and all six states driven by the real
 components wired to `MockBackend`.
 
+## Embed on any page
+
+```bash
+npm run build      # -> dist/talkie-embed.js, one file, no dependencies to install
+```
+
+```html
+<script src="/path/to/talkie-embed.js" defer></script>
+<talkie-assistant api="http://localhost:8000"></talkie-assistant>
+```
+
+That is the whole integration: a launcher and widget, wired to the voice server named by `api`.
+The voice server must list the page's origin in `TALKIE_ALLOWED_ORIGINS`. `npm run example`
+serves a sample host page on `:5173`. Attributes, CORS, CSP and HTTPS notes are in
+[docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step).
+
 ## Install & use
 
 ### Side-effect-free import (advanced / controlled registration)
@@ -367,13 +383,16 @@ These are intentionally out of scope for the current release. See linked issues 
 - **No continuous, hands-free conversation.** `VoiceAgentBackend` maps the agent API onto the
   widget's push-to-talk model, which costs the agent's own turn detection, barge-in and spoken
   greeting. A continuous mode would need the widget to cycle states from backend events.
-- **Browser polyfills.** The scoped-elements polyfill is documented but not installed by the
-  package. Consumers add it to their project when needed.
+- **Not on npm yet.** Use `dist/talkie-embed.js`, or install from a local checkout with
+  `npm install ../talkie-sdk`.
+- **Token route is not access-controlled.** CORS stops other *browsers* from using the token
+  server, but not scripts; `/agent/token` has a per-IP rate limit and no authentication. Add a
+  real gate before exposing it publicly.
 
 ## Testing
 
 ```bash
-npm test          # 272 tests — state machine, backends, audio codecs (zero dependencies)
+npm test          # 334 tests — state machine, backends, audio codecs, embed element and the built bundle
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

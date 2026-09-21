@@ -211,10 +211,11 @@ export class TalkieWidget extends ScopedLitElement {
         letter-spacing: -.4px;
         margin-bottom: 8px;
       }
+      /* A full sentence, so body type at normal spacing: the tracked monospace that suits
+         the short uppercase eyebrow spread these hints out letter by letter. */
       .hintline {
-        font-family: var(--talkie-font-mono, monospace);
-        font-size: 11.5px;
-        letter-spacing: 1.5px;
+        font-family: var(--talkie-font-body, 'Instrument Sans', sans-serif);
+        font-size: 12.5px;
         color: var(--talkie-ink-soft, #4a5a58);
       }
       .hintline-bottom {
@@ -241,7 +242,6 @@ export class TalkieWidget extends ScopedLitElement {
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        gap: 11px;
         background: var(--talkie-ink, #101d20);
         color: var(--talkie-surface, #f6f4ec);
         font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
@@ -254,12 +254,17 @@ export class TalkieWidget extends ScopedLitElement {
         touch-action: none;
         user-select: none;
       }
+      /* Icon spacing is a margin, not a gap on the button: LionButton slots its children
+         into its own shadow flex box, which a gap on the host never reaches. */
+      .btn-primary svg {
+        flex-shrink: 0;
+        margin-right: 10px;
+      }
       .btn-primary:hover { transform: translateY(-2px); }
       .btn-primary:active { transform: scale(.96); }
       .btn-stop {
         display: inline-flex;
         align-items: center;
-        gap: 10px;
         background: var(--talkie-ink, #101d20);
         color: var(--talkie-surface, #f6f4ec);
         font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
@@ -283,18 +288,27 @@ export class TalkieWidget extends ScopedLitElement {
         /* No margin: .center-layout's gap already spaces it, and any extra pushes
            the column into the absolutely positioned hint line at the bottom. */
         background: none;
-        border: none;
-        padding: 4px 8px;
-        font-family: inherit;
-        font-size: 13px;
+        border: 1.5px solid rgba(16, 29, 32, .28);
+        border-radius: 999px;
+        padding: 7px 18px;
+        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
+        font-weight: 600;
+        font-size: 14px;
         color: var(--talkie-ink, #101d20);
-        opacity: .55;
-        text-decoration: underline;
-        text-underline-offset: 3px;
         cursor: pointer;
+        transition: border-color .15s, background .15s;
       }
-      .link-btn:hover { opacity: .9; }
+      .link-btn:hover {
+        border-color: var(--talkie-ink, #101d20);
+        background: rgba(16, 29, 32, .05);
+      }
+      .link-btn:focus-visible {
+        outline: 2px solid var(--talkie-ink, #101d20);
+        outline-offset: 2px;
+      }
       .btn-stop .sq {
+        flex-shrink: 0;
+        margin-right: 10px;
         width: 9px;
         height: 9px;
         background: #ff6b6b;
@@ -734,13 +748,30 @@ export class TalkieWidget extends ScopedLitElement {
         const answerChunks = [];
         let firstChunkDone = false;
         this.#streamDone = false;
+
+        // A backend that streams its audio can be heard long before its text exists — the
+        // voice agent only sends the text once the whole reply has been spoken. Waiting for
+        // text would leave the panel on "Finding the right answer…" while the answer plays.
+        // So move to speaking on whichever comes first: the audio, or the first text chunk.
+        let heardFirst = false;
+        if (typeof this.backend.speechStarted === 'function') {
+          this.backend.speechStarted(speakSignal).then(() => {
+            if (speakSignal.aborted || this.#sm.state !== 'thinking') return;
+            heardFirst = true;
+            this._rp = '';
+            this._shown = 0;
+            this.#sm.transition('speaking');
+            this.requestUpdate();
+          }).catch(() => { /* aborted with the turn; the ask() path unwinds it */ });
+        }
+
         for await (const chunk of this.backend.ask(transcript, speakSignal)) {
           if (speakSignal.aborted) break;
           answerChunks.push(chunk);
           if (!firstChunkDone) {
             firstChunkDone = true;
             this._rp = chunk;
-            this.#sm.transition('speaking');
+            if (this.#sm.state === 'thinking') this.#sm.transition('speaking');
             this._shown = chunk.split(/\s+/).filter(w => w.length > 0).length;
             this.requestUpdate();
           } else {
@@ -773,9 +804,17 @@ export class TalkieWidget extends ScopedLitElement {
           this.backend.speak(answer, speakSignal).catch(() => {});
         }
 
-        // Fake timer only for single-chunk backends whose generator yielded once;
-        // multi-chunk streams already drive the reveal in-place.
-        if (answerChunks.length === 1) {
+        if (heardFirst) {
+          // The audio started first, so by now it has been playing for about as long as the
+          // answer takes to say. Pacing the words out at 400 ms each from here would trail
+          // the voice by the whole answer; show them all at once instead.
+          this._shown = answer.split(/\s+/).filter(w => w.length > 0).length;
+          this.#streamDone = true;
+          this._label = `${STATE_LABELS.speaking}. ${answer}`;
+          this.requestUpdate();
+        } else if (answerChunks.length === 1) {
+          // Fake timer only for single-chunk backends whose generator yielded once;
+          // multi-chunk streams already drive the reveal in-place.
           this._startSpeakTimer(answer);
         }
 
@@ -967,6 +1006,10 @@ export class TalkieWidget extends ScopedLitElement {
     this._shown = 0;
     this.#streamDone = false;
     this.requestUpdate();
+    // The caller already said they have another question; making them press Start
+    // again is a wasted step. _stopSpeaking() leaves the machine in idle, which is
+    // the only state startListening() accepts.
+    this.startListening('button-ask-another');
   }
 
   _stopSpeaking() {

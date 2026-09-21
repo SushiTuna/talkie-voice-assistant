@@ -16,3 +16,4 @@ export { TalkieWidget }           from './components/talkie-widget.js';
 export { TalkieLauncher }         from './components/talkie-launcher.js';
 export { TalkieWaveform }         from './components/talkie-waveform.js';
 export { TalkieTranscript }       from './components/talkie-transcript.js';
+export { TalkieAssistant }        from './components/talkie-assistant.js';
