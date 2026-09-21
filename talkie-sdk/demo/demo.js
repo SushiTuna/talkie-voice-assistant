@@ -241,9 +241,9 @@ let agentBackend = null;
 /**
  * Scenario 7 — live backend against the real voice server.
  *
- * Opt in with ?live (defaults to http://localhost:8000) or ?api=<origin>. This is the
- * only scenario that touches the microphone and real vendors, so it stays behind a
- * query flag rather than firing on page load.
+ * Points at http://localhost:8000, or at ?api=<origin> when given. This is the
+ * only scenario that touches the microphone and real vendors, so it runs only from an
+ * explicit click on the rail, never on page load.
  */
 function goLive() {
   clearConversationTimer();
@@ -495,7 +495,7 @@ function buildRail() {
     { go: 'mic-blocked',        num: '04', label: 'Mic blocked',        desc: "Permission denied error",            action: goMicBlocked },
     { go: 'offline',            num: '05', label: 'Offline',            desc: 'Network failure error',              action: goOffline },
     { go: 'reset',              num: '06', label: 'Reset',              desc: 'Close the widget and clear state', action: goReset },
-    { go: 'live',               num: '07', label: 'Live backend',      desc: 'Real mic + server (?live or ?api=)', action: goLive },
+    { go: 'live',               num: '07', label: 'Live backend',      desc: 'Real mic + server (?api= to point elsewhere)', action: goLive },
     { go: 'voice-agent',        num: '08', label: 'Voice Agent API',   desc: 'Server-configured agent on one socket (?profile=)', action: goVoiceAgent },
   ];
 

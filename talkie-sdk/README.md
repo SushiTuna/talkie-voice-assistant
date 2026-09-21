@@ -54,7 +54,6 @@ namespace collisions.
 
 ```html
 <script type="module">
-  import '@webcomponents/scoped-custom-element-registry';       // polyfill first
   import '@talkie/voice-ui/define/talkie-widget.js';            // registers <talkie-widget>
 </script>
 ```
@@ -62,18 +61,14 @@ namespace collisions.
 That single line makes `<talkie-widget>` available in your markup. You still set the `backend`
 property imperatively or via framework bindings to wire up your ASR / LLM / TTS stack.
 
-### The scoped-elements polyfill
+### The scoped-elements polyfill is optional
 
-If your host page renders multiple component versions or needs IE-level support for the Scoped
-Custom Element Registry spec, load it as your first import:
-
-```html
-<script type="module" src="@webcomponents/scoped-custom-element-registry"></script>
-```
-
-The polyfill itself does not register any elements — it provides the registry infrastructure that
-Lit's `ScopedElementsMixin` depends on. Without it, `lion-button` slots inside the widget will
-render but lack Lion styling.
+The components render `<lion-button>` and `<lion-icon>` through `ScopedElementsMixin` from
+`@open-wc/scoped-elements` v2. When the browser has no scoped custom-element registries, the mixin
+falls back to the global registry, which works on its own; the demo never loads the polyfill. The
+one case it cannot handle is a page that has **already registered a different `lion-button`**
+class — it then logs an error. Only then, load `@webcomponents/scoped-custom-element-registry`
+before anything else on the page. It is not a dependency of this package.
 
 ## Backend interface
 
@@ -96,7 +91,7 @@ The widget never talks directly to a speech or language vendor. It speaks one co
 /** @property {() => void} [dispose] */
 ```
 
-The SDK ships two backends:
+The SDK ships three backends:
 
 | Backend | Use |
 |---|---|
@@ -197,8 +192,9 @@ domain-neutral; see *Configuring the voice agent* in the voice server's README.
 |---|---|
 | `startCapture()` | Fetches a token, opens `wss://agents.assemblyai.com/v1/ws?token=…`, sends one `session.update`, waits for `session.ready`, then streams 24 kHz mono PCM as base64 `input.audio` frames. Later turns reuse the open socket. |
 | `stopCapture()` | Stops the mic, pads the stream with PCM silence until the agent closes the turn, and returns the joined `transcript.user` text. |
-| `ask(text, signal)` | Sends nothing — the agent started replying when it closed the turn. Yields the `transcript.agent` text that the message handler has been buffering. |
-| `speak(text, signal)` | Wraps the buffered `reply.audio` PCM in a WAV container and plays it. No second synthesis request. |
+| `ask(text, signal)` | Sends nothing — the agent started replying when it closed the turn. Starts playing the reply audio as it streams in, and yields the answer one word at a time as the voice reaches each word. Falls back to the whole `transcript.agent` text if no word events arrive. |
+| `speechStarted(signal)` | Optional capability the widget uses: resolves when the voice itself starts playing, so the widget moves to *speaking* then rather than on the silent lead-in. |
+| `speak(text, signal)` | Waits for the streamed audio to finish playing. Without Web Audio scheduling, wraps the buffered `reply.audio` PCM in a WAV and plays it instead. No second synthesis request either way. |
 | `dispose()` | Sends `session.end` and closes the socket, so the vendor does not hold the session for its 30 s resume window. |
 
 The socket stays open across turns — the reply arrives on it, and the conversation's context
@@ -247,8 +243,12 @@ and no client event to commit a turn.
 
 **Behaviour worth knowing before you ship it:**
 
-- The answer arrives as one `transcript.agent` frame, sent *after* all reply audio, so `ask()`
-  yields once and the widget's word-paced reveal supplies the streaming feel.
+- Every reply opens with ~3.5 s of near-silence while the agent works out its answer; speech
+  starts about 5.5 s after the caller stops talking, measured. That wait is the service's.
+- Word text comes from `transcript.agent.delta` events, which the live service sends but the
+  published spec does not document. All of a reply's words arrive in one burst just before the
+  voice; the adapter reveals each as playback reaches it. If the event ever disappears, the
+  complete `transcript.agent` (sent after all reply audio) is shown instead.
 - Barge-in is off (`interrupt_response: false`): push-to-talk closes the mic during the reply, so
   nothing can interrupt it, and leaving it on only risks the agent cutting itself off on room noise.
 - Turn detection cannot be disabled and there is no commit-turn event, so the agent's own
@@ -263,8 +263,8 @@ and no client event to commit a turn.
 ### Trying it live
 
 ```bash
-# terminal 1 — the voice server
-cd ../../voice && uv run uvicorn server:app --port 8000
+# terminal 1 — the voice server (a separate project, not in this repository)
+cd <voice-server-checkout> && .venv/bin/uvicorn server:app --port 8000
 
 # terminal 2 — the SDK demo
 npm start
@@ -371,6 +371,8 @@ transcript.
 | `show()`          | `void`              | Open widget; resets any in-flight state. |
 | `hide(reason?)`   | `void`              | Close widget; optionally provide a reason.|
 | `reset()`         | `void`              | Cancel conversation, clear data, idle.   |
+| `startListening(src)` | `void`          | Start recording, as the Start button does. No-op unless `idle`. `src` is a free-form label for logs. |
+| `releaseListening(src)` | `void`        | Stop recording and send, as Stop & Send does. No-op unless `listening`. |
 
 ## Known gaps
 
@@ -392,7 +394,7 @@ These are intentionally out of scope for the current release. See linked issues 
 ## Testing
 
 ```bash
-npm test          # 334 tests — state machine, backends, audio codecs, embed element and the built bundle
+npm test          # 419 assertions across ten suites — state machine, backends, audio, widget, embed and the built bundle
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

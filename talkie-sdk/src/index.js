@@ -1,8 +1,9 @@
 /**
  * @talkie/voice-ui — public core API re-export.
  *
- * Hard rule: no side effects on import. This file only re-exports symbols;
- * it does NOT call customElements.define or import any lit/lion packages.
+ * Hard rule: no side effects on import. This file only re-exports symbols and never calls
+ * customElements.define — registration is opt-in via src/define/. It does load lit and
+ * @lion/ui transitively, through the component classes it re-exports.
  */
 
 export { StateMachine, VALID_STATES, ERROR_REASONS, TRANSITIONS, TRANSITION_LABELS } from './core/state-machine.js';

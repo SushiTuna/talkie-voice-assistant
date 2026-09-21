@@ -131,8 +131,10 @@ export class VoiceAgentBackend {
   /** @type {ReplyTurn | null} The reply currently routed to the player. */ #streamingTurn = null;
   /**
    * True between cancelling a reply mid-stream and its `reply.done`. The agent keeps
-   * sending the rest of a reply the caller stopped, and nothing in `reply.audio` ties a
-   * frame to its reply, so without this those frames would play under the next answer.
+   * sending the rest of a reply the caller stopped; without this those frames would play
+   * under the next answer. The published spec gives `reply.audio` only `data`. Live frames
+   * do also carry `reply_id`, but that field is undocumented, so correctness here rests on
+   * event order instead.
    * @type {boolean}
    */
   #discarding = false;
