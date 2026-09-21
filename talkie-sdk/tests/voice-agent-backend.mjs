@@ -9,7 +9,7 @@
 
 import { VoiceAgentBackend } from '../src/backends/voice-agent-backend.js';
 import { TalkieBackendError } from '../src/core/backend.js';
-import { encodeBase64 } from '../src/audio/pcm-codec.js';
+import { encodeBase64, decodeBase64 } from '../src/audio/pcm-codec.js';
 import { mock } from 'node:test';
 
 let passed = 0;
@@ -71,7 +71,7 @@ class FakeSocket {
  * With `streaming: true` the audio context can schedule buffer sources, so the backend
  * takes its streaming-playback path; otherwise it falls back to one buffered clip.
  *
- * @param {(ctx: { played: string[], contexts: object[] }) => Promise<void>} fn
+ * @param {(ctx: { played: string[], contexts: object[], nodes: object[] }) => Promise<void>} fn
  * @param {{ streaming?: boolean }} [options]
  */
 async function withBrowser(fn, { streaming = false } = {}) {
@@ -87,6 +87,7 @@ async function withBrowser(fn, { streaming = false } = {}) {
     revokeObjectURL: globalThis.URL.revokeObjectURL,
   };
   const played = [];
+  const nodes = [];  // mic worklet nodes: `nodes.at(-1).port.onmessage({ data })` feeds the mic
 
   const contexts = [];
   class FakeAudioContext {
@@ -127,6 +128,8 @@ async function withBrowser(fn, { streaming = false } = {}) {
   });
   globalThis.AudioWorkletNode = class {
     port = { onmessage: null, postMessage() {} };
+    constructor() { nodes.push(this); }
+    connect() {}
     disconnect() {}
   };
   globalThis.Audio = class {
@@ -141,7 +144,7 @@ async function withBrowser(fn, { streaming = false } = {}) {
   globalThis.URL.revokeObjectURL = () => {};
 
   try {
-    await fn({ played, contexts });
+    await fn({ played, contexts, nodes });
   } finally {
     globalThis.WebSocket = saved.WebSocket;
     globalThis.window = saved.window;
@@ -256,8 +259,10 @@ async function connect(backend) {
     r({ type: 'transcript.user', text: 'hello' })?.kind === 'user-transcript');
   check('an empty transcript.user is ignored',
     r({ type: 'transcript.user', text: '' }) === null);
-  check('partial user transcripts are ignored',
-    r({ type: 'transcript.user.delta', text: 'hel' }) === null);
+  check('partial user transcripts become a live caption',
+    r({ type: 'transcript.user.delta', text: 'hel' })?.text === 'hel'
+    && r({ type: 'transcript.user.delta', text: 'hel' }).kind === 'user-partial');
+  check('an empty partial is ignored', r({ type: 'transcript.user.delta', text: '' }) === null);
   check('reply.audio yields its base64 payload',
     r({ type: 'reply.audio', data: 'AAA=' })?.data === 'AAA=');
   check('transcript.agent yields the answer',
@@ -273,8 +278,11 @@ async function connect(backend) {
   check('session.error is an error event',
     r({ type: 'session.error', code: 'invalid_audio', message: 'bad' })?.kind === 'error');
   check('bare error frames map too', r({ type: 'error', code: 'x' })?.kind === 'error');
-  check('speech markers are ignored',
-    r({ type: 'input.speech.started' }) === null && r({ type: 'session.updated' }) === null);
+  check('input.speech.started is read, because it holds tool results back',
+    r({ type: 'input.speech.started' })?.kind === 'speech-started');
+  check('input.speech.stopped is read, because it restarts the idle timer',
+    r({ type: 'input.speech.stopped' })?.kind === 'speech-stopped');
+  check('acks are ignored', r({ type: 'session.updated' }) === null);
   check('unknown frames are ignored', r({ type: 'whatever' }) === null && r(null) === null);
 
   check('transient server failures map to offline',
@@ -545,6 +553,16 @@ async function testAskPropagatesAbort() {
 }
 
 // ── tools ───────────────────────────────────────────────────────────────────
+// The documented interactive sequence: reply.started → reply.audio (transition phrase) →
+// tool.call → reply.done → client sends tool.result → the agent fires a follow-up reply.
+// https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools
+
+/** Ask a question and leave the backend waiting on the reply. */
+async function askQuestion(ws, b, text = 'Show me the kitchen') {
+  ws.frame({ type: 'transcript.user', text });
+  return b.stopCapture();
+}
+
 async function testToolCall() {
   await withBrowser(async () => {
     const calls = [];
@@ -553,18 +571,236 @@ async function testToolCall() {
       onToolCall: (call) => { calls.push(call); return { price: 24 }; },
     });
     const ws = await connect(b);
+    await askQuestion(ws, b, 'What does Pro cost?');
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
     ws.frame({ type: 'tool.call', call_id: 'c1', name: 'get_price', arguments: { plan: 'pro' } });
     await tick();
 
     check('the handler receives the call', calls.length === 1 && calls[0].name === 'get_price');
-    check('the handler receives the arguments', calls[0].arguments.plan === 'pro');
+    check('the handler receives the arguments', calls[0]?.arguments.plan === 'pro');
+    check('the result is held while the reply that asked for it is still going',
+      ws.sentOf('tool.result').length === 0);
+
+    ws.frame({ type: 'reply.done', status: 'completed' });
     const results = ws.sentOf('tool.result');
-    check('a tool.result is sent back', results.length === 1);
+    check('a tool.result is sent back on reply.done', results.length === 1);
     check('the result is JSON-encoded as a string, as the API requires',
-      results[0].result === '{"price":24}', JSON.stringify(results[0]));
-    check('the result is tied to the call id', results[0].call_id === 'c1');
+      results[0]?.result === '{"price":24}', JSON.stringify(results[0]));
+    check('the result is tied to the call id', results[0]?.call_id === 'c1');
     b.dispose();
   });
+}
+
+async function testSlowToolSendsWhenItFinishes() {
+  await withBrowser(async () => {
+    let finish;
+    const b = makeBackend({ onToolCall: () => new Promise((r) => { finish = r; }) });
+    const ws = await connect(b);
+    await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: {} });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick();
+    check('nothing is sent before the handler has an answer', ws.sentOf('tool.result').length === 0);
+    finish({ ok: true });
+    await tick();
+    check('a handler finishing after reply.done sends its result at once',
+      ws.sentOf('tool.result').length === 1);
+    b.dispose();
+  });
+}
+
+async function testResultsHeldWhileATurnIsInFlight() {
+  await withBrowser(async () => {
+    let finish;
+    const b = makeBackend({ onToolCall: () => new Promise((r) => { finish = r; }) });
+    const ws = await connect(b);
+    await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: {} });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    ws.frame({ type: 'input.speech.started' });
+    finish({ ok: true });
+    await tick();
+    check('a result is held while the caller is speaking', ws.sentOf('tool.result').length === 0);
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    check('...and sent at the next reply.done', ws.sentOf('tool.result').length === 1);
+    b.dispose();
+  });
+}
+
+async function testInterruptedReplyDropsResults() {
+  await withBrowser(async () => {
+    let finish;
+    const b = makeBackend({ onToolCall: () => new Promise((r) => { finish = r; }) });
+    const ws = await connect(b);
+    await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: {} });
+    finish({ ok: true });
+    await tick();
+    ws.frame({ type: 'reply.done', status: 'interrupted' });
+    check('an interrupted reply drops the results it asked for, as the docs require',
+      ws.sentOf('tool.result').length === 0);
+    b.dispose();
+  });
+}
+
+async function testToolTurnSpansTheFollowUpReply() {
+  await withBrowser(async ({ played }) => {
+    const b = makeBackend({ onToolCall: () => ({ ok: true, room: 'Kitchen' }) });
+    const ws = await connect(b);
+    const transcript = await askQuestion(ws, b);
+
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array([1, 2]).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'Taking you there.', reply_id: 'r1' });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: { room: 'kitchen' } });
+    await tick();
+
+    const chunks = [];
+    let asked = false;
+    const asking = (async () => {
+      for await (const c of b.ask(transcript, new AbortController().signal)) chunks.push(c);
+      asked = true;
+    })();
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(60);
+    check('the result goes out on the transition reply\'s reply.done', ws.sentOf('tool.result').length === 1);
+    check('ask() does not end with the transition phrase', asked === false);
+
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array([3, 4, 5]).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'This is the kitchen.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    check('ask() yields the transition phrase and the answer, in order',
+      chunks.join(' ') === 'Taking you there. This is the kitchen.', JSON.stringify(chunks));
+
+    await b.speak(chunks.join(' '), new AbortController().signal);
+    check('speak plays one clip holding both replies', played.length === 1);
+    b.dispose();
+  });
+}
+
+async function testFollowUpWordsUseTheirOwnClock() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend({ onToolCall: () => ({ ok: true }) });
+    const ws = await connect(b);
+    const transcript = await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+
+    const words = [];
+    const asking = (async () => {
+      for await (const w of b.ask(transcript, new AbortController().signal)) words.push(w);
+    })();
+    await tick();
+
+    // Transition reply: 50 ms lead-in, then 200 ms of voice with one word.
+    for (let i = 0; i < 5; i++) ws.frame({ type: 'reply.audio', data: replyFrame() });
+    sendWords(ws, [['Sure.', 900]]);
+    for (let i = 0; i < 20; i++) ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: {} });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick();
+
+    // Follow-up: its own 100 ms lead-in (stream 250–350 ms), and start_ms restarting near 0.
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    for (let i = 0; i < 10; i++) ws.frame({ type: 'reply.audio', data: replyFrame() });
+    sendWords(ws, [['Here ', 40], ['it is.', 240]]);
+    for (let i = 0; i < 50; i++) ws.frame({ type: 'reply.audio', data: speechFrame() });
+
+    const out = outputOf(contexts);
+    const t0 = out.sources[0].startAt;
+    const playTo = async (ms) => { out.currentTime = t0 + ms / 1000; await tick(60); };
+
+    await playTo(60);
+    check('the transition phrase appears with its voice', words.join(' ') === 'Sure.', JSON.stringify(words));
+    await playTo(300);
+    check('the follow-up waits through its own lead-in', words.length === 1, JSON.stringify(words));
+    await playTo(360);
+    check('the follow-up\'s first word appears as its voice starts',
+      words.join(' ') === 'Sure. Here', JSON.stringify(words));
+    await playTo(500);
+    check('...and its next word is timed from that reply\'s onset, not the first reply\'s',
+      words.length === 2, JSON.stringify(words));
+    await playTo(560);
+    check('...appearing when playback reaches it', words.join(' ') === 'Sure. Here it is.', JSON.stringify(words));
+
+    ws.frame({ type: 'transcript.agent', text: 'Here it is.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await asking;
+    check('the turn ends after the follow-up, without repeating words',
+      words.join(' ') === 'Sure. Here it is.', JSON.stringify(words));
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testLateToolCallIsNotRunAndItsReplyIsDropped() {
+  await withBrowser(async () => {
+    const calls = [];
+    const b = makeBackend({ onToolCall: (c) => { calls.push(c); return { ok: true }; } });
+    const ws = await connect(b);
+    const t1 = await askQuestion(ws, b, 'Hello');
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'transcript.agent', text: 'Hi there.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    for await (const _ of b.ask(t1, new AbortController().signal)) { /* drain */ }
+
+    // Undocumented order: a call after its turn has finished.
+    ws.frame({ type: 'tool.call', call_id: 'late', name: 'go_to_room', arguments: {} });
+    await tick();
+    check('a call for a finished turn is not run', calls.length === 0);
+    const result = ws.sentOf('tool.result')[0];
+    check('...but the agent is still answered, so it is not left waiting',
+      result?.call_id === 'late' && result.result.includes('cancelled'), JSON.stringify(result));
+
+    // The reply that result triggers must not become the answer to the next question.
+    await b.startCapture();
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'transcript.agent', text: 'Stale follow-up.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const t2 = await askQuestion(ws, b, 'Next question');
+    ws.frame({ type: 'reply.started', reply_id: 'r3' });
+    ws.frame({ type: 'transcript.agent', text: 'Fresh answer.', reply_id: 'r3' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    const chunks = [];
+    for await (const c of b.ask(t2, new AbortController().signal)) chunks.push(c);
+    check('the follow-up to a finished turn is dropped, not taken as the next answer',
+      chunks.join(' ') === 'Fresh answer.', JSON.stringify(chunks));
+    b.dispose();
+  });
+}
+
+async function testCancelledToolTurnDropsTheFollowUp() {
+  await withBrowser(async ({ contexts }) => {
+    const calls = [];
+    const b = makeBackend({ onToolCall: (c) => { calls.push(c); return { ok: true }; } });
+    const ws = await connect(b);
+    const t1 = await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: replyFrame() });
+    const first = new AbortController();
+    const asking = (async () => { for await (const _ of b.ask(t1, first.signal)) { /* drain */ } })();
+    await tick();
+    first.abort();
+    try { await asking; } catch { /* AbortError */ }
+
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'go_to_room', arguments: {} });
+    await tick();
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    check('a tool the caller cancelled before it arrived is not run', calls.length === 0);
+    check('...and is answered on reply.done', ws.sentOf('tool.result').length === 1);
+
+    const out = outputOf(contexts);
+    const before = out.sources.length;
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    check('the follow-up reply to a cancelled turn is not played', out.sources.length === before);
+    b.dispose();
+  }, { streaming: true });
 }
 
 async function testToolFailureStillReplies() {
@@ -573,8 +809,11 @@ async function testToolFailureStillReplies() {
       onToolCall: () => { throw new Error('upstream is down'); },
     });
     const ws = await connect(b);
+    await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
     ws.frame({ type: 'tool.call', call_id: 'c2', name: 'get_price', arguments: {} });
     await tick();
+    ws.frame({ type: 'reply.done', status: 'completed' });
     const results = ws.sentOf('tool.result');
     check('a throwing handler still answers the agent, rather than stranding the turn',
       results.length === 1 && results[0].result.includes('upstream is down'),
@@ -587,13 +826,269 @@ async function testUnhandledToolIsReported() {
   await withBrowser(async () => {
     const b = makeBackend();  // no onToolCall
     const ws = await connect(b);
+    await askQuestion(ws, b);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
     ws.frame({ type: 'tool.call', call_id: 'c3', name: 'mystery', arguments: {} });
     await tick();
+    ws.frame({ type: 'reply.done', status: 'completed' });
     check('a tool with no handler is reported back as an error result',
       ws.sentOf('tool.result')[0]?.result.includes('No handler'),
       JSON.stringify(ws.sentOf('tool.result')[0]));
     b.dispose();
   });
+}
+
+// ── conversation mode (converse) ────────────────────────────────────────────
+{
+  const on = VoiceAgentBackend.buildSessionUpdate({ bargeIn: true, greeting: 'Hi!' }).session;
+  check('bargeIn turns the vendor\'s interrupt_response on', on.input.turn_detection.interrupt_response === true);
+  check('the greeting rides in the session config', on.greeting === 'Hi!');
+  check('barge-in stays off by default, as push-to-talk needs',
+    VoiceAgentBackend.buildSessionUpdate({}).session.input.turn_detection.interrupt_response === false);
+}
+
+/** Start converse() and complete the handshake; events collect in `events`. */
+async function startConversation(b, options = {}) {
+  const ctrl = new AbortController();
+  const state = { events: [], error: null, done: false, ctrl };
+  state.running = (async () => {
+    try { for await (const e of b.converse(options, ctrl.signal)) state.events.push(e); }
+    catch (err) { state.error = err; }
+    finally { state.done = true; }
+  })();
+  await tick();
+  state.ws = FakeSocket.last;
+  state.ws.accept();
+  await tick();
+  state.ws.frame({ type: 'session.ready', session_id: 'sess_c' });
+  await tick(); await tick();
+  return state;
+}
+const types = (events) => events.map((e) => e.type);
+const micChunk = (value = 500) => new Int16Array(240).fill(value).buffer;
+
+async function testConversationTurn() {
+  await withBrowser(async ({ nodes, played }) => {
+    const b = makeBackend({ bargeIn: true });
+    const c = await startConversation(b);
+    const { ws } = c;
+    check('a conversation configures barge-in on the session',
+      ws.sentOf('session.update')[0].session.input.turn_detection.interrupt_response === true);
+
+    const before = ws.sentOf('input.audio').length;
+    nodes.at(-1).port.onmessage({ data: micChunk() });
+    check('the mic streams straight to the agent', ws.sentOf('input.audio').length === before + 1);
+
+    ws.frame({ type: 'input.speech.started' });
+    ws.frame({ type: 'transcript.user.delta', text: 'What is' });
+    ws.frame({ type: 'input.speech.stopped' });
+    ws.frame({ type: 'transcript.user', text: 'What is the price?' });
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: encodeBase64(new Int16Array([1, 2, 3]).buffer) });
+    ws.frame({ type: 'transcript.agent', text: 'Price on request.', reply_id: 'r1' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(20);
+
+    check('a turn is reported in order, with nobody pressing anything',
+      types(c.events).join(',') === 'user-speech,user-partial,user-transcript,reply-start,reply-word,reply-end',
+      types(c.events).join(','));
+    check('the caption and the transcript carry the caller\'s words',
+      c.events[1].text === 'What is' && c.events[2].text === 'What is the price?');
+    check('the reply\'s words are reported', c.events[4].text === 'Price on request.');
+    check('a reply that played out is not marked interrupted', c.events[5].interrupted === false);
+    check('the reply is played', played.length === 1);
+    check('no silence padding is sent: the agent decides the turn',
+      ws.sentOf('input.audio').length === before + 1);
+    check('the conversation keeps going after a reply', c.done === false && b.connected);
+
+    c.ctrl.abort();
+    await c.running;
+    check('ending the conversation surfaces as an abort', c.error?.name === 'AbortError', String(c.error));
+    check('ending the conversation ends the agent session', ws.sentOf('session.end').length === 1 && ws.readyState === 3);
+    b.dispose();
+  });
+}
+
+async function testConversationGreeting() {
+  await withBrowser(async () => {
+    const b = makeBackend({ bargeIn: true, greeting: 'Hi! Ask me anything.' });
+    const c = await startConversation(b);
+    c.ws.frame({ type: 'reply.started', reply_id: 'g' });
+    c.ws.frame({ type: 'transcript.agent', text: 'Hi! Ask me anything.', reply_id: 'g' });
+    c.ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(20);
+    check('the greeting plays as the first reply, before the caller says anything',
+      types(c.events).join(',') === 'reply-start,reply-word,reply-end', types(c.events).join(','));
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  });
+}
+
+async function testConversationBargeIn() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend({ bargeIn: true });
+    const c = await startConversation(b);
+    const { ws } = c;
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    for (let i = 0; i < 5; i++) ws.frame({ type: 'reply.audio', data: speechFrame() });
+    await tick();
+    const out = outputOf(contexts);
+    check('a reply streams as it arrives', out.sources.length === 5);
+
+    ws.frame({ type: 'input.speech.started' });
+    await tick();
+    check('talking over a reply cuts it off at once, without waiting for the vendor',
+      out.sources.every((src) => src.stopped));
+    check('the cut is reported as an interrupted end, then the caller\'s speech',
+      types(c.events).slice(-2).join(',') === 'reply-end,user-speech' && c.events.at(-2).interrupted === true,
+      JSON.stringify(c.events));
+
+    const scheduled = out.sources.length;
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'transcript.agent', text: 'The old answer, trimmed.', interrupted: true });
+    ws.frame({ type: 'reply.done', status: 'interrupted' });
+    await tick(20);
+    check('the rest of the interrupted reply is not played', out.sources.length === scheduled);
+    check('...and its text is not reported', !c.events.some((e) => e.type === 'reply-word'));
+
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    await tick();
+    check('the next reply plays normally', out.sources.length === scheduled + 1 && types(c.events).at(-1) === 'reply-start');
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testConversationWithoutBargeIn() {
+  await withBrowser(async ({ nodes, contexts }) => {
+    const b = makeBackend({ bargeIn: false });
+    const c = await startConversation(b);
+    const { ws } = c;
+    check('without barge-in the vendor is told not to interrupt',
+      ws.sentOf('session.update')[0].session.input.turn_detection.interrupt_response === false);
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    await tick();
+    nodes.at(-1).port.onmessage({ data: micChunk(900) });
+    const sent = new Int16Array(decodeBase64(ws.sentOf('input.audio').at(-1).audio ?? ws.sentOf('input.audio').at(-1).data));
+    check('while a reply plays, the mic is sent as silence', sent.length === 240 && sent.every((v) => v === 0));
+    ws.frame({ type: 'input.speech.started' });
+    await tick();
+    check('a speech detection during a reply does not cut it off',
+      !outputOf(contexts).sources.some((src) => src.stopped) && !c.events.some((e) => e.type === 'user-speech'));
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testConversationInterrupt() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend({ bargeIn: false });
+    check('interrupt() outside a conversation does nothing', b.interrupt() === false);
+    const c = await startConversation(b);
+    const { ws } = c;
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    await tick();
+    check('interrupt() cuts off the playing reply', b.interrupt() === true);
+    await tick();
+    const out = outputOf(contexts);
+    check('...silencing it', out.sources.every((src) => src.stopped));
+    check('...reported as an interrupted end, with no caller speech',
+      types(c.events).join(',') === 'reply-start,reply-end' && c.events[1].interrupted === true, JSON.stringify(c.events));
+    const scheduled = out.sources.length;
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(20);
+    check('...and the rest of it is dropped', out.sources.length === scheduled && c.done === false);
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  }, { streaming: true });
+}
+
+async function testConversationIdleTimeout() {
+  await withBrowser(async () => {
+    const b = makeBackend({ bargeIn: true });
+    const c = await startConversation(b, { idleTimeoutMs: 40 });
+    c.ws.frame({ type: 'input.speech.started' });
+    await tick(80);
+    check('the idle limit does not run while the caller is speaking', c.done === false);
+    c.ws.frame({ type: 'input.speech.stopped' });
+    await tick(80);
+    await c.running;
+    check('a conversation nobody speaks in ends itself', types(c.events).at(-1) === 'idle-timeout' && c.error === null,
+      `${types(c.events)} ${c.error}`);
+    check('...ending the agent session, so it stops billing', c.ws.sentOf('session.end').length === 1);
+    b.dispose();
+  });
+}
+
+async function testConversationSocketDrop() {
+  await withBrowser(async () => {
+    const b = makeBackend({ bargeIn: true });
+    const c = await startConversation(b);
+    c.ws.close();
+    await c.running;
+    check('a dropped connection ends the conversation as offline',
+      c.error instanceof TalkieBackendError && c.error.reason === 'offline', String(c.error));
+    b.dispose();
+  });
+}
+
+async function testConversationToolTurnIsOneReply() {
+  await withBrowser(async () => {
+    const b = makeBackend({ bargeIn: true, onToolCall: () => ({ ok: true }) });
+    const c = await startConversation(b);
+    const { ws } = c;
+    ws.frame({ type: 'transcript.user', text: 'Show me the kitchen' });
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'transcript.agent', text: 'Taking you there.', reply_id: 'r1' });
+    ws.frame({ type: 'tool.call', call_id: 'c1', name: 'show_room', arguments: { room: 'kitchen' } });
+    await tick();
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(60);
+    check('the tool result goes out mid-conversation', ws.sentOf('tool.result').length === 1);
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });
+    ws.frame({ type: 'transcript.agent', text: 'Here is the kitchen.', reply_id: 'r2' });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(20);
+    const t = types(c.events).join(',');
+    check('a tool turn is one reply to the widget, transition and answer together',
+      t === 'user-transcript,reply-start,reply-word,reply-end'
+      && c.events[2].text === 'Taking you there. Here is the kitchen.', `${t} ${JSON.stringify(c.events[2])}`);
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  });
+}
+
+async function testConversationQueuesOverlappingReplies() {
+  await withBrowser(async ({ contexts }) => {
+    const b = makeBackend({ bargeIn: true });
+    const c = await startConversation(b);
+    const { ws } = c;
+    ws.frame({ type: 'reply.started', reply_id: 'r1' });
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    ws.frame({ type: 'reply.started', reply_id: 'r2' });   // arrives while r1 is still sounding
+    ws.frame({ type: 'reply.audio', data: speechFrame() });
+    ws.frame({ type: 'reply.done', status: 'completed' });
+    await tick(20);
+    check('a reply that starts while another is sounding waits its turn',
+      types(c.events).filter((x) => x === 'reply-start').length === 1, types(c.events).join(','));
+    for (const src of outputOf(contexts).sources) src.onended?.();
+    await tick(1600);
+    check('...and plays once the first has finished',
+      types(c.events).filter((x) => x === 'reply-start').length === 2, types(c.events).join(','));
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  }, { streaming: true });
 }
 
 // ── token caching ───────────────────────────────────────────────────────────
@@ -1258,8 +1753,24 @@ await testRejectedTokenIsMapped();
 await testDefaultTokenUrl();
 await testAskPropagatesAbort();
 await testToolCall();
+await testSlowToolSendsWhenItFinishes();
+await testResultsHeldWhileATurnIsInFlight();
+await testInterruptedReplyDropsResults();
+await testToolTurnSpansTheFollowUpReply();
+await testFollowUpWordsUseTheirOwnClock();
+await testLateToolCallIsNotRunAndItsReplyIsDropped();
+await testCancelledToolTurnDropsTheFollowUp();
 await testToolFailureStillReplies();
 await testUnhandledToolIsReported();
+await testConversationTurn();
+await testConversationGreeting();
+await testConversationBargeIn();
+await testConversationWithoutBargeIn();
+await testConversationInterrupt();
+await testConversationIdleTimeout();
+await testConversationSocketDrop();
+await testConversationToolTurnIsOneReply();
+await testConversationQueuesOverlappingReplies();
 await testTokenIsCachedThenConsumed();
 await testExpiredTokenIsRefetched();
 await testDisposedBackendRefuses();

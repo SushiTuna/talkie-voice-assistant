@@ -31,11 +31,38 @@ Closing the panel, removing the element or leaving the page ends the agent sessi
 | `system-prompt` | a short generic prompt | Used only when `/agent/context` is missing or fails |
 | `voice` | server's, else `anna` | Output voice |
 | `label` | `Product Expert · Voice` | Launcher hover label |
+| `mode` | `conversation` | `conversation`: hands-free, the agent takes turns, greets, can be interrupted. `push-to-talk`: Start / Stop & Send |
+| `idle-timeout` | `60` | Conversation mode: seconds of silence before the conversation (and the mic stream) ends; `0` never |
+| `barge-in` | on | `off` stops the caller interrupting a reply by talking; try it if the agent cuts itself off on loudspeakers |
 | `fonts` | off | `google` loads Space Grotesk + Instrument Sans from Google Fonts |
 
 `fonts` is opt-in because the request sends each visitor's IP address to Google; without it the
 widget falls back to the page's sans-serif. Script access: `el.open()`, `el.close()`, and
 `el.widget` for the `talkie-*` events.
+
+**Tools** are properties, since a handler cannot be an attribute. Both are read on each open,
+and may be set before the embed bundle has defined the element:
+
+```js
+const el = document.querySelector('talkie-assistant');
+el.tools = [{
+  type: 'function',
+  name: 'show_room',
+  description: 'Show the visitor a room. Call this whenever they ask to see one.',
+  parameters: {
+    type: 'object',
+    properties: { room: { type: 'string', enum: ['kitchen', 'lounge'], description: 'Room id, lowercase.' } },
+    required: ['room'],
+  },
+}];
+el.onToolCall = async ({ name, arguments: args }) => ({ ok: true, now_showing: args.room });
+```
+
+The handler's value goes back to the agent as the tool result; throw, or return
+`{ error: '…' }`, to report a failure. The model reads that text, so say what went wrong and
+what to ask next. The API does not validate `parameters`
+([AssemblyAI docs](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools)),
+so test your schemas locally. `virtual-tour/talkie-tools.js` is a worked example.
 
 A worked example lives at [`../examples/embed.html`](../examples/embed.html) — see
 [Running the example](#running-the-example).

@@ -27,6 +27,21 @@
  * the conversation's context lives in the session. It closes on `dispose()`, which sends
  * `session.end` so the vendor does not hold the session for its 30 s resume window.
  *
+ * ── Conversation mode ────────────────────────────────────────────────────────────
+ * `converse()` is the other way to use the same socket: the mic stays open, the vendor's own
+ * turn detection decides when the caller has finished, replies stream as they come, and (with
+ * `bargeIn`) the caller can talk over a reply to cut it off. It yields small events the widget
+ * turns into states. No silence padding, no stop button: the model the API was built for.
+ *
+ * ── Tool calls ───────────────────────────────────────────────────────────────
+ * A turn that calls a tool gets two replies, not one: the agent speaks a transition phrase
+ * ("let me take you there"), emits `tool.call`, ends that reply, and only answers after the
+ * `tool.result` in a second reply it fires itself. Per the docs the result must go out while
+ * `reply.done` is the latest event received — sent mid-reply, the tool fires again. So results
+ * are held and flushed on `reply.done`, and the widget's turn stays open across both replies:
+ * `ask()` and playback run on until the follow-up reply is done too.
+ * https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools
+ *
  * The API key never reaches the browser. A short-lived, single-use token is minted by
  * your server; point `tokenUrl` at that route, or pass `fetchToken` to source it yourself.
  */
@@ -95,6 +110,12 @@ const WORD_FLUSH_GRACE_MS = 1500;
 const PAD_FRAME_MS = 50;
 
 /** Error codes the vendor reports that are worth mapping to `offline` rather than a bug. */
+/**
+ * How long a conversation may sit with nobody speaking before it ends itself. A product choice,
+ * not a measurement: an open conversation streams the microphone to the vendor the whole time.
+ */
+const DEFAULT_IDLE_TIMEOUT_MS = 60000;
+
 const OFFLINE_ERROR_CODES = new Set(['server_error', 'INTERNAL_ERROR']);
 
 export class VoiceAgentBackend {
@@ -146,6 +167,31 @@ export class VoiceAgentBackend {
   #discardNext = false;
   /** @type {{ promise: Promise<void>, resolve: () => void } | null} Settles when this turn's audio is first heard. */
   #speechStart = null;
+  /**
+   * The last turn-shaped vendor event: `reply.started`, `reply.done` or
+   * `input.speech.started`. Tool results may only be sent while it is `reply.done`.
+   * @type {string | null}
+   */
+  #lastEvent = null;
+  /**
+   * Tool results waiting for `reply.done`. `discardFollowUp` marks a call whose turn is
+   * already over or cancelled: the reply the agent fires on its result has nobody to hear it.
+   * @type {Array<{ callId: string, result: string, discardFollowUp: boolean }>}
+   */
+  #pendingResults = [];
+  /** @type {boolean} Let caller speech interrupt a reply (conversation mode). */ #bargeIn = false;
+  /**
+   * The running conversation, or null outside `converse()`.
+   *   queue      events for the converse() iterator
+   *   idleMs     inactivity limit; 0 disables it
+   *   idleTimer  pending idle timeout
+   *   replyTurn  the reply being played, until it ends or is cut off
+   *   turnAbort  aborts that reply's playback and word reveal
+   *   waiting    replies that began while another was still playing, in order
+   * @type {{ queue: EventQueue, idleMs: number, idleTimer: any, replyTurn: ReplyTurn | null,
+   *   turnAbort: AbortController | null, waiting: ReplyTurn[] } | null}
+   */
+  #conv = null;
 
   /**
    * @param {object} options
@@ -169,6 +215,8 @@ export class VoiceAgentBackend {
    * @param {Array<object>} [options.tools] - Function-tool definitions.
    * @param {(call: object) => any} [options.onToolCall] - Invoked for each `tool.call`;
    *   its resolved value is sent back as the `tool.result`.
+   * @param {boolean} [options.bargeIn=false] - Let the caller interrupt a reply by speaking.
+   *   Only meaningful with `converse()`; push-to-talk closes the mic during replies anyway.
    * @param {boolean} [options.speakEnabled=true] - Set false for a text-only widget.
    * @param {boolean} [options.keepMicWarm=false] - Hold the mic open between turns.
    * @param {number} [options.endOfTurnPadMs] - Override the silence padding length.
@@ -191,6 +239,7 @@ export class VoiceAgentBackend {
     turnDetection = null,
     tools = null,
     onToolCall = null,
+    bargeIn = false,
     speakEnabled = true,
     keepMicWarm = false,
     endOfTurnPadMs = null,
@@ -203,9 +252,11 @@ export class VoiceAgentBackend {
     this.#keepMicWarm = keepMicWarm;
     this.#onToolCall = onToolCall;
     this.#onTiming = onTiming;
+    this.#bargeIn = bargeIn === true;
 
     this.#sessionConfig = VoiceAgentBackend.buildSessionUpdate({
       agentId, systemPrompt, greeting, voice, keyterms, volume, turnDetection, tools,
+      bargeIn: this.#bargeIn,
     });
 
     this.#padMs = endOfTurnPadMs ?? END_OF_TURN_PAD_MS;
@@ -254,6 +305,7 @@ export class VoiceAgentBackend {
     volume = null,
     turnDetection = null,
     tools = null,
+    bargeIn = false,
   } = {}) {
     const inline = { systemPrompt, greeting, keyterms, volume, turnDetection, tools };
     const inlineKeys = Object.entries(inline)
@@ -275,8 +327,9 @@ export class VoiceAgentBackend {
         format: { encoding: 'audio/pcm' },
         turn_detection: {
           // Push-to-talk shuts the mic during the reply, so nothing can barge in; leaving
-          // it on only risks the agent cutting itself off on stray room noise.
-          interrupt_response: false,
+          // it on only risks the agent cutting itself off on stray room noise. Conversation
+          // mode turns it on when asked (`bargeIn`), which is the vendor's own default.
+          interrupt_response: bargeIn === true,
           // min_silence and max_silence are deliberately left at the service's defaults:
           // measured end-of-turn timing did not change with them (see END_OF_TURN_PAD_MS).
           ...(turnDetection ?? {}),
@@ -350,8 +403,16 @@ export class VoiceAgentBackend {
         };
       case 'session.ended':
         return { kind: 'ended' };
+      case 'input.speech.started':
+        // Holds tool results back (a turn is in flight), and is barge-in in conversation mode.
+        return { kind: 'speech-started' };
+      case 'input.speech.stopped':
+        return { kind: 'speech-stopped' };
+      case 'transcript.user.delta':
+        // Live caption for conversation mode.
+        return msg.text ? { kind: 'user-partial', text: msg.text } : null;
       default:
-        // transcript.user.delta, session.updated, input.speech.started/stopped: the
+        // session.updated and other acks: the
         // widget has no state that reacts to them, so they are deliberately ignored.
         return null;
     }
@@ -524,21 +585,41 @@ export class VoiceAgentBackend {
     if (this.#player) this.#streamTurn(turn, signal);
 
     const speechStart = this.#speechStart;
+    yield* this.#replyWords(turn, signal, () => {
+      if (!speechStart || speechStart.settled) return;
+      speechStart.settled = true;
+      this.#mark('speech-audible');
+      speechStart.resolve();
+    });
+  }
+
+  /**
+   * Yield a reply's words as the caller hears them, then whatever the final transcript adds.
+   * Shared by `ask()` and conversation mode, so both reveal text the same way.
+   *
+   * @param {ReplyTurn} turn
+   * @param {AbortSignal} [signal]
+   * @param {() => void} [onAudible] - Called once, when the reply's voice starts sounding.
+   * @returns {AsyncGenerator<string>}
+   */
+  async *#replyWords(turn, signal, onAudible) {
     const spoken = [];
     let emitted = 0;
     let flushAt = null;
+    let audible = false;
 
     for (;;) {
       if (signal?.aborted) throw abortError();
       const pos = this.#playedMs(turn);
 
-      if (turn.onsetMs !== null && pos >= turn.onsetMs && speechStart && !speechStart.settled) {
-        speechStart.settled = true;
-        this.#mark('speech-audible');
-        speechStart.resolve();
+      if (!audible && turn.onsetMs !== null && pos >= turn.onsetMs) {
+        audible = true;
+        onAudible?.();
       }
 
-      const final = turn.done || turn.text !== null;
+      // reply.done, not transcript.agent: a reply that called a tool has its text too, but
+      // the answer is still to come in the follow-up reply.
+      const final = turn.done;
       if (final && flushAt === null) {
         // Everything has arrived; the rest is playback. Allow for it, plus a margin.
         flushAt = Date.now() + Math.max(0, turn.receivedMs - Math.max(pos, 0)) + WORD_FLUSH_GRACE_MS;
@@ -602,17 +683,197 @@ export class VoiceAgentBackend {
   #dueWords(turn, pos) {
     const words = turn.words;
     if (pos === Infinity) return words.length;
-    if (turn.onsetMs === null || words.length === 0 || pos < turn.onsetMs) return 0;
-    const first = words[0].startMs;
     let n = 0;
     while (n < words.length) {
+      // Each reply of a tool-calling turn has its own lead-in and its own start_ms clock.
+      const seg = turn.segments[words[n].segment];
+      if (seg.onsetMs === null) break;
       const at = words[n].startMs;
+      const first = seg.firstStartMs;
       // A word without timing is shown with the first moment of speech.
-      const dueAt = at === null || first === null ? turn.onsetMs : turn.onsetMs + (at - first);
+      const dueAt = at === null || first === null ? seg.onsetMs : seg.onsetMs + (at - first);
       if (dueAt > pos) break;
       n++;
     }
     return n;
+  }
+
+  /**
+   * Hold a continuous conversation: the mic stays open and the agent decides the turns.
+   *
+   * Optional backend capability; the widget uses it in `mode="conversation"`. Yields events
+   * until the signal aborts (throws `AbortError`), the session fails (throws a
+   * `TalkieBackendError`), or nobody has spoken for `idleTimeoutMs` (yields `idle-timeout`,
+   * then returns). Either way the mic is released and the agent session ended.
+   *
+   *   { type: 'user-speech' }                      the caller started speaking
+   *   { type: 'user-partial', text }               live caption of what they are saying
+   *   { type: 'user-transcript', text }            what they said, final
+   *   { type: 'reply-start' }                      a reply began (the greeting too)
+   *   { type: 'speech-audible' }                   its voice is now sounding
+   *   { type: 'reply-word', text }                 one word, as it is heard
+   *   { type: 'reply-end', interrupted }           the reply finished playing, or was cut off
+   *   { type: 'idle-timeout' }                     ended for silence
+   *
+   * @param {{ idleTimeoutMs?: number }} [options] - 0 disables the idle limit.
+   * @param {AbortSignal} [signal]
+   * @returns {AsyncGenerator<object>}
+   */
+  async *converse({ idleTimeoutMs = DEFAULT_IDLE_TIMEOUT_MS } = {}, signal) {
+    this.#assertLive();
+    if (this.#conv) throw new TalkieBackendError('backend-failure', 'A conversation is already running.');
+    if (signal?.aborted) throw abortError();
+
+    const queue = new EventQueue();
+    const conv = { queue, idleMs: idleTimeoutMs, idleTimer: null, replyTurn: null, turnAbort: null, waiting: [] };
+    this.#conv = conv;
+    this.#userTurns.clear();
+    this.#userTurnSeq = 0;
+    this.#turn = null;
+    const onAbort = () => queue.fail(abortError());
+    signal?.addEventListener('abort', onAbort, { once: true });
+
+    try {
+      // Inside the press, so autoplay policy lets the output context run.
+      this.#player?.prepare().catch(() => {});
+      if (!this.connected) {
+        const [, cred] = await Promise.all([this.#mic.prepare(), this.#fetchToken()]);
+        this.#tokenCache = null;
+        // The greeting starts arriving right after session.ready; #conv is already set, so
+        // it is played as the conversation's first reply.
+        await this.#openSocket(cred.token);
+      } else {
+        await this.#mic.prepare();
+      }
+      if (signal?.aborted) throw abortError();
+      await this.#mic.start((chunk) => this.#sendConversationAudio(chunk));
+      this.#armIdle();
+
+      for await (const evt of queue.drain()) {
+        yield evt;
+        if (evt.type === 'idle-timeout') return;
+      }
+    } finally {
+      signal?.removeEventListener('abort', onAbort);
+      clearTimeout(conv.idleTimer);
+      this.#conv = null;
+      conv.turnAbort?.abort();
+      await this.#mic.stop().catch(() => {});
+      // A new conversation mints a fresh session; one left open bills for nothing.
+      this.#endSession();
+      this.#turn = null;
+      this.#discarding = false;
+      this.#discardNext = false;
+      this.#pendingResults = [];
+      this.#lastEvent = null;
+    }
+  }
+
+  /**
+   * Send one mic chunk in conversation mode. Without barge-in the caller is not heard while
+   * a reply plays: the chunk goes as silence, so the stream stays continuous but says nothing.
+   * @param {ArrayBuffer} chunk
+   */
+  #sendConversationAudio(chunk) {
+    if (!this.#bargeIn && this.#conv?.replyTurn) chunk = new ArrayBuffer(chunk.byteLength);
+    this.#sendAudio(chunk);
+  }
+
+  /** (Re)start the conversation's idle countdown, unless a reply is playing. */
+  #armIdle() {
+    const conv = this.#conv;
+    if (!conv) return;
+    clearTimeout(conv.idleTimer);
+    conv.idleTimer = null;
+    if (!(conv.idleMs > 0) || conv.replyTurn) return;
+    conv.idleTimer = setTimeout(() => {
+      if (this.#conv === conv && !conv.replyTurn) conv.queue.push({ type: 'idle-timeout' });
+    }, conv.idleMs);
+  }
+
+  /** @param {object} conv */
+  #holdIdle(conv) {
+    clearTimeout(conv.idleTimer);
+    conv.idleTimer = null;
+  }
+
+  /**
+   * Play a reply that arrived during a conversation, and report its words and its end.
+   * @param {ReplyTurn} turn
+   */
+  #playConversationReply(turn) {
+    const conv = this.#conv;
+    const ctrl = new AbortController();
+    conv.replyTurn = turn;
+    conv.turnAbort = ctrl;
+    this.#holdIdle(conv);
+    conv.queue.push({ type: 'reply-start' });
+    if (this.#player) this.#streamTurn(turn, ctrl.signal);
+
+    (async () => {
+      try {
+        const words = this.#replyWords(turn, ctrl.signal, () => conv.queue.push({ type: 'speech-audible' }));
+        for await (const text of words) conv.queue.push({ type: 'reply-word', text });
+        if (turn.streamed) await this.#player.drained();
+        else if (this.speak) await this.speak('', ctrl.signal);
+      } catch (err) {
+        if (err?.name !== 'AbortError') {
+          if (this.#conv === conv) conv.queue.fail(err);
+          return;
+        }
+      }
+      // Cut off by barge-in, or superseded: that path has already reported the end.
+      if (this.#conv !== conv || conv.replyTurn !== turn) return;
+      conv.replyTurn = null;
+      conv.turnAbort = null;
+      conv.queue.push({ type: 'reply-end', interrupted: ctrl.signal.aborted });
+      const next = conv.waiting.shift();
+      if (next) this.#playConversationReply(next);
+      else this.#armIdle();
+    })();
+  }
+
+  /**
+   * Cut off the reply that is playing in a conversation — the widget's Stop button. The
+   * conversation carries on listening. No-op outside a conversation or between replies.
+   * @returns {boolean} Whether a reply was cut off.
+   */
+  interrupt() {
+    const conv = this.#conv;
+    if (!conv?.replyTurn) return false;
+    this.#cutReply(conv);
+    this.#armIdle();
+    return true;
+  }
+
+  /**
+   * Stop the conversation's current reply now and report it as interrupted. The abort also
+   * drops the rest of that reply as it keeps arriving (#streamTurn marks it for discarding).
+   * @param {object} conv
+   */
+  #cutReply(conv) {
+    const ctrl = conv.turnAbort;
+    conv.replyTurn = null;
+    conv.turnAbort = null;
+    // Replies queued behind it answered what came before the cut; drop them too.
+    conv.waiting = [];
+    conv.queue.push({ type: 'reply-end', interrupted: true });
+    ctrl?.abort();
+  }
+
+  /** The caller started speaking during a conversation. */
+  #onConversationSpeech() {
+    const conv = this.#conv;
+    if (conv.replyTurn) {
+      // Without barge-in the mic is silenced during replies; a detection here is noise.
+      if (!this.#bargeIn) return;
+      // Stop at once rather than wait for the vendor's interrupted reply.done: a voice that
+      // keeps going for a beat after you talk over it feels like it did not hear you.
+      this.#cutReply(conv);
+      this.#mark('barge-in');
+    }
+    this.#holdIdle(conv);
+    conv.queue.push({ type: 'user-speech' });
   }
 
   /**
@@ -700,6 +961,7 @@ export class VoiceAgentBackend {
     this.#mic.release().catch(() => {});
     this.#tokenCache = null;
     this.#turn?.fail(new TalkieBackendError('backend-failure', 'Backend disposed'));
+    this.#conv?.queue.fail(abortError());
     this.#turn = null;
     this.#awaitingUserTranscript?.resolve('');
     this.#awaitingUserTranscript = null;
@@ -709,6 +971,8 @@ export class VoiceAgentBackend {
     this.#streamingTurn = null;
     this.#discarding = false;
     this.#discardNext = false;
+    this.#pendingResults = [];
+    this.#lastEvent = null;
     this.#player?.close();
   }
 
@@ -838,8 +1102,12 @@ export class VoiceAgentBackend {
       );
 
       ws.addEventListener('close', () => {
-        if (this.#ws === ws) this.#ws = null;
+        const ours = this.#ws === ws;
+        if (ours) this.#ws = null;
         fail(new TalkieBackendError('offline', 'Agent socket closed before it was ready.'));
+        // A conversation outlives the handshake; a drop mid-way must end it, not leave it
+        // listening to nothing. converse() nulls #conv before closing the socket itself.
+        if (ours && settled) this.#conv?.queue.fail(new TalkieBackendError('offline', 'The voice agent connection closed.'));
       });
 
       ws.addEventListener('open', () => {
@@ -902,17 +1170,40 @@ export class VoiceAgentBackend {
         this.#userTurns.set(this.#userTurnSeq++, evt.text);
         this.#awaitingUserTranscript?.resolve(evt.text);
         this.#awaitingUserTranscript = null;
+        this.#conv?.queue.push({ type: 'user-transcript', text: evt.text });
+        break;
+
+      case 'user-partial':
+        this.#conv?.queue.push({ type: 'user-partial', text: evt.text });
+        break;
+
+      case 'speech-stopped':
+        // Noise that never became a turn must not hold the conversation open forever.
+        this.#armIdle();
         break;
 
       case 'reply-started':
+        this.#lastEvent = 'reply.started';
         if (this.#discardNext) {
           // The reply to a turn the caller cancelled before it began. Drop all of it.
           this.#discardNext = false;
           this.#discarding = true;
           break;
         }
+        if (this.#turn && !this.#turn.settled && this.#turn.awaitingFollowUp) {
+          // The agent answering a tool result: same question, so the same turn carries on.
+          this.#turn.startSegment();
+          this.#mark('follow-up-started');
+          break;
+        }
         // The reply begins before the widget calls ask(), so the buffer opens here.
         this.#beginTurn().began = true;
+        // In a conversation nobody calls ask(): the reply plays as soon as it starts, or as
+        // soon as the one still sounding has finished.
+        if (this.#conv) {
+          if (this.#conv.replyTurn) this.#conv.waiting.push(this.#turn);
+          else this.#playConversationReply(this.#turn);
+        }
         // How long the service took to close the turn and start answering at all.
         this.#mark('reply-started');
         break;
@@ -923,7 +1214,7 @@ export class VoiceAgentBackend {
         turn.began = true;
         turn.touch();
         const chunk = decodeBase64(evt.data);
-        if (turn.onsetMs === null && isSpeech(chunk)) turn.onsetMs = turn.receivedMs;
+        if (turn.segment.onsetMs === null && isSpeech(chunk)) turn.segment.onsetMs = turn.receivedMs;
         turn.receivedMs += (chunk.byteLength / 2 / PCM_SAMPLE_RATE) * 1000;
         turn.audio.push(chunk);
         if (this.#streamingTurn === turn) this.#player.push(chunk);
@@ -959,21 +1250,44 @@ export class VoiceAgentBackend {
         // answered with a tool call alone — still has to release ask(), or the widget
         // sits in `thinking` until the reply timeout for nothing. The turn is created
         // here when nothing else opened one, so ask() finds it already settled.
+        this.#lastEvent = 'reply.done';
+        if (evt.status === 'interrupted') {
+          // Per the docs: the agent has moved on, so results it asked for are stale.
+          this.#pendingResults = [];
+          if (this.#turn) this.#turn.awaitingFollowUp = false;
+        }
         if (this.#discarding) {
           // The tail of a reply the caller cancelled. It is over; start listening again.
           this.#discarding = false;
-          break;
-        }
-        {
+        } else {
           const turn = this.#turn ?? this.#beginTurn();
-          turn.finish();
-          if (this.#streamingTurn === turn) this.#player.finish();
+          if (turn.awaitingFollowUp) {
+            // This reply called a tool; the answer comes in the reply its result triggers.
+            turn.touch();
+          } else {
+            turn.finish();
+            if (this.#streamingTurn === turn) this.#player.finish();
+          }
         }
+        this.#flushResults();
         break;
 
-      case 'tool-call':
-        this.#runTool(evt);
+      case 'speech-started':
+        this.#lastEvent = 'input.speech.started';
+        if (this.#conv) this.#onConversationSpeech();
         break;
+
+      case 'tool-call': {
+        // Documented order: tool.call arrives inside the reply that asks for it. A call for a
+        // turn that is over or cancelled still gets a result — the agent waits on one — but
+        // it is not run, and the reply it triggers is dropped rather than leaking into the
+        // caller's next question.
+        const live = !this.#discarding && !this.#turn?.settled;
+        // No turn yet means no reply event since the press: the call is this question's.
+        if (live) this.#beginTurn().awaitingFollowUp = true;
+        this.#runTool(evt, { live });
+        break;
+      }
 
       case 'error': {
         const err = new TalkieBackendError(
@@ -981,6 +1295,8 @@ export class VoiceAgentBackend {
           `${evt.message} (${evt.code})`,
         );
         this.#turn?.fail(err);
+        this.#conv?.queue.fail(err);
+        this.#pendingResults = [];
         this.#awaitingUserTranscript?.resolve('');
         this.#awaitingUserTranscript = null;
         break;
@@ -989,17 +1305,21 @@ export class VoiceAgentBackend {
       case 'ended':
         (this.#turn ?? this.#beginTurn()).finish();
         this.#sessionId = null;
+        // Ended from the vendor's side (converse() clears #conv before ending it itself).
+        this.#conv?.queue.fail(new TalkieBackendError('offline', 'The voice agent ended the session.'));
         break;
     }
   }
 
   /**
-   * Run a tool call and send its result back.
+   * Run a tool call and queue its result for the next moment it may be sent.
    * @param {{ callId: string, name: string, arguments: object }} call
+   * @param {{ live: boolean }} options - False when the call's turn is over or cancelled.
    */
-  async #runTool({ callId, name, arguments: args }) {
+  async #runTool({ callId, name, arguments: args }, { live }) {
     let result;
     try {
+      if (!live) throw new Error('The caller cancelled this request before it ran. Do not retry it.');
       if (!this.#onToolCall) throw new Error(`No handler for tool "${name}"`);
       result = await this.#onToolCall({ name, arguments: args, call_id: callId });
     } catch (err) {
@@ -1007,12 +1327,30 @@ export class VoiceAgentBackend {
       // conversation moving, where silence would strand it until the vendor times out.
       result = { error: err?.message || String(err) };
     }
-    this.#send({
-      type: 'tool.result',
-      call_id: callId,
+    if (this.#disposed) return;
+    this.#pendingResults.push({
+      callId,
       // The API takes the result as a JSON-encoded string, not a nested object.
       result: typeof result === 'string' ? result : JSON.stringify(result ?? null),
+      discardFollowUp: !live,
     });
+    // The handler may finish after reply.done has already arrived.
+    this.#flushResults();
+  }
+
+  /** Send every held tool result, if `reply.done` is the latest event received. */
+  #flushResults() {
+    if (this.#lastEvent !== 'reply.done' || !this.#pendingResults.length) return;
+    const results = this.#pendingResults;
+    this.#pendingResults = [];
+    for (const { callId, result } of results) {
+      this.#send({ type: 'tool.result', call_id: callId, result });
+    }
+    this.#mark('tool-results-sent', { count: results.length });
+    // Each flush triggers one reply. If it answers a turn nobody is listening to any more,
+    // drop it — unless the live turn is also waiting on it, in which case it is that turn's.
+    const liveWaiting = this.#turn && !this.#turn.settled && this.#turn.awaitingFollowUp;
+    if (!liveWaiting && results.some((r) => r.discardFollowUp)) this.#discardNext = true;
   }
 
   /** @returns {ReplyTurn} A fresh reply buffer, replacing any finished one. */
@@ -1133,11 +1471,19 @@ class ReplyTurn {
   /** @type {ArrayBuffer[]} Decoded PCM chunks, in order. */ audio = [];
   /** @type {boolean} Played through the streaming player rather than as one clip. */ streamed = false;
   /** @type {boolean} The agent has started sending this reply. */ began = false;
-  /** @type {Array<{ text: string, startMs: number | null }>} Word deltas, in order. */ words = [];
+  /** @type {Array<{ text: string, startMs: number | null, segment: number }>} Word deltas, in order. */ words = [];
   /** @type {number} Milliseconds of reply audio received. */ receivedMs = 0;
-  /** @type {number | null} Where in the reply audio the voice starts; null until heard. */ onsetMs = null;
+  /**
+   * One entry per vendor reply in this turn: one normally, more when the agent calls a tool
+   * and answers in a follow-up. Each has its own silent lead-in and its own `start_ms` clock.
+   *   onsetMs       where in the turn's audio this reply's voice starts; null until heard
+   *   firstStartMs  `start_ms` of this reply's first timed word
+   *   text          this reply's transcript.agent
+   * @type {Array<{ onsetMs: number | null, firstStartMs: number | null, text: string | null }>}
+   */
+  segments = [{ onsetMs: null, firstStartMs: null, text: null }];
+  /** @type {boolean} A tool was called; reply.done does not end the turn until its follow-up does. */ awaitingFollowUp = false;
   /** @type {number} Date.now() of the last sign the agent is still sending. */ #lastActivity = Date.now();
-  /** @type {string | null} */ #text = null;
   /** @type {Error | null} */ #error = null;
   /** @type {boolean} */ #done = false;
   /** @type {Array<() => void>} */ #waiters = [];
@@ -1148,9 +1494,27 @@ class ReplyTurn {
     return this.#done || this.#error !== null;
   }
 
-  /** @param {string} text */
+  /** @returns {object} The reply currently arriving. */
+  get segment() {
+    return this.segments[this.segments.length - 1];
+  }
+
+  /** @returns {number | null} Where the turn's first voice starts; null until heard. */
+  get onsetMs() {
+    return this.segments[0].onsetMs;
+  }
+
+  /** The agent's follow-up reply to a tool result has begun. */
+  startSegment() {
+    this.segments.push({ onsetMs: null, firstStartMs: null, text: null });
+    this.awaitingFollowUp = false;
+    this.touch();
+    this.#wake();
+  }
+
+  /** @param {string} text - This reply's transcript.agent. */
   setText(text) {
-    this.#text = text;
+    this.segment.text = text;
     this.#lastActivity = Date.now();
     this.#wake();
   }
@@ -1166,9 +1530,10 @@ class ReplyTurn {
     return this.#done;
   }
 
-  /** @returns {string | null} The final transcript.agent text, once it has arrived. */
+  /** @returns {string | null} Every reply's transcript.agent text joined, once any has arrived. */
   get text() {
-    return this.#text;
+    const parts = this.segments.map((seg) => seg.text).filter((t) => t !== null);
+    return parts.length ? parts.filter(Boolean).join(' ') : null;
   }
 
   /**
@@ -1176,7 +1541,9 @@ class ReplyTurn {
    * @param {number | null} startMs
    */
   addWord(text, startMs) {
-    this.words.push({ text, startMs });
+    const seg = this.segment;
+    if (seg.firstStartMs === null && startMs !== null) seg.firstStartMs = startMs;
+    this.words.push({ text, startMs, segment: this.segments.length - 1 });
     this.touch();
     this.#wake();
   }
@@ -1193,7 +1560,12 @@ class ReplyTurn {
   changed(signal, pollMs) {
     if (this.#error) return Promise.reject(this.#error);
     if (signal?.aborted) return Promise.reject(abortError());
-    if (!this.settled && this.#text === null && Date.now() - this.#lastActivity >= REPLY_TIMEOUT_MS) {
+    if (!this.settled && Date.now() - this.#lastActivity >= REPLY_TIMEOUT_MS) {
+      if (this.text !== null && !this.awaitingFollowUp) {
+        // The whole answer's text arrived and only reply.done went missing: finish with it.
+        this.finish();
+        return Promise.resolve();
+      }
       return Promise.reject(new TalkieBackendError('backend-failure', 'The voice agent sent no reply.'));
     }
     return new Promise((resolve, reject) => {
@@ -1284,6 +1656,42 @@ class ReplyTurn {
   /** Re-run every pending waiter's condition. */
   #wake() {
     for (const waiter of [...this.#waiters]) waiter();
+  }
+}
+
+/**
+ * An unbounded queue read by one async iterator: the conversation's events, pushed from socket
+ * handlers and reply tasks, pulled by `converse()`. A failure is thrown to the reader at once.
+ */
+class EventQueue {
+  /** @type {object[]} */ #items = [];
+  /** @type {Error | null} */ #error = null;
+  /** @type {(() => void) | null} */ #wake = null;
+
+  /** @param {object} item */
+  push(item) {
+    if (this.#error) return;
+    this.#items.push(item);
+    this.#wake?.();
+  }
+
+  /** @param {Error} error */
+  fail(error) {
+    this.#error ??= error;
+    this.#wake?.();
+  }
+
+  /** @returns {AsyncGenerator<object>} */
+  async *drain() {
+    for (;;) {
+      if (this.#error) throw this.#error;
+      if (this.#items.length) {
+        yield this.#items.shift();
+        continue;
+      }
+      await new Promise((resolve) => { this.#wake = resolve; });
+      this.#wake = null;
+    }
   }
 }
 

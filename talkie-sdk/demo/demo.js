@@ -296,9 +296,17 @@ function logTurnTiming(mark, { at, ...rest }) {
   console.debug?.(`[talkie:timing] +${at}ms ${mark}`, rest);
 }
 
-async function goVoiceAgent() {
+/**
+ * Scenario 9 — the same agent as a continuous conversation: the mic stays open, the agent
+ * decides when you have finished, speaks its greeting, and can be talked over.
+ */
+function goConversation() {
+  return goVoiceAgent({ conversation: true });
+}
+
+async function goVoiceAgent({ conversation = false } = {}) {
   clearConversationTimer();
-  listenActive = true;
+  listenActive = !conversation;
   const params = new URLSearchParams(location.search);
   const origin = params.get('agentApi') || 'http://localhost:8000';
   const tokenUrl = params.get('agentTokenUrl') || `${origin}/agent/token`;
@@ -326,8 +334,9 @@ async function goVoiceAgent() {
     // ?agentWsUrl= points the socket somewhere other than the vendor, which is how this
     // scenario gets exercised against a local stand-in without a vendor key.
     ...(params.get('agentWsUrl') ? { wsUrl: params.get('agentWsUrl') } : {}),
-    // `greeting` is deliberately not passed: the agent speaks it on session.ready, which
-    // in a press-to-talk widget lands while the caller is already being listened to.
+    // In push-to-talk `greeting` is deliberately not passed: the agent speaks it on
+    // session.ready, which there lands while the caller is already being listened to.
+    ...(conversation ? { greeting: context?.greeting || undefined, bargeIn: true } : {}),
     systemPrompt: context?.system_prompt
       ?? 'You are a concise voice assistant. Answer in one or two sentences.',
     keyterms: context?.keyterms ?? undefined,
@@ -335,6 +344,7 @@ async function goVoiceAgent() {
     onTiming: logTurnTiming,
   });
   widgetInstance.backend = agentBackend;
+  widgetInstance.mode = conversation ? 'conversation' : 'push-to-talk';
   widgetInstance.reset();
   widgetInstance.show();
 
@@ -343,7 +353,9 @@ async function goVoiceAgent() {
   appendLog(now(), 'AGENT', `Warming up — token from ${tokenUrl}…`, '#7fb5ff');
   agentBackend.prewarm({ mic: true }).then((warm) => {
     appendLog(now(), 'AGENT',
-      `Ready — token:${warm.token} audio:${warm.audio} mic:${warm.mic}. Speak, then click again or press Space to send.`,
+      conversation
+        ? `Ready — token:${warm.token} audio:${warm.audio} mic:${warm.mic}. Just talk; talk over it to interrupt; Esc ends.`
+        : `Ready — token:${warm.token} audio:${warm.audio} mic:${warm.mic}. Speak, then click again or press Space to send.`,
       '#7fb5ff');
     widgetInstance.startListening('rail');
   });
@@ -496,7 +508,8 @@ function buildRail() {
     { go: 'offline',            num: '05', label: 'Offline',            desc: 'Network failure error',              action: goOffline },
     { go: 'reset',              num: '06', label: 'Reset',              desc: 'Close the widget and clear state', action: goReset },
     { go: 'live',               num: '07', label: 'Live backend',      desc: 'Real mic + server (?api= to point elsewhere)', action: goLive },
-    { go: 'voice-agent',        num: '08', label: 'Voice Agent API',   desc: 'Server-configured agent on one socket (?profile=)', action: goVoiceAgent },
+    { go: 'voice-agent',        num: '08', label: 'Voice Agent API',   desc: 'Server-configured agent on one socket (?profile=)', action: () => goVoiceAgent() },
+    { go: 'conversation',       num: '09', label: 'Conversation',      desc: 'Hands-free: just talk, interrupt any time (?profile=)', action: goConversation },
   ];
 
   items.forEach(item => {
@@ -527,6 +540,8 @@ function buildRail() {
         return;
       }
       if (item.go === 'open-recording') listenActive = true;
+      // Only scenario 9 converses; every other scenario is push-to-talk.
+      if (item.go !== 'conversation') widgetInstance.mode = 'push-to-talk';
       item.action();
       setActiveRail(item.go);
     });

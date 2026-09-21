@@ -5,10 +5,14 @@
  * Legal transitions (reject anything else):
  *   idle        -> listening, error
  *   listening   -> transcribing, idle (cancel), error
- *   transcribing-> thinking, idle (cancel), error
- *   thinking    -> speaking, idle (cancel), error
- *   speaking    -> idle, error
+ *   transcribing-> thinking, listening, idle (cancel), error
+ *   thinking    -> speaking, listening, idle (cancel), error
+ *   speaking    -> idle, listening, error
  *   error       -> idle
+ *
+ * The three `-> listening` edges exist for conversation mode, where the microphone stays open:
+ * a reply ends (or the caller talks over it) and the widget is listening again without passing
+ * through idle. Push-to-talk never takes them.
  */
 
 const VALID_STATES = ['idle', 'listening', 'transcribing', 'thinking', 'speaking', 'error'];
@@ -25,9 +29,9 @@ const ERROR_REASONS = Object.freeze([
 const TRANSITIONS = Object.freeze({
   idle: new Set(['listening', 'error']),
   listening: new Set(['transcribing', 'idle', 'error']),
-  transcribing: new Set(['thinking', 'idle', 'error']),
-  thinking: new Set(['speaking', 'idle', 'error']),
-  speaking: new Set(['idle', 'error']),
+  transcribing: new Set(['thinking', 'listening', 'idle', 'error']),
+  thinking: new Set(['speaking', 'listening', 'idle', 'error']),
+  speaking: new Set(['idle', 'listening', 'error']),
   error: new Set(['idle']),
 });
 
@@ -40,11 +44,14 @@ const TRANSITION_LABELS = Object.freeze({
   transcribing_thinking: 'startThinking',
   transcribing_idle: 'cancelTranscribing',
   transcribing_error: 'transitionToError',
+  transcribing_listening: 'resumeListening',
   thinking_speaking: 'startSpeaking',
   thinking_idle: 'cancelThinking',
   thinking_error: 'transitionToError',
+  thinking_listening: 'resumeListening',
   speaking_idle: 'stopSpeaking',
   speaking_error: 'transitionToError',
+  speaking_listening: 'resumeListening',
   error_idle: 'retry',
 });
 

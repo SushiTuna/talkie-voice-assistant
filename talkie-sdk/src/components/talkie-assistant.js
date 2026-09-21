@@ -16,9 +16,26 @@
  *   system-prompt  Used only when the server has no context route or it fails.
  *   voice          Output voice, when the server context does not name one.
  *   label          Launcher hover label.
+ *   mode           `conversation` (default): the mic stays open and the agent takes turns
+ *                  by itself, speaks its greeting and can be talked over. `push-to-talk`:
+ *                  Start Recording / Stop & Send, one question at a time.
+ *   idle-timeout   Conversation mode: seconds of silence before it ends itself. Default 60;
+ *                  0 never ends it (the mic then streams until closed).
+ *   barge-in       `off` stops the caller interrupting a reply by talking (conversation
+ *                  mode). Try it if the agent keeps cutting itself off on loudspeakers.
  *   fonts          `google` loads the widget's typefaces from Google Fonts. Off by default:
  *                  that request sends each visitor's IP to Google, which is the host page's
  *                  call to make, not the widget's.
+ *
+ * Properties (script only — functions and objects cannot be attributes):
+ *   tools          Function-tool definitions for the agent, in the Voice Agent API's shape.
+ *   onToolCall     `({ name, arguments, call_id }) => result`, run for each tool call; its
+ *                  (awaited) value goes back to the agent. Throw to report a failure.
+ * Both are read on each open, and may be set before this element is defined:
+ *
+ *   const el = document.querySelector('talkie-assistant');
+ *   el.tools = [{ type: 'function', name: 'go_to_room', description: '…', parameters: {…} }];
+ *   el.onToolCall = ({ name, arguments: args }) => navigate(args.room);
  *
  * Light DOM on purpose: the launcher and widget already isolate their own styles in shadow
  * roots, and staying in the light DOM lets a host page still target them if it must.
@@ -37,6 +54,9 @@ const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@6
  */
 const Z_INDEX = '2147483000';
 
+/** Conversation mode ends itself after this much silence unless `idle-timeout` says otherwise. */
+const DEFAULT_IDLE_TIMEOUT_S = 60;
+
 export class TalkieAssistant extends HTMLElement {
   static get observedAttributes() {
     return ['label'];
@@ -48,6 +68,8 @@ export class TalkieAssistant extends HTMLElement {
   /** @type {Promise<object | null> | null} Server context, fetched once per mount. */ #context = null;
   /** @type {object | null} The context once it has resolved, for the synchronous open path. */ #contextValue = null;
   /** @type {boolean} Guards against a double-click opening two sessions. */ #opening = false;
+  /** @type {Array<object> | null} */ #tools = null;
+  /** @type {((call: object) => any) | null} */ #onToolCall = null;
 
   constructor() {
     super();
@@ -67,6 +89,18 @@ export class TalkieAssistant extends HTMLElement {
     return this.getAttribute('token-url') || `${this.api}/agent/token`;
   }
 
+  /** @returns {'conversation' | 'push-to-talk'} */
+  get mode() {
+    return this.getAttribute('mode') === 'push-to-talk' ? 'push-to-talk' : 'conversation';
+  }
+
+  /** @returns {number} Seconds; 0 disables the limit. */
+  get idleTimeout() {
+    const raw = this.getAttribute('idle-timeout');
+    const n = raw === null ? DEFAULT_IDLE_TIMEOUT_S : Number(raw);
+    return Number.isFinite(n) && n >= 0 ? n : DEFAULT_IDLE_TIMEOUT_S;
+  }
+
   get contextUrl() {
     const profile = this.getAttribute('profile');
     return `${this.api}/agent/context${profile ? `?profile=${encodeURIComponent(profile)}` : ''}`;
@@ -82,9 +116,37 @@ export class TalkieAssistant extends HTMLElement {
     return this.#backend;
   }
 
+  /** Function-tool definitions sent to the agent on the next open. */
+  get tools() {
+    return this.#tools;
+  }
+
+  set tools(value) {
+    this.#tools = Array.isArray(value) && value.length ? value : null;
+  }
+
+  /** Runs each tool call the agent makes; its resolved value is the tool result. */
+  get onToolCall() {
+    return this.#onToolCall;
+  }
+
+  set onToolCall(fn) {
+    this.#onToolCall = typeof fn === 'function' ? fn : null;
+  }
+
   // ── lifecycle ──
 
   connectedCallback() {
+    // A page script may set these before the embed bundle defines this element; that makes
+    // own properties on the plain element that hide the accessors. Re-apply them. Here rather
+    // than in the constructor: an upgrade runs both, and this is also reachable from a test.
+    for (const prop of ['tools', 'onToolCall']) {
+      if (Object.prototype.hasOwnProperty.call(this, prop)) {
+        const value = this[prop];
+        delete this[prop];
+        this[prop] = value;
+      }
+    }
     if (this.#widget) return; // moved within the page; already mounted
     if (this.getAttribute('fonts') === 'google') loadFonts(this.ownerDocument);
 
@@ -177,16 +239,38 @@ export class TalkieAssistant extends HTMLElement {
     if (this.#launcher) this.#launcher.open = true;
     if (this.#backend) return;
     const context = this.#contextValue;
-    this.#backend = new VoiceAgentBackend({
+    const conversation = this.mode === 'conversation';
+    this.#widget.mode = this.mode;
+    this.#widget.idleTimeout = this.idleTimeout;
+    this.#backend = this._createBackend({
+      // Conversation only: in push-to-talk the greeting would land while the caller is
+      // already being recorded (README), and nothing can barge in on a closed mic.
+      greeting: conversation ? (context?.greeting || undefined) : undefined,
+      bargeIn: conversation && this.getAttribute('barge-in') !== 'off',
       tokenUrl: this.tokenUrl,
       systemPrompt: context?.system_prompt ?? this.getAttribute('system-prompt') ?? FALLBACK_PROMPT,
       keyterms: context?.keyterms ?? undefined,
       voice: context?.voice ?? this.getAttribute('voice') ?? undefined,
+      tools: this.#tools ?? undefined,
+      // Looked up per call, so a handler replaced while the panel is open is the one used.
+      onToolCall: (call) => {
+        if (!this.#onToolCall) throw new Error(`No handler for tool "${call.name}"`);
+        return this.#onToolCall(call);
+      },
     });
     this.#widget.backend = this.#backend;
     // Token and audio graph only. The mic stays shut until the caller presses Start:
     // opening a chat panel is not consent to the browser's recording indicator.
     this.#backend.prewarm({ mic: false });
+  }
+
+  /**
+   * Build the session's backend. A seam for tests and subclasses; not part of the public API.
+   * @param {object} options - `VoiceAgentBackend` constructor options.
+   * @returns {VoiceAgentBackend}
+   */
+  _createBackend(options) {
+    return new VoiceAgentBackend(options);
   }
 
   _onClose() {

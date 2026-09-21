@@ -118,6 +118,12 @@ export class TalkieWidget extends ScopedLitElement {
   #speakIdx = 0;
   /** @type {boolean} Whether the streaming generator has finished (drives cursor visibility) */
   #streamDone = false;
+  /** @type {AbortController|null} The running conversation (conversation mode) */
+  #abortConv = null;
+  /** @type {boolean} The last conversation ended itself for silence (idle view copy) */
+  #endedForSilence = false;
+  /** @type {boolean} The no-converse fallback has been reported once */
+  #warnedNoConverse = false;
 
   static properties = {
     backend: { type: Object },
@@ -132,6 +138,13 @@ export class TalkieWidget extends ScopedLitElement {
     _shown: { type: Number, state: true },
     // Seconds recorded so far. Reactive so the clock in the listening view ticks.
     _elapsed: { type: Number, state: true },
+    // 'push-to-talk' (Start / Stop & Send) or 'conversation' (mic stays open, the backend's
+    // turn detection runs the exchange). Conversation needs a backend with converse().
+    mode: { type: String, reflect: true },
+    // Conversation mode: seconds of silence before the conversation ends itself; 0 = never.
+    idleTimeout: { type: Number, attribute: 'idle-timeout' },
+    // Conversation mode: live caption of what the caller is saying.
+    _partial: { type: String, state: true },
   };
 
   static get scopedElements() {
@@ -464,6 +477,9 @@ export class TalkieWidget extends ScopedLitElement {
     this._elapsed = 0;
     /** @type {string} Reflective read-only — synced from state machine */
     this.state   = '';
+    this.mode = 'push-to-talk';
+    this.idleTimeout = 60;
+    this._partial = '';
 
     this.#sm = new StateMachine();
 
@@ -476,6 +492,8 @@ export class TalkieWidget extends ScopedLitElement {
     this._onAskAnotherClick = this._onAskAnotherClick.bind(this);
     this._onStopSendClick = this._onStopSendClick.bind(this);
     this._onCancelRecordingClick = this._onCancelRecordingClick.bind(this);
+    this._onEndClick    = this._onEndClick.bind(this);
+    this._onInterruptClick = this._onInterruptClick.bind(this);
     this._onKeydown     = this._onKeydown.bind(this);
 
     this.#sm.onChange(this._onSmChange);
@@ -501,7 +519,7 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   willUpdate(changed) {
-    if (changed.has('_sm') || changed.has('open')) {
+    if (changed.has('_sm') || changed.has('open') || changed.has('mode') || changed.has('backend')) {
       this._syncLabel();
       this._syncHint();
     }
@@ -584,6 +602,12 @@ export class TalkieWidget extends ScopedLitElement {
       this._emitEvent('talkie-error', { reason: ev.reason, error: ev.error });
     }
 
+    if (ev.to === 'listening' && ev.from !== 'idle') {
+      // A conversation's next turn: the same question asked twice should still emit.
+      this.#lastTranscript = '';
+      this.#lastResponse = '';
+    }
+
     if (ev.to === 'idle') {
       // Clear the de-dup memory so a repeated question still emits next time round
       // (MockBackend round-robins, and real users do ask the same thing twice).
@@ -606,6 +630,17 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   _syncHint() {
+    if (this._conversational) {
+      const hints = {
+        idle: 'Press Start or the space bar to talk',
+        listening: 'Just talk · Esc ends',
+        speaking: 'Space stops the answer · Esc ends',
+        transcribing: 'Esc ends',
+        thinking: 'Esc ends',
+      };
+      this._hint = hints[this.#sm.state] ?? '';
+      return;
+    }
     switch (this.#sm.state) {
       case 'idle':
         this._hint = 'Press Start or the space bar to record';
@@ -666,6 +701,11 @@ export class TalkieWidget extends ScopedLitElement {
       if (origin.closest?.('lion-button, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
     }
     e.preventDefault();
+    if (this._conversational) {
+      if (this.#sm.state === 'idle') this.startConversation('space-start');
+      else if (this.#sm.state === 'speaking') this._onInterruptClick();
+      return;
+    }
     if (this.#sm.state === 'idle') this.startListening('space-start');
     else if (this.#sm.state === 'listening') this.releaseListening('space-stop');
     // Space is the primary action key, so while an answer is playing it does what
@@ -676,7 +716,26 @@ export class TalkieWidget extends ScopedLitElement {
 
   /* ── Conversation flow ──────────────────────── */
 
+  /**
+   * True when this widget runs conversations: `mode="conversation"` and a backend that can
+   * hold one. Anything else falls back to push-to-talk, so the mode never breaks a backend.
+   * @returns {boolean}
+   */
+  get _conversational() {
+    if (this.mode !== 'conversation') return false;
+    if (typeof this.backend?.converse === 'function') return true;
+    if (this.backend && !this.#warnedNoConverse) {
+      this.#warnedNoConverse = true;
+      console.warn('[talkie] mode="conversation" needs a backend with converse(); using push-to-talk.');
+    }
+    return false;
+  }
+
   startListening(src) {
+    if (this._conversational) {
+      this.startConversation(src);
+      return;
+    }
     if (this.#sm.state !== 'idle') return;
     this.#abortListen  = new AbortController();
     this.#abortTrans   = new AbortController();
@@ -831,12 +890,119 @@ export class TalkieWidget extends ScopedLitElement {
     })();
   }
 
+  /* ── Conversation mode ──────────────────────── */
+
+  /**
+   * Start a continuous conversation. The backend's events drive the states from here on:
+   * listening → transcribing → thinking → speaking → listening, until End, Esc, closing the
+   * panel, an error, or the backend's idle limit.
+   * @param {string} [src]
+   */
+  startConversation(src) {
+    if (this.#sm.state !== 'idle' || !this._conversational) return;
+    const ctrl = new AbortController();
+    this.#abortConv = ctrl;
+    this.#listenSource = src;
+    this.#endedForSilence = false;
+    this._tx = '';
+    this._rp = '';
+    this._shown = 0;
+    this._partial = '';
+    this.#streamDone = false;
+    this.#sm.transition('listening');
+    this.#startElapsedTimer();
+
+    (async () => {
+      try {
+        const idleTimeoutMs = Math.max(0, Number(this.idleTimeout) || 0) * 1000;
+        for await (const evt of this.backend.converse({ idleTimeoutMs }, ctrl.signal)) {
+          if (ctrl.signal.aborted) return;
+          this.#onConversationEvent(evt);
+        }
+      } catch (err) {
+        if (ctrl.signal.aborted || err?.name === 'AbortError') return;
+        if (this.#abortConv === ctrl) this.#abortConv = null;
+        this.#stopElapsedTimer();
+        this._handleError(err);
+        return;
+      }
+      // The backend ended it: nobody spoke for the idle limit.
+      if (this.#abortConv !== ctrl) return;
+      this.#abortConv = null;
+      this.#stopElapsedTimer();
+      this.#endedForSilence = true;
+      if (this.#sm.state !== 'idle') this.#sm.transition('idle');
+      this.requestUpdate();
+    })();
+  }
+
+  /** End the running conversation, if any, and return to idle. */
+  endConversation() {
+    if (!this.#abortConv) return;
+    this.#cancelConversation('conversation ended');
+  }
+
+  /** @param {{ type: string, text?: string, interrupted?: boolean }} evt */
+  #onConversationEvent(evt) {
+    const sm = this.#sm;
+    switch (evt.type) {
+      case 'user-speech':
+        // The caller is talking again, possibly over the answer (barge-in).
+        if (sm.state === 'speaking' || sm.state === 'thinking' || sm.state === 'transcribing') {
+          sm.transition('listening');
+        }
+        break;
+      case 'user-partial':
+        this._partial = evt.text ?? '';
+        break;
+      case 'user-transcript':
+        this._partial = '';
+        this._tx = evt.text ?? '';
+        sm.transcript = this._tx;
+        if (sm.state === 'listening') sm.transition('transcribing');
+        break;
+      case 'reply-start':
+        // No dwell here, unlike push-to-talk: the agent is already answering, so a pause
+        // would only put the panel behind the voice.
+        this._rp = '';
+        this._shown = 0;
+        this.#streamDone = false;
+        if (sm.state === 'listening') sm.transition('transcribing');
+        if (sm.state === 'transcribing') sm.transition('thinking');
+        break;
+      case 'speech-audible':
+        if (sm.state === 'thinking') sm.transition('speaking');
+        break;
+      case 'reply-word':
+        this._rp = this._rp ? `${this._rp} ${evt.text}` : (evt.text ?? '');
+        this._shown = this._rp.split(/\s+/).filter((w) => w.length > 0).length;
+        if (sm.state === 'thinking') sm.transition('speaking');
+        this.requestUpdate();
+        break;
+      case 'reply-end':
+        // Only a reply still on screen ends here; after a barge-in the caller already moved on.
+        if (sm.state === 'speaking' || sm.state === 'thinking') {
+          this.#streamDone = true;
+          if (this._rp) sm.response = this._rp;
+          sm.transition('listening');
+        }
+        break;
+    }
+  }
+
   #cancelConversation(reason) {
     this.#stopSpeakTimer();
+    const conversing = this.#abortConv !== null;
+    if (conversing) {
+      // The backend's converse() ends the mic and the agent session on abort.
+      this.#abortConv.abort();
+      this.#abortConv = null;
+      this._partial = '';
+    }
     // Abandoning a recording still has to close the mic and the ASR socket; the
     // abort controllers below only unwind this component's own work. The
     // transcript is deliberately discarded.
-    if (this.#sm.state === 'listening' && this.backend?.stopCapture) {
+    if (!conversing && this.#sm.state === 'listening' && this.backend?.stopCapture) {
       Promise.resolve().then(() => this.backend.stopCapture()).catch(() => {});
     }
     this.#disposeAll();
@@ -993,6 +1159,20 @@ export class TalkieWidget extends ScopedLitElement {
     this._stopSpeaking();
   }
 
+  /** Conversation mode: End conversation. */
+  _onEndClick() {
+    this.endConversation();
+  }
+
+  /** Conversation mode: Stop — cut the answer short and keep listening. */
+  _onInterruptClick() {
+    if (this.#sm.state !== 'speaking') return;
+    if (typeof this.backend?.interrupt === 'function' && this.backend.interrupt()) return;
+    // No reply to cut on the backend's side (it already finished arriving): just move on.
+    this.#streamDone = true;
+    this.#sm.transition('listening');
+  }
+
   _onAskAnotherClick() {
     if (this.#sm.state !== 'speaking') return;
     // The answer text finishes revealing before the audio finishes playing, so
@@ -1071,6 +1251,21 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   _renderIdle() {
+    if (this._conversational) {
+      return html`
+      <div class="view center-layout">
+        <div class="eyebrow"><span class="dot"></span>Product Expert</div>
+        <h2 class="big" aria-hidden="true">Have a&nbsp;question?</h2>
+        <lion-button class="btn-primary" id="startBtn" data-action="start"
+            @click=${this._onStartActivate}
+            style="--talkie-state:${this._getStateColor()}">
+          ${iconMic()} Start&nbsp;conversation
+        </lion-button>
+        <p class="sub">${this.#endedForSilence
+          ? `Ended after ${this.idleTimeout} seconds of silence. Start again any time.`
+          : 'Just talk. Ask about features, pricing, integrations, or compatibility.'}</p>
+      </div>`;
+    }
     return html`
       <div class="view center-layout">
         <div class="eyebrow"><span class="dot"></span>Product Expert</div>
@@ -1084,7 +1279,23 @@ export class TalkieWidget extends ScopedLitElement {
       </div>`;
   }
 
+  /** Conversation mode: the End control every in-conversation view offers. */
+  _renderEndLink() {
+    return html`<button type="button" class="link-btn" id="endBtn" @click=${this._onEndClick}>End conversation</button>`;
+  }
+
   _renderListening() {
+    if (this._conversational) {
+      return html`
+      <div class="center-layout">
+        <h2 class="status-text" aria-hidden="true">
+          Listening<span class="rec-clock">${formatElapsed(this._elapsed)}</span>
+        </h2>
+        <talkie-waveform .enabled=${true} .color="${this._getStateColor()}"></talkie-waveform>
+        ${this._partial ? html`<talkie-transcript .text=${this._partial}></talkie-transcript>` : ''}
+        ${this._renderEndLink()}
+      </div>`;
+    }
     return html`
       <div class="center-layout">
         <h2 class="status-text" aria-hidden="true">
@@ -1104,6 +1315,7 @@ export class TalkieWidget extends ScopedLitElement {
         <div class="arc" aria-hidden="true"></div>
         <h2 class="status-text" aria-hidden="true">Understanding…</h2>
         ${this._tx ? html`<talkie-transcript .text=${this._tx}></talkie-transcript>` : ''}
+        ${this._conversational ? this._renderEndLink() : ''}
       </div>`;
   }
 
@@ -1113,6 +1325,7 @@ export class TalkieWidget extends ScopedLitElement {
         <h2 class="status-text" aria-hidden="true">Finding the right answer…</h2>
         ${this._tx ? html`<talkie-transcript .text=${this._tx}></talkie-transcript>` : ''}
         <div class="dots3" aria-hidden="true"><span></span><span></span><span></span></div>
+        ${this._conversational ? this._renderEndLink() : ''}
       </div>`;
   }
 
@@ -1133,7 +1346,12 @@ export class TalkieWidget extends ScopedLitElement {
         <p class="resp-area">
           ${displayText}${complete ? '' : html`<span class="cursor-cursor"></span>`}
         </p>
-        ${complete
+        ${this._conversational
+          ? html`<lion-button class="btn-stop" id="stopBtn" data-action="stop" @click=${this._onInterruptClick}>
+              <span class="sq"></span>Stop
+            </lion-button>
+            ${this._renderEndLink()}`
+          : complete
           ? html`<lion-button class="btn-primary ghost" id="askAnotherBtn" data-action="ask-another" @click=${this._onAskAnotherClick}>Ask another</lion-button>`
           : html`<lion-button class="btn-stop" id="stopBtn" data-action="stop" @click=${this._onStopClick}>
               <span class="sq"></span>Stop

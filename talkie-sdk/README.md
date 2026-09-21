@@ -28,6 +28,8 @@ npm run build      # -> dist/talkie-embed.js, one file, no dependencies to insta
 ```
 
 That is the whole integration: a launcher and widget, wired to the voice server named by `api`.
+It holds a hands-free **conversation** by default (see [Interaction model](#interaction-model));
+`mode="push-to-talk"` gives Start / Stop & Send instead.
 The voice server must list the page's origin in `TALKIE_ALLOWED_ORIGINS`. `npm run example`
 serves a sample host page on `:5173`. Attributes, CORS, CSP and HTTPS notes are in
 [docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step).
@@ -88,6 +90,12 @@ The widget never talks directly to a speech or language vendor. It speaks one co
  *   - optional TTS synthesis; absent → text-only display
  *   - when present, the widget calls it during the speaking phase
  */
+/** @property {(options: { idleTimeoutMs?: number }, signal: AbortSignal) => AsyncIterable<object>} [converse]
+ *   - optional: hold a continuous conversation (widget `mode="conversation"`); yields
+ *     user-speech / user-partial / user-transcript / reply-start / speech-audible /
+ *     reply-word / reply-end / idle-timeout events. Only VoiceAgentBackend has it.
+ */
+/** @property {() => boolean} [interrupt] – optional: cut off the reply playing in a conversation */
 /** @property {() => void} [dispose] */
 ```
 
@@ -163,6 +171,19 @@ widget.backend = new VoiceAgentBackend({
 });
 ```
 
+**Tools.** `onToolCall` runs each `tool.call`; its awaited value is JSON-encoded and sent back
+as the `tool.result` (throw to report an error the agent can read). A turn that calls a tool
+gets two vendor replies: a short transition phrase, then the answer, which the agent fires once
+it has the result. The backend follows the
+[documented sequence](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools):
+results are held until `reply.done` is the latest event (sent mid-reply, the tool fires again)
+and dropped on an interrupted `reply.done`. The widget sees one turn: `ask()` yields the
+transition phrase and the answer, and playback runs across both. A call that arrives for a turn
+already finished or cancelled is not run; it is answered with an error so the agent is not left
+waiting, and the reply that answer triggers is dropped rather than shown as the reply to the
+next question. On `<talkie-assistant>`, set the `tools` and `onToolCall` properties
+([integration guide](docs/integration.md#drop-in-embed-any-web-page-no-build-step)).
+
 Pass `agentId: '<id>'` instead of the inline fields to use an agent you created with the
 Agents REST API. The two are mutually exclusive and combining them throws immediately,
 rather than failing the session on the wire.
@@ -195,6 +216,8 @@ domain-neutral; see *Configuring the voice agent* in the voice server's README.
 | `ask(text, signal)` | Sends nothing — the agent started replying when it closed the turn. Starts playing the reply audio as it streams in, and yields the answer one word at a time as the voice reaches each word. Falls back to the whole `transcript.agent` text if no word events arrive. |
 | `speechStarted(signal)` | Optional capability the widget uses: resolves when the voice itself starts playing, so the widget moves to *speaking* then rather than on the silent lead-in. |
 | `speak(text, signal)` | Waits for the streamed audio to finish playing. Without Web Audio scheduling, wraps the buffered `reply.audio` PCM in a WAV and plays it instead. No second synthesis request either way. |
+| `converse(options, signal)` | Conversation mode. Opens the socket (with `greeting` and, if `bargeIn`, `interrupt_response: true`), keeps the mic streaming, and reports the vendor's turns as events: `input.speech.started` → `user-speech`, `transcript.user.delta` → `user-partial`, `transcript.user` → `user-transcript`, each reply as `reply-start`, `speech-audible`, `reply-word`… and `reply-end` once it has played. Ends on abort, on a dropped session, or after `idleTimeoutMs` (default 60 s) without speech, and always ends the vendor session. |
+| `interrupt()` | Conversation mode's Stop: silences the current reply and drops the rest of it. |
 | `dispose()` | Sends `session.end` and closes the socket, so the vendor does not hold the session for its 30 s resume window. |
 
 The socket stays open across turns — the reply arrives on it, and the conversation's context
@@ -249,12 +272,17 @@ and no client event to commit a turn.
   published spec does not document. All of a reply's words arrive in one burst just before the
   voice; the adapter reveals each as playback reaches it. If the event ever disappears, the
   complete `transcript.agent` (sent after all reply audio) is shown instead.
-- Barge-in is off (`interrupt_response: false`): push-to-talk closes the mic during the reply, so
-  nothing can interrupt it, and leaving it on only risks the agent cutting itself off on room noise.
+- Barge-in is off by default (`interrupt_response: false`): push-to-talk closes the mic during
+  the reply, so nothing can interrupt it. `bargeIn: true` turns it on for `converse()`; the reply
+  is silenced locally the moment `input.speech.started` arrives, without waiting for the vendor's
+  interrupted `reply.done`. It relies on the browser's echo cancellation (`MicCapture` asks for
+  it); on loudspeakers the agent may hear itself. With `bargeIn` off, `converse()` sends the mic
+  as silence while a reply plays.
 - Turn detection cannot be disabled and there is no commit-turn event, so the agent's own
   end-of-turn decision always wins over the button. See the measurement above.
 - `greeting` is spoken on `session.ready`, which in a push-to-talk widget lands while the caller is
-  already being listened to. It is omitted by default for that reason.
+  already being listened to. It is omitted by default for that reason; in a conversation it is
+  the natural opening, and `<talkie-assistant>` passes the server persona's greeting.
 - `session.resume` is not used. A reconnect needs a fresh single-use token anyway, and the vendor's
   window is only 30 seconds.
 - Errors arrive as `TalkieBackendError`, same as `HttpBackend`: an unreachable socket or a transient
@@ -343,6 +371,17 @@ widget.addEventListener('talkie-state-change', ev => {
 
 ## Interaction model
 
+Two modes, set by the widget's `mode` property (`<talkie-assistant mode="…">`):
+
+**Conversation** (`mode="conversation"`, the default for `<talkie-assistant>`; needs a backend
+with `converse()`, otherwise the widget falls back to push-to-talk). Press **Start
+conversation** once. The agent greets you, then you just talk: it decides when you have
+finished, answers, and listens again. Talk over an answer to interrupt it. **Stop** (or
+<kbd>Space</kbd>) cuts the answer short and keeps listening; **End conversation** (or
+<kbd>Esc</kbd>) ends it. After `idleTimeout` seconds (default 60) with nobody speaking it ends
+itself, since an open conversation streams the microphone the whole time.
+
+**Push-to-talk** (`mode="push-to-talk"`, the widget's default).
 Recording is **start / stop**, not press-and-hold: press **Start Recording**, speak for as long as
 you need, then press **Stop & Send**. A press-and-hold gesture caps an utterance at how long
 someone is willing to keep a finger down, is awkward on touch, and has no accessible equivalent —
@@ -373,6 +412,10 @@ transcript.
 | `reset()`         | `void`              | Cancel conversation, clear data, idle.   |
 | `startListening(src)` | `void`          | Start recording, as the Start button does. No-op unless `idle`. `src` is a free-form label for logs. |
 | `releaseListening(src)` | `void`        | Stop recording and send, as Stop & Send does. No-op unless `listening`. |
+| `mode`            | `string` (reflect)  | `'push-to-talk'` (default) or `'conversation'`. |
+| `idleTimeout`     | `number`            | Conversation mode: seconds of silence before it ends; `0` = never. Attribute `idle-timeout`. |
+| `startConversation(src)` | `void`       | Start a conversation (what Start does in conversation mode). No-op unless `idle`. |
+| `endConversation()` | `void`            | End the running conversation and return to idle. |
 
 ## Known gaps
 
@@ -382,9 +425,6 @@ These are intentionally out of scope for the current release. See linked issues 
   transcript panel for previous turns is planned.
 - **No text-input fallback.** The error view copy says "or type your question" but there is no text
   input element yet. This would need a `<talkie-text-input>` component or a prop injection.
-- **No continuous, hands-free conversation.** `VoiceAgentBackend` maps the agent API onto the
-  widget's push-to-talk model, which costs the agent's own turn detection, barge-in and spoken
-  greeting. A continuous mode would need the widget to cycle states from backend events.
 - **Not on npm yet.** Use `dist/talkie-embed.js`, or install from a local checkout with
   `npm install ../talkie-sdk`.
 - **Token route is not access-controlled.** CORS stops other *browsers* from using the token
@@ -394,7 +434,7 @@ These are intentionally out of scope for the current release. See linked issues 
 ## Testing
 
 ```bash
-npm test          # 419 assertions across ten suites — state machine, backends, audio, widget, embed and the built bundle
+npm test          # 518 assertions across ten suites — state machine, backends, audio, widget, embed and the built bundle
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

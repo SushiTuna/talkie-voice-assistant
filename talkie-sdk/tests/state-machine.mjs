@@ -54,6 +54,25 @@ check('idle -> error (reason=backend-failure)', sm.state === 'error' && sm.error
 sm.transition('idle');
 check('error -> idle', sm.state === 'idle');
 
+// ---- conversation mode: back to listening without passing through idle ----
+{
+  const c = new StateMachine();
+  c.transition('listening').transition('transcribing').transition('thinking').transition('speaking');
+  c.transition('listening');
+  check('speaking -> listening (reply ended, or the caller talked over it)', c.state === 'listening');
+  c.transition('transcribing').transition('thinking').transition('listening');
+  check('thinking -> listening (reply cut off before it was heard)', c.state === 'listening');
+  c.transition('transcribing').transition('listening');
+  check('transcribing -> listening (the caller kept talking)', c.state === 'listening');
+}
+check('illegal speaking->transcribing still throws',
+  assertThrows(() => {
+    const s = new StateMachine();
+    s.transition('listening').transition('transcribing').transition('thinking').transition('speaking');
+    s.transition('transcribing');
+  }, 'Illegal transition')
+);
+
 // ---- illegal transitions ----
 check('illegal idle->speaking throws',
   assertThrows(() => {

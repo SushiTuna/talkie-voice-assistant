@@ -282,5 +282,142 @@ await (async function checkWordsStreamIn() {
   check('word stream: the full answer is shown by the end', w._rp === 'The price is on request.', JSON.stringify(w._rp));
 })();
 
+// ── Conversation mode: the backend's events drive the states ───────────────
+/**
+ * A backend whose converse() yields whatever the test feeds it, and records how it was run.
+ * `feed(evt)` delivers one event; `finish()` ends the iterator (as the idle limit does);
+ * `fail(err)` throws from it.
+ */
+function scriptedConversation() {
+  const queue = [];
+  let wake = null;
+  let ended = false;
+  let failure = null;
+  const backend = {
+    runs: 0, options: null, signal: null, interrupts: 0,
+    interrupt() { this.interrupts++; return true; },
+    async *converse(options, signal) {
+      this.runs++; this.options = options; this.signal = signal;
+      for (;;) {
+        if (signal.aborted) { const e = new Error('Aborted'); e.name = 'AbortError'; throw e; }
+        if (failure) throw failure;
+        if (queue.length) { yield queue.shift(); continue; }
+        if (ended) return;
+        await new Promise((r) => { wake = r; signal.addEventListener('abort', r, { once: true }); });
+      }
+    },
+  };
+  const settle = () => new Promise((r) => setTimeout(r, 10));
+  return {
+    backend,
+    feed: async (...evts) => { queue.push(...evts); wake?.(); await settle(); },
+    finish: async () => { ended = true; wake?.(); await settle(); },
+    fail: async (err) => { failure = err; wake?.(); await settle(); },
+  };
+}
+
+await (async function checkConversationMode() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  if (typeof WidgetCtor !== 'function') return;
+
+  const w = new WidgetCtor();
+  w.mode = 'conversation';
+  w.idleTimeout = 45;
+  const script = scriptedConversation();
+  w.backend = script.backend;
+  const states = [];
+  w.addEventListener('talkie-state-change', (e) => states.push(e.detail.to));
+
+  w.startListening('test');   // Start routes to the conversation in this mode
+  await new Promise((r) => setTimeout(r, 10));
+  check('conversation: Start opens a conversation, not a recording', script.backend.runs === 1 && w.state === 'listening');
+  check('conversation: the idle limit is passed through in milliseconds', script.backend.options?.idleTimeoutMs === 45000);
+
+  await script.feed({ type: 'user-speech' }, { type: 'user-partial', text: 'what is' });
+  check('conversation: a live caption shows while the caller talks', w._partial === 'what is');
+  await script.feed({ type: 'user-transcript', text: 'What is the price?' });
+  check('conversation: the final transcript replaces the caption', w._tx === 'What is the price?' && w._partial === '');
+  await script.feed({ type: 'reply-start' }, { type: 'speech-audible' },
+    { type: 'reply-word', text: 'Price' }, { type: 'reply-word', text: 'on' }, { type: 'reply-word', text: 'request.' });
+  check('conversation: the reply is spoken and shown word by word', w.state === 'speaking' && w._rp === 'Price on request.', w._rp);
+  await script.feed({ type: 'reply-end', interrupted: false });
+  check('conversation: after the reply it listens again, with no button press',
+    w.state === 'listening' && states.join(' > ') === 'listening > transcribing > thinking > speaking > listening',
+    states.join(' > '));
+
+  // Barge-in: the caller talks over the next answer.
+  await script.feed({ type: 'reply-start' }, { type: 'reply-word', text: 'Well,' });
+  await script.feed({ type: 'reply-end', interrupted: true }, { type: 'user-speech' });
+  check('conversation: talking over an answer goes straight back to listening', w.state === 'listening');
+  const settled = states.length;
+  await script.feed({ type: 'user-transcript', text: 'Show me the kitchen' });
+  await script.feed({ type: 'reply-end', interrupted: true });
+  check('conversation: a late reply-end does not pull a new turn back to listening',
+    w.state === 'transcribing', states.slice(settled).join(' > '));
+
+  // Stop cuts the answer through the backend.
+  await script.feed({ type: 'reply-start' }, { type: 'speech-audible' });
+  w._onInterruptClick();
+  check('conversation: Stop asks the backend to cut the answer', script.backend.interrupts === 1);
+
+  // Esc ends it.
+  w.open = true;
+  w._onKeydown({ key: 'Escape', preventDefault() {} });
+  check('conversation: Esc ends the conversation', w.state === 'idle' && script.backend.signal.aborted);
+})();
+
+await (async function checkConversationEndsForSilence() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const w = new WidgetCtor();
+  w.mode = 'conversation';
+  const script = scriptedConversation();
+  w.backend = script.backend;
+  w.startConversation('test');
+  await new Promise((r) => setTimeout(r, 10));
+  await script.finish();
+  check('conversation: ending for silence returns to the Start screen', w.state === 'idle');
+  const sub = w._renderIdle().values.find((v) => typeof v === 'string' && v.includes('silence'));
+  check('conversation: ...which says why', !!sub, String(sub));
+})();
+
+await (async function checkConversationError() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const w = new WidgetCtor();
+  w.mode = 'conversation';
+  const script = scriptedConversation();
+  w.backend = script.backend;
+  let reason = null;
+  w.addEventListener('talkie-error', (e) => { reason = e.detail.reason; });
+  w.startConversation('test');
+  await new Promise((r) => setTimeout(r, 10));
+  await script.fail(Object.assign(new Error('connection closed'), { reason: 'offline' }));
+  check('conversation: a failure shows the error state with its reason',
+    w.state === 'error' && reason === 'offline', `${w.state} ${reason}`);
+})();
+
+await (async function checkConversationFallsBackWithoutConverse() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const w = new WidgetCtor();
+  w.mode = 'conversation';
+  let captures = 0;
+  w.backend = {
+    startCapture: async () => { captures++; },
+    stopCapture: async () => 'q',
+    async *ask() { yield 'a'; },
+  };
+  const warn = console.warn;
+  let warned = 0;
+  console.warn = () => { warned++; };
+  try {
+    w.startListening('test');
+    await new Promise((r) => setTimeout(r, 10));
+  } finally {
+    console.warn = warn;
+  }
+  check('conversation: a backend without converse() falls back to push-to-talk',
+    captures === 1 && w.state === 'listening');
+  check('conversation: ...and says so once', warned === 1, `warned ${warned}x`);
+})();
+
 console.log(`\n${passed}/${passed + failed} tests passed`);
 process.exit(failed > 0 ? 1 : 0);

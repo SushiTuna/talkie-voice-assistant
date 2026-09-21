@@ -54,11 +54,13 @@ function stubFetch(routes) {
 
 /**
  * Build a <talkie-assistant> with the given attributes and a fake document, then connect it.
+ * `beforeConnect(el)` runs on the bare element first.
  * @returns {{ el: any, appended: any[], head: any[], win: EventTarget }}
  */
-function mount(attrs = {}) {
+function mount(attrs = {}, beforeConnect = null) {
   const Ctor = customElements.get('talkie-assistant');
   const el = new Ctor();
+  beforeConnect?.(el);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
 
   const appended = [];
@@ -81,6 +83,110 @@ function mount(attrs = {}) {
   el.append = (...nodes) => appended.push(...nodes);
   el.connectedCallback();
   return { el, appended, head, win };
+}
+
+
+// ── tools ───────────────────────────────────────────────────────────────────
+/** Open `el` and capture the options its backend was built with. */
+async function openCapturing(el) {
+  let options = null;
+  const build = el._createBackend.bind(el);
+  el._createBackend = (opts) => { options = opts; return build(opts); };
+  await el.open();
+  return options;
+}
+
+async function testToolsReachTheBackend() {
+  stubFetch({});
+  const { el } = mount();
+  const tools = [{ type: 'function', name: 'go_to_room', parameters: { type: 'object', properties: {} } }];
+  el.tools = tools;
+  const seen = [];
+  el.onToolCall = (call) => { seen.push(call); return { ok: true }; };
+  const options = await openCapturing(el);
+
+  check('tools set on the element are passed to the agent session', options?.tools === tools);
+  const result = await options.onToolCall({ name: 'go_to_room', arguments: { room: 'kitchen' }, call_id: 'c1' });
+  check('a tool call reaches the page\'s handler', seen[0]?.arguments.room === 'kitchen');
+  check('the handler\'s value is the tool result', result?.ok === true);
+
+  el.close();
+  const { el: bare } = mount();
+  const bareOptions = await openCapturing(bare);
+  check('no tools are sent when the page sets none', bareOptions.tools === undefined);
+  let caught = null;
+  try { await bareOptions.onToolCall({ name: 'x', arguments: {} }); } catch (err) { caught = err; }
+  check('a call with no handler fails with a message the agent can read',
+    caught?.message.includes('No handler'), String(caught));
+  bare.close();
+}
+
+async function testToolHandlerIsReadPerCall() {
+  stubFetch({});
+  const { el } = mount();
+  el.onToolCall = () => 'first';
+  const options = await openCapturing(el);
+  el.onToolCall = () => 'second';
+  check('a handler replaced while the panel is open is the one used',
+    (await options.onToolCall({ name: 'x', arguments: {} })) === 'second');
+  el.close();
+}
+
+async function testToolsSetBeforeUpgradeSurvive() {
+  stubFetch({});
+  const tools = [{ type: 'function', name: 'go_to_room' }];
+  const handler = () => 'early';
+  // Before the embed bundle defines the element, a page's assignment lands as a plain own
+  // property on the unupgraded node. Recreate that state, then connect.
+  const { el } = mount({}, (node) => {
+    Object.defineProperty(node, 'tools', { value: tools, writable: true, configurable: true, enumerable: true });
+    Object.defineProperty(node, 'onToolCall', { value: handler, writable: true, configurable: true, enumerable: true });
+  });
+  check('properties set before the element was defined are taken over on connect',
+    !Object.prototype.hasOwnProperty.call(el, 'tools') && el.tools === tools && el.onToolCall === handler);
+  const options = await openCapturing(el);
+  check('...and reach the session', options.tools === tools
+    && (await options.onToolCall({ name: 'go_to_room', arguments: {} })) === 'early');
+  el.close();
+}
+
+async function testConversationIsTheDefault() {
+  stubFetch({
+    'http://localhost:8000/agent/context': { system_prompt: 'You are the property assistant.', greeting: 'Hi there!' },
+  });
+  const { el } = mount();
+  await tick();
+  const options = await openCapturing(el);
+  check('the assistant holds a conversation by default', el.widget.mode === 'conversation');
+  check('the idle limit defaults to 60 seconds', el.widget.idleTimeout === 60);
+  check('a conversation speaks the server persona\'s greeting', options.greeting === 'Hi there!');
+  check('a conversation lets the caller talk over a reply', options.bargeIn === true);
+  el.close();
+}
+
+async function testPushToTalkAndOptOuts() {
+  stubFetch({
+    'http://localhost:8000/agent/context': { system_prompt: 'x', greeting: 'Hi there!' },
+  });
+  const { el } = mount({ mode: 'push-to-talk' });
+  await tick();
+  const ptt = await openCapturing(el);
+  check('mode="push-to-talk" keeps Start / Stop & Send', el.widget.mode === 'push-to-talk');
+  check('...without the greeting, which would land mid-recording', ptt.greeting === undefined);
+  check('...and without barge-in', ptt.bargeIn === false);
+  el.close();
+
+  const { el: quiet } = mount({ 'barge-in': 'off', 'idle-timeout': '0' });
+  await tick();
+  const q = await openCapturing(quiet);
+  check('barge-in="off" turns barge-in off in a conversation', q.bargeIn === false && quiet.widget.mode === 'conversation');
+  check('idle-timeout="0" disables the idle limit', quiet.widget.idleTimeout === 0);
+  quiet.close();
+
+  const { el: odd } = mount({ 'idle-timeout': 'soon' });
+  await openCapturing(odd);
+  check('an unreadable idle-timeout falls back to the default', odd.widget.idleTimeout === 60);
+  odd.close();
 }
 
 // ── mounting ────────────────────────────────────────────────────────────────
@@ -249,6 +355,11 @@ async function testLabelIsForwarded() {
 }
 
 await testMountsLauncherAndWidget();
+await testToolsReachTheBackend();
+await testToolHandlerIsReadPerCall();
+await testToolsSetBeforeUpgradeSurvive();
+await testConversationIsTheDefault();
+await testPushToTalkAndOptOuts();
 await testDefaultUrls();
 await testAttributesOverride();
 await testOpenStartsSessionWithServerPersona();

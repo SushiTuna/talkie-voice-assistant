@@ -28,7 +28,8 @@ code wins**: fix this file in the same change.
 
 `@talkie/voice-ui` (version `0.1.0`, not published to npm) is a framework-agnostic voice-assistant
 UI built from Lit + Lion web components. A host page gets a floating launcher and a six-state
-widget (`idle → listening → transcribing → thinking → speaking`, plus `error`). The widget never
+widget (`idle → listening → transcribing → thinking → speaking`, plus `error`) in one of two
+modes: push-to-talk, or a hands-free conversation (§5.3a). The widget never
 talks to a speech or language vendor; it talks to one **backend** object (§5.2). Three backends
 ship: `MockBackend` (scripted, no network), `HttpBackend` (a Talkie voice server that coordinates
 separate ASR/LLM/TTS vendors), and `VoiceAgentBackend` (the AssemblyAI Voice Agent API, one
@@ -110,7 +111,7 @@ checkout is, **ask** — do not guess or scaffold one. What this SDK relies on f
 |---|---|
 | `GET /health` | liveness |
 | `GET /agent/token` | `VoiceAgentBackend` — returns `{ token, expires_in_seconds }` (default 300) |
-| `GET /agent/context[?profile=]` | demo scenario 8, `<talkie-assistant>` — `{ profile, description, system_prompt, keyterms, voice, greeting }`; `greeting` is deliberately not passed to the agent (README explains) |
+| `GET /agent/context[?profile=]` | demo scenarios 8–9, `<talkie-assistant>` — `{ profile, description, system_prompt, keyterms, voice, greeting }`; `greeting` is passed only in conversation mode (README explains) |
 | `POST /chat/session`, `GET /stt/token`, `POST /chat/ask`, `POST /tts`, `POST /chat/session/{id}/end` | `HttpBackend` (README documents shapes) |
 
 Its environment: `ASSEMBLYAI_API_KEY` (required for the agent) and `TALKIE_ALLOWED_ORIGINS`
@@ -135,7 +136,7 @@ talkie-sdk/
   package.json              scripts, exports map
   build.mjs                 esbuild → dist/talkie-embed.js (IIFE)
   server.mjs                zero-dep static server; bundles the demo at startup
-  demo/index.html, demo.js  review harness: state rail, event log, 8 scenarios
+  demo/index.html, demo.js  review harness: state rail, event log, 9 scenarios (9 = conversation)
   examples/embed.html       a "foreign" host page using only the embed bundle
   src/
     index.js                side-effect-free re-exports (the "." export)
@@ -172,10 +173,13 @@ Plain class, no DOM. Legal transitions — anything else throws:
 |---|---|
 | `idle` | `listening`, `error` |
 | `listening` | `transcribing`, `idle`, `error` |
-| `transcribing` | `thinking`, `idle`, `error` |
-| `thinking` | `speaking`, `idle`, `error` |
-| `speaking` | `idle`, `error` |
+| `transcribing` | `thinking`, `listening`, `idle`, `error` |
+| `thinking` | `speaking`, `listening`, `idle`, `error` |
+| `speaking` | `idle`, `listening`, `error` |
 | `error` | `idle` |
+
+The three `→ listening` edges were added deliberately for conversation mode (a reply ends, or
+the caller talks over it, and the mic is still open). Push-to-talk never takes them.
 
 There is **no `error → error` edge**. A failing turn usually rejects several promises at once;
 `TalkieWidget._handleError` returns early when already in `error` so the first cause is kept.
@@ -192,11 +196,13 @@ ask(transcript, signal): AsyncIterable<string>        the answer, as words/phras
 speak?(text, signal): Promise<void>                   play the answer; absent = text only
 speechStarted?(signal): Promise<void>                 resolves when the caller starts hearing the answer
 prewarm?({ mic }): Promise<{...}>                     do slow setup before the press (demo/embed call it)
+converse?(options, signal): AsyncIterable<object>    hold a continuous conversation (§5.3a)
+interrupt?(): boolean                                 cut off the reply playing in a conversation
 dispose?(): void                                      release everything
 ```
 
-`speechStarted` and `prewarm` are optional capabilities added after the spec; `MockBackend` has
-neither, `HttpBackend` has `prewarm`, `VoiceAgentBackend` has both.
+`speechStarted`, `prewarm`, `converse` and `interrupt` are optional capabilities added after the
+spec; `MockBackend` has none, `HttpBackend` has `prewarm`, `VoiceAgentBackend` has all four.
 
 ### 5.3 A turn through the widget (`TalkieWidget.startListening` / `releaseListening`)
 
@@ -217,6 +223,20 @@ Cancellation: Esc / Discard / close / Stop / Ask another all go through `#cancel
 `_stopSpeaking`, which abort the per-turn `AbortController`s. Keyboard handling is a document-level
 `keydown` listener installed while connected; Space is ignored when it originates in a button,
 input or editable element.
+
+### 5.3a Conversation mode (`mode="conversation"`)
+
+`TalkieWidget._conversational` is true when `mode === 'conversation'` **and** the backend has
+`converse`; otherwise the widget warns once and runs push-to-talk. `startListening` routes to
+`startConversation`, which iterates `backend.converse({ idleTimeoutMs }, signal)` and maps events
+in `#onConversationEvent`: `user-speech` → listening (barge-in from speaking/thinking/
+transcribing); `user-partial` → `_partial` caption; `user-transcript` → transcribing;
+`reply-start` → thinking (via transcribing); `speech-audible` or first `reply-word` → speaking;
+`reply-end` → listening, **only** from speaking/thinking (a late `reply-end` after a barge-in must
+not pull a new turn back). The iterator returning means the idle limit hit → idle with "Ended
+after N seconds of silence". No `MIN_TRANSCRIBE_DWELL_MS` in this mode. Stop calls
+`backend.interrupt()`; End / Esc / closing abort the conversation controller in
+`#cancelConversation`. Space: idle → start, speaking → Stop.
 
 ### 5.4 `VoiceAgentBackend` — the one with real complexity
 
@@ -250,8 +270,31 @@ Read the file's header comment first. Key model:
   not on `reply_id` (undocumented on `reply.audio`).
 - **Timeout is inactivity, not length.** `REPLY_TIMEOUT_MS` (30000) is reset by every audio frame
   (`ReplyTurn.touch`). A long answer that is still streaming never times out.
-- **Barge-in is off** (`interrupt_response: false`) because push-to-talk closes the mic during the
-  reply.
+- **Barge-in is off** (`interrupt_response: false`) for push-to-talk, which closes the mic during
+  the reply. The `bargeIn` option turns it on (`buildSessionUpdate`), for conversations.
+- **Conversation (`converse`).** `#conv` holds the running conversation: an `EventQueue` the
+  iterator drains, the idle timer, `replyTurn` (the reply being played) + `turnAbort`, and
+  `waiting` (replies that began while another was still sounding — played in order).
+  `#handleEvent` feeds it: `reply-started` → `#playConversationReply` (streams the turn with its
+  own abort signal and reuses `#replyWords`, the loop shared with `ask()`); `speech-started` →
+  `#onConversationSpeech` (with `bargeIn`: `#cutReply` silences at once, marks the rest for
+  discarding, emits `reply-end{interrupted}` then `user-speech`; without: ignored, and
+  `#sendConversationAudio` has been sending the mic as zeros during the reply). Idle timer:
+  armed at start, after each `reply-end` and on `speech-stopped`; held during replies and
+  speech. `converse()`'s `finally` always stops the mic and calls `#endSession`. A socket
+  `close` after the handshake, a vendor `session.ended` or an `error` fail the queue.
+  `DEFAULT_IDLE_TIMEOUT_MS` (60000) is a product choice, not a measurement.
+- **Tool calls span two replies.** Documented interactive sequence: `reply.started` → transition
+  audio → `tool.call` → `reply.done` → client sends `tool.result` → the agent fires a follow-up
+  reply with the answer. `#runTool` queues results in `#pendingResults`; `#flushResults` sends them
+  only while `#lastEvent === 'reply.done'` (sending mid-reply makes the tool fire again, per the
+  docs); an `interrupted` `reply.done` drops them. A `tool.call` sets `ReplyTurn.awaitingFollowUp`,
+  so that reply's `reply.done` does not finish the turn; the follow-up's `reply.started` calls
+  `startSegment()` and the same turn carries on. `ask()` therefore ends on `turn.done`, never on
+  `transcript.agent` alone. Each reply is a **segment** with its own `onsetMs` and `firstStartMs`,
+  because each has its own lead-in and `start_ms` clock (`#dueWords`). A call for a turn that is
+  over or cancelled is not run: it is answered with an error and its follow-up is dropped via
+  `#discardNext`.
 
 Constants (top of the file): `DEFAULT_WS_URL`, `PCM_SAMPLE_RATE` 24000, `SESSION_READY_TIMEOUT_MS`
 10000, `FINAL_TRANSCRIPT_GRACE_MS` 2500, `REPLY_TIMEOUT_MS` 30000, `END_OF_TURN_PAD_MS` 400,
@@ -265,7 +308,9 @@ internal event), `reasonForCode`, `joinTurns`, `audioMs`.
 Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release. Marks: `release`,
 `mic-stopped`, `pad-sent`, `user-transcript`, `reply-started`, `first-audio-frame`, `ask-entered`,
 `playback-start` (first frame scheduled — usually silence), `speech-audible`, `first-word`,
-`agent-text`, `audio-complete`, `playback-done`. The demo prints them as `TIME` rows.
+`barge-in`,
+`agent-text`, `audio-complete`, `playback-done`, and for tool turns `tool-results-sent` and
+`follow-up-started`. The demo prints them as `TIME` rows.
 
 ### 5.5 Embed layer
 
@@ -274,9 +319,13 @@ Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release.
   on them being **globally** registered; `src/define/talkie-assistant.js` imports their define files
   first. Attributes: `api` (default `http://localhost:8000`), `token-url`, `profile`,
   `system-prompt`, `voice`, `label`, `fonts="google"`. It fetches `/agent/context` on connect,
-  builds a fresh `VoiceAgentBackend` on each open (in the widget's `talkie-open` handler, so any
+  `mode` (default `conversation`), `idle-timeout` (default 60), `barge-in="off"`. It
+  builds a fresh `VoiceAgentBackend` on each open (conversation: `greeting` from the context and
+  `bargeIn`; push-to-talk: neither) (in the widget's `talkie-open` handler, so any
   route that opens the widget gets one), prewarms with `mic: false`, and disposes on close, removal
-  and `pagehide`.
+  and `pagehide`. Properties `tools` and `onToolCall` (functions cannot be attributes) are read
+  on each open; values a page sets before the element is defined are re-applied in
+  `connectedCallback`. `_createBackend(options)` is a test seam, not public API.
 - `src/embed.js` → `build.mjs` → `dist/talkie-embed.js`. Exposes `window.Talkie` with
   `TalkieAssistant`, `TalkieWidget`, `TalkieLauncher`, `VoiceAgentBackend`, `HttpBackend`,
   `MockBackend`, `TalkieBackendError`.
@@ -354,18 +403,18 @@ exits non-zero stops the run.
 
 | Suite | Assertions | Covers |
 |---|---|---|
-| `state-machine.mjs` | 37 | legal/illegal transitions, reasons, change events, cancel, reset |
+| `state-machine.mjs` | 41 | legal/illegal transitions, reasons, change events, cancel, reset |
 | `mock-backend.mjs` | 42 | scripted answers, abort (~28 s, real timers) |
-| `components.mjs` | 33 | registration, styles, layout guards, widget flows |
+| `components.mjs` | 48 | registration, styles, layout guards, widget flows, conversation mode |
 | `pcm-worklet.mjs` | 15 | downsampling worklet |
 | `http-backend.mjs` | 50 | HttpBackend against stubs |
 | `pcm-codec.mjs` | 25 | base64, silence, WAV |
 | `pcm-player.mjs` | 30 | scheduling, stalls, position, stop/drain |
-| `voice-agent-backend.mjs` | 147 | wire format, turns, streaming, words, discard, timeouts |
-| `talkie-assistant.mjs` | 31 | embed element wiring |
+| `voice-agent-backend.mjs` | 209 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
+| `talkie-assistant.mjs` | 49 | embed element wiring, tools properties, modes |
 | `embed-bundle.mjs` | 9 | runs `build.mjs`, boots the bundle as a classic script |
 
-Total **419**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
+Total **518**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
 
 ### 8.2 Conventions
 - No framework. Each file defines `check(name, condition, detail)` and counts passes/failures.
@@ -489,6 +538,8 @@ Spec: <https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/voi
 | Audio streams at real-time pace (10 ms frames) | observed |
 | End-of-turn timing did not change between `min_silence` 200 and 2000 | observed (see `END_OF_TURN_PAD_MS`) |
 | No client event to commit a turn; turn detection cannot be disabled | documented by omission |
+| Conversation mode: greeting spoken on `session.ready`, vendor turn detection drives turns | documented; greeting heard live 2026-09-21 (human-reported). Barge-in and echo on loudspeakers not yet confirmed |
+| Tool turn: transition reply, `tool.call` before its `reply.done`, `tool.result` (`call_id`, JSON-string `result`) only while `reply.done` is the latest event, then an auto-fired follow-up reply; `reply.done` has `status` `completed`/`interrupted` | documented ([client-side tools](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools)); works end to end live — page navigation from a conversation, 2026-09-21, reported by the human (event order itself not logged) |
 
 "Observed" rows can change without notice. Code relying on them must degrade gracefully, and tests
 must cover the degraded path.
@@ -499,7 +550,8 @@ must cover the degraded path.
 
 | SPEC.md says | Now | Why |
 |---|---|---|
-| Expose a `mode` property (`hold`/`toggle`/`auto`); support hold-to-talk | No `mode`; recording is start/stop only | Hold-to-talk caps utterance length and has no accessible keyboard equivalent (README → *Interaction model*) |
+| Expose a `mode` property (`hold`/`toggle`/`auto`); support hold-to-talk | `mode` is `push-to-talk` (start/stop, no hold) or `conversation` (hands-free, backend `converse()`) | Hold-to-talk caps utterance length and has no accessible keyboard equivalent; conversation added on request (README → *Interaction model*) |
+| State machine transitions are fixed | Three `→ listening` edges added (§5.1) | Conversation mode keeps the mic open between turns |
 | Ship one backend; do not write a vendor adapter | `HttpBackend` and `VoiceAgentBackend` ship | Added on purpose in later commits |
 | README must say consumers need the scoped-registry polyfill | Polyfill is optional | `@open-wc/scoped-elements` v2 falls back to the global registry (`ScopedElementsMixin.js`); only a conflicting pre-registered `lion-button` needs it |
 | No build/publish pipeline beyond the demo | `build.mjs` produces the embed bundle | Needed for plain-HTML embedding; npm publishing is still out of scope |
@@ -544,5 +596,7 @@ Report format — keep it short and factual:
   chunks with a space. A token that is part of a word is then likely to render split ("Wander
   Safe"). Found by reading the code, not yet reproduced live. The fix belongs in `HttpBackend`
   (re-chunk into whole words before yielding); confirm with the human before changing it.
-- Known product gaps in README → *Known gaps*: conversation history, text-input fallback,
-  hands-free continuous mode.
+- Known product gaps in README → *Known gaps*: conversation history, text-input fallback.
+- Conversation mode's echo behaviour on loudspeakers (barge-in on) is unverified live; if the
+  agent interrupts itself, the choice between `barge-in="off"` as default or other mitigation is
+  the human's.
