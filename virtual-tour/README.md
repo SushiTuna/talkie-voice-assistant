@@ -61,6 +61,52 @@ camera added at runtime renders black. Reuse those two (or attach the pipelines)
 | `V` | Toggle **dollhouse / orbit view** (wheel zooms; wheel over canvas doesn’t scroll the page) |
 | `Esc` | Release pointer / exit (pseudo-)fullscreen |
 
+## Voice assistant (Talkie)
+
+The page embeds the Talkie voice assistant from the sibling `talkie-sdk/` the documented way
+(`talkie-sdk/docs/integration.md`, "Drop-in embed"): one script and one element at the end of
+`index.html`:
+
+```html
+<script src="/talkie/talkie-embed.js" defer></script>
+<talkie-assistant api="/voice" profile="property" mode="conversation" label="Ask about this home"></talkie-assistant>
+```
+
+- **Bundle:** `server.mjs` builds `../talkie-sdk/src/embed.js` in memory with the options of
+  `talkie-sdk/build.mjs` and serves it at `/talkie/talkie-embed.js` (+ `.map`), rebuilt when SDK
+  sources change. It needs `npm install` in `talkie-sdk/` once; without it `/talkie/*` 404s and the
+  rest of the page works as before. `talkie-sdk/dist/` is not used.
+- **Persona:** `profile="property"` is the voice server's `agents/property.json`, written for this
+  listing. Edit the agent's knowledge there, not here.
+- **Voice server:** separate repo (`~/Develop/voice`), started as usual on :8000. The page reaches
+  it through this server: `/voice/agent/context` and `/voice/agent/token` (GET only, nothing else)
+  are forwarded to `VOICE_API` (default `http://127.0.0.1:8000`). Same origin, so no CORS
+  allow-list is needed, and it works through a tunnel. Without the voice server the launcher still
+  opens; pressing Start shows the widget's error state.
+- **Sharing (`ngrok http 8080`):** gives the HTTPS the microphone needs on other devices. It also
+  makes `/voice/agent/token` public: anyone with the URL can mint AssemblyAI tokens on your
+  account. Stop the tunnel when you are done testing, or put ngrok's `basic-auth` traffic policy
+  in front of it.
+- **Microphone:** browsers only allow it on `localhost` or HTTPS.
+- **Layout** (`styles.css`, "Talkie assistant"): widget uses the page's Hanken Grotesk (no extra
+  Google Fonts request); on phones the launcher and panel sit above the sticky CTA bar; hidden in
+  iOS pseudo-fullscreen, where it would cover the tour's controls.
+- **Navigation tools** (`talkie-tools.js`, wired by `page.js`): the agent can move the visitor
+  around the page. `show_room` flies the 3D tour to any anchor in `anchors.js` (or the dollhouse)
+  via `window.tour.goTo`; on first use it starts the 3D load and answers at once rather than
+  waiting for it. `go_to_section` scrolls to the overview, floor plan, 3D tour, gallery, location
+  or booking form. Each returns what is now on screen (the anchor's label and caption) for the
+  agent to talk about. New anchors are picked up automatically; a new section needs an entry in
+  `SECTIONS`. The voice server's persona doesn't mention the tools; their descriptions carry it.
+- **Conversation:** hands-free. Press **Start conversation** once; the agent greets the visitor,
+  then they just talk and it answers and listens again. Talking over an answer interrupts it;
+  **Stop** cuts an answer short; **End conversation** ends it. It ends itself after 60 s with
+  nobody speaking (`idle-timeout`), since the mic streams to AssemblyAI the whole time.
+  `mode="push-to-talk"` restores Start / Stop & Send; `barge-in="off"` if the agent keeps
+  interrupting itself on loudspeakers.
+- **Keys:** while the panel is open, Space starts the conversation or stops an answer, and Esc
+  ends the conversation. Esc in pseudo-fullscreen does both that and exit fullscreen.
+
 ## Booking endpoint
 
 `POST /api/tour-requests` (`server.mjs`, zero-dependency):
@@ -117,7 +163,7 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 ## How it works
 
-- `server.mjs` — static server (esbuild bundle, compression, ETags) + `/api/models` listing + `/api/tour-requests` booking endpoint.
+- `server.mjs` — static server (esbuild bundle, compression, ETags) + `/api/models` listing + `/api/tour-requests` booking endpoint + `/talkie/*` voice-assistant embed bundle + `/voice/*` proxy to the voice server.
 - `main.js` — Babylon `FreeCamera` with gravity + ellipsoid collision (`checkCollisions` on all
   model meshes), pointer-lock mouse look, `ArcRotateCamera` dollhouse mode, anchor `goTo` API,
   lazy loading, fullscreen. Renders inside `#tour`, never the full viewport.
@@ -147,7 +193,8 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 ```bash
 npm run smoke         # headless NullEngine: glTF parse, bounds, spawn search, gravity
-npm run test:api      # boots server on a random port: 201/400/413/405/honeypot, restores data file
+npm run test:talkie   # voice agent tools: schemas, room/section handling, error results
+npm run test:api      # boots server on a random port: 201/400/413/405/honeypot, restores data file; /talkie/* embed route, /voice/* proxy
 npm run test:anchors  # headless Chrome: screenshots every anchor -> tests/shots/, fails on drift/blocked view
 ```
 

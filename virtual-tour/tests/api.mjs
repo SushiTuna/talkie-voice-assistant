@@ -1,7 +1,9 @@
 // API tests for POST /api/tour-requests. Boots the real server on a random port,
 // exercises 201 / 400 / 413 / 405 / honeypot / bad-JSON, and restores data/tour-requests.json.
+// Also checks the Talkie embed route (/talkie/*), its mount in index.html, and the /voice/* proxy.
 // Usage: node tests/api.mjs
 import { spawn } from "node:child_process";
+import { createServer } from "node:http";
 import { readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -35,8 +37,15 @@ const post = (body, headers = { "Content-Type": "application/json" }) =>
 
 async function main() {
   const before = existsSync(DATA_FILE) ? await readFile(DATA_FILE, "utf8") : null;
+  // Stub voice server for the /voice/* proxy: echoes the path and query it was asked for.
+  const voiceStub = createServer((req, res) => {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ stub: true, url: req.url }));
+  });
+  await new Promise((r) => voiceStub.listen(0, "127.0.0.1", r));
   const server = spawn(process.execPath, [join(ROOT, "server.mjs")], {
-    env: { ...process.env, PORT: String(PORT) }, stdio: ["ignore", "pipe", "pipe"],
+    env: { ...process.env, PORT: String(PORT), VOICE_API: `http://127.0.0.1:${voiceStub.address().port}` },
+    stdio: ["ignore", "pipe", "pipe"],
   });
   try {
     let up = false;
@@ -83,11 +92,37 @@ async function main() {
     const countAfter = JSON.parse(await readFile(DATA_FILE, "utf8")).length;
     check("honeypot 200 + not stored", res.status === 200 && json.ok === true && countAfter === countBefore, `got ${res.status}, count ${countBefore}→${countAfter}`);
 
+    // Talkie voice assistant: embed bundle built in memory from ../talkie-sdk, mounted by index.html
+    res = await fetch(`${BASE}/talkie/talkie-embed.js`);
+    const embed = res.ok ? await res.text() : "";
+    check("talkie embed served as JS", res.status === 200 && /javascript/.test(res.headers.get("content-type") || ""), `got ${res.status}`);
+    check("talkie embed is the IIFE that registers <talkie-assistant>", /var Talkie\s*=/.test(embed) && embed.includes("talkie-assistant"));
+    check("talkie embed links its source map", /sourceMappingURL=talkie-embed\.js\.map/.test(embed));
+    res = await fetch(`${BASE}/talkie/talkie-embed.js.map`);
+    check("talkie source map served", res.status === 200, `got ${res.status}`);
+    res = await fetch(`${BASE}/talkie/nope.js`);
+    check("unknown /talkie/ path 404s", res.status === 404, `got ${res.status}`);
+    const html = await (await fetch(`${BASE}/`)).text();
+    check("index.html loads the embed and mounts the property assistant",
+      html.includes('src="/talkie/talkie-embed.js"') && /<talkie-assistant[^>]*profile="property"/.test(html));
+
+    // /voice/*: same-origin proxy to the voice server, allow-listed routes only
+    res = await fetch(`${BASE}/voice/agent/context?profile=property`);
+    json = await res.json();
+    check("voice proxy forwards context with its query", res.status === 200 && json.url === "/agent/context?profile=property", JSON.stringify(json));
+    res = await fetch(`${BASE}/voice/agent/token`);
+    check("voice proxy forwards token, uncached", res.status === 200 && (await res.json()).url === "/agent/token" && res.headers.get("cache-control") === "no-store");
+    res = await fetch(`${BASE}/voice/agent/token`, { method: "POST" });
+    check("voice proxy rejects non-GET", res.status === 405, `got ${res.status}`);
+    res = await fetch(`${BASE}/voice/health`);
+    check("voice proxy forwards only allow-listed routes", res.status === 404, `got ${res.status}`);
+
     // server survived all of the above
     res = await fetch(`${BASE}/api/models`);
     check("server still alive", res.ok);
   } finally {
     server.kill();
+    voiceStub.close();
     // restore the data file exactly as it was (drop test entries)
     if (before === null) {
       await rm(DATA_FILE, { force: true });

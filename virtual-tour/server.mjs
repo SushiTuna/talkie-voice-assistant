@@ -96,6 +96,85 @@ async function startBundler() {
   }
 }
 
+/* ------------------------------------------------------------------ Talkie embed (/talkie/*) */
+
+// The voice assistant's one-file embed bundle (talkie-sdk/docs/integration.md, "Drop-in embed"),
+// built in memory from the sibling SDK checkout with the options of talkie-sdk/build.mjs, and
+// rebuilt when its sources change. Not talkie-sdk/dist/: that is untracked and goes stale.
+// Resolved from talkie-sdk/ so Lit and Lion come from its own node_modules. Optional: if the SDK
+// or its dependencies are missing, /talkie/* 404s and the rest of the page is unaffected.
+const SDK_ROOT = resolve(ROOT, "..", "talkie-sdk");
+let settleTalkie;
+const talkie = { files: new Map(), ready: new Promise((r) => (settleTalkie = r)) };
+
+async function startTalkieBundler() {
+  const esbuild = await import("esbuild");
+  const ctx = await esbuild.context({
+    absWorkingDir: SDK_ROOT,
+    entryPoints: [join(SDK_ROOT, "src", "embed.js")],
+    bundle: true,
+    format: "iife",
+    globalName: "Talkie",
+    target: "es2022",
+    minify: true,
+    sourcemap: "linked",
+    legalComments: "eof",
+    outdir: join(SDK_ROOT, "dist"),
+    entryNames: "talkie-embed",
+    write: false,
+    logLevel: "silent",
+    plugins: [{
+      name: "in-memory",
+      setup(build) {
+        build.onEnd((result) => {
+          if (result.errors.length) {
+            console.warn(`Talkie embed not built, /talkie/* will 404: ${result.errors[0].text}`);
+            talkie.files = new Map();
+            return settleTalkie();
+          }
+          talkie.files = new Map(result.outputFiles.map((f) => {
+            const data = Buffer.from(f.contents);
+            const etag = `"${createHash("sha1").update(data).digest("base64url").slice(0, 20)}"`;
+            return ["/talkie/" + f.path.split(/[\\/]/).pop(), { data, etag }];
+          }));
+          for (const [path, f] of talkie.files) compressed(path, f.etag, f.data, "br").catch(() => {});
+          settleTalkie();
+        });
+      },
+    }],
+  });
+  await ctx.watch();
+}
+
+/* ------------------------------------------------------------------ voice server proxy (/voice/*) */
+
+// The assistant reaches the voice server through this origin, so the page works wherever it is
+// served (a tunnel, another device) and needs no CORS allow-list. Only the two GET routes
+// <talkie-assistant> uses are forwarded; the agent's audio goes browser → AssemblyAI directly.
+const VOICE_API = (process.env.VOICE_API || "http://127.0.0.1:8000").replace(/\/+$/, "");
+const VOICE_ROUTES = new Set(["/voice/agent/context", "/voice/agent/token"]);
+
+async function proxyVoice(req, res, url) {
+  if (req.method !== "GET") {
+    res.writeHead(405, { "Content-Type": "application/json", Allow: "GET" });
+    return res.end(JSON.stringify({ detail: "Method not allowed" }));
+  }
+  let upstream;
+  try {
+    upstream = await fetch(VOICE_API + url.pathname.slice("/voice".length) + url.search);
+  } catch {
+    res.writeHead(502, { "Content-Type": "application/json", "Cache-Control": "no-store" });
+    return res.end(JSON.stringify({ detail: `Voice server unreachable at ${VOICE_API}` }));
+  }
+  const body = Buffer.from(await upstream.arrayBuffer());
+  res.writeHead(upstream.status, {
+    "Content-Type": upstream.headers.get("content-type") || "application/json",
+    "Cache-Control": "no-store", // tokens are single-use
+    "Content-Length": String(body.length),
+  });
+  res.end(body);
+}
+
 /* ------------------------------------------------------------------ compression + caching */
 
 // Formats that are already compressed (jpg/png/webp/woff2) are sent as-is.
@@ -278,6 +357,10 @@ const server = createServer(async (req, res) => {
       return await handleTourRequest(req, res);
     }
 
+    if (VOICE_ROUTES.has(pathname)) {
+      return await proxyVoice(req, res, url);
+    }
+
     if (pathname === "/api/models") {
       let files = [];
       try {
@@ -298,6 +381,12 @@ const server = createServer(async (req, res) => {
         return res.end(`Bundle failed:\n${bundle.error}`);
       }
       const f = bundle.files.get(pathname);
+      if (!f) throw Object.assign(new Error("not found"), { code: "ENOENT" });
+      return await sendStatic(req, res, pathname, f.data, f.etag, extname(pathname).toLowerCase());
+    }
+    if (pathname.startsWith("/talkie/")) {
+      await talkie.ready; // first build after startup
+      const f = talkie.files.get(pathname);
       if (!f) throw Object.assign(new Error("not found"), { code: "ENOENT" });
       return await sendStatic(req, res, pathname, f.data, f.etag, extname(pathname).toLowerCase());
     }
@@ -322,6 +411,10 @@ const server = createServer(async (req, res) => {
 });
 
 startBundler().catch((err) => console.error("bundler failed to start, serving unbundled modules:", err));
+startTalkieBundler().catch((err) => {
+  settleTalkie();
+  console.warn("Talkie embed unavailable, /talkie/* will 404:", err?.message ?? err);
+});
 
 server.listen(PORT, () => {
   console.log(`Talkie 3D Virtual Tour -> http://localhost:${PORT}`);

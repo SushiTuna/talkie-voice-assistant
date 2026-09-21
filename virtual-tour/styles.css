@@ -779,6 +779,22 @@ html[data-theme="dark"] .nbhd-tiles { filter: invert(1) hue-rotate(180deg) grays
   body { padding-bottom: 76px; }
 }
 
+/* ---------- Talkie assistant (index.html <talkie-assistant>) ---------- */
+/* Public hooks only: --talkie-* tokens, and the element's light-DOM children. The page already
+   loads Hanken Grotesk, so the widget uses it instead of fetching its own Google Fonts. */
+talkie-assistant {
+  --talkie-font-display: var(--sans);
+  --talkie-font-body: var(--sans);
+}
+@media (max-width: 899px) {
+  /* Clear the sticky CTA bar, whose "Schedule a tour" button sits under the default 28px corner. */
+  talkie-assistant { --talkie-launcher-offset-bottom: calc(76px + 16px + env(safe-area-inset-bottom)); }
+  /* The widget's inline `bottom: 104px` (launcher offset + 60px launcher + 16px) moves with it. */
+  talkie-assistant > talkie-widget { bottom: calc(76px + 16px + 60px + 16px + env(safe-area-inset-bottom)) !important; }
+}
+/* iOS pseudo-fullscreen shares the launcher's z-index and would be covered by it. */
+body:has(#tour.pseudo-fullscreen) talkie-assistant { display: none; }
+
 /* ---------- tour poster gets the render ---------- */
 .tour-poster { background: #0b0d0e url("/assets/hero.jpg") center / cover no-repeat; }
 .tour-poster::before { content: ""; position: absolute; inset: 0; background: rgba(11, 12, 13, .62); }

@@ -483,5 +483,9 @@
 
 <script type="module" src="/dist/page.js"></script>
 <script type="module" src="/dist/main.js"></script>
+<!-- Talkie voice assistant (server.mjs /talkie/* and /voice/*, styles.css "Talkie assistant").
+     api="/voice": same-origin proxy to the voice server — README "Voice assistant". -->
+<script src="/talkie/talkie-embed.js" defer></script>
+<talkie-assistant api="/voice" profile="property" mode="conversation" label="Ask about this home"></talkie-assistant>
 </body>
 </html>

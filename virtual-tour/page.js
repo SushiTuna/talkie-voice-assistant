@@ -4,6 +4,7 @@
 import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
 import { wireNeighborhood } from "./neighborhood.js";
+import { wireTalkieTools } from "./talkie-tools.js";
 import "./components/index.js";
 import { Required, MaxLength, IsEmail, Pattern, MinDate } from "@lion/ui/form-core.js";
 
@@ -663,3 +664,4 @@ wireMobileCta();
 wireForm();
 wireTheme();
 wireNeighborhood();
+wireTalkieTools();
