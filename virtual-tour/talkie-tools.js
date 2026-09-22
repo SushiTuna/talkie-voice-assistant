@@ -1,26 +1,22 @@
-// Tools for the Talkie voice assistant (index.html <talkie-assistant>): let the agent move the
-// visitor around this page — a room in the 3D tour, or a section of the listing.
+// Tool handlers for the Talkie voice assistant (index.html <talkie-assistant>): let the agent move
+// the visitor around this page — a room in the 3D tour, a section of the listing, or the nearby
+// places on the neighbourhood map.
 //
-// Declared in the AssemblyAI Voice Agent API's function-tool shape; the agent calls them and
-// the SDK returns each handler's value as the tool result. The model reads the descriptions and
-// any `error` text verbatim, so they say when to call and what to ask next.
+// The tool *definitions* (names, descriptions, parameter schemas) live on the voice server, in
+// the `property` profile (~/Develop/voice/agents/property.json, served by /agent/context), so
+// the agent's instructions can change without a page release. The page leaves `el.tools` unset,
+// which makes <talkie-assistant> use the profile's tools, and supplies only what has to run
+// here: the handler. tests/talkie-tools.mjs checks the profile's enums still match ROOMS,
+// SECTIONS and CATEGORIES below. The model reads handler results and `error` text verbatim.
 // https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools
 import { ROOM_ANCHORS, DOLLHOUSE } from "./anchors.js";
+import { CATEGORIES } from "./landmarks.js";
+import { places, fmtKm } from "./neighborhood.js";
 
-/** Spoken-name hints the anchor labels alone don't give ("Room 1" is a bedroom). */
-const ROOM_HINTS = {
-  "room-1": "bedroom 2, the nursery",
-  "room-2": "bedroom 3",
-  "room-3": "bedroom 4",
-  "master-bedroom": "main bedroom",
-  garage: "carport",
-  rumpus: "second living area",
-  dollhouse: "overview of the whole house from above",
-};
+/** Every room show_room accepts: the dollhouse overview plus the tour's anchors. */
+export const ROOMS = [DOLLHOUSE, ...ROOM_ANCHORS];
 
-const ROOMS = [DOLLHOUSE, ...ROOM_ANCHORS];
-
-/** Page sections the agent may scroll to: tool value → element id + what to call it. */
+/** Page sections go_to_section may scroll to: tool value → element id + what to call it. */
 export const SECTIONS = {
   overview: { id: "top", label: "the top of the listing" },
   floor_plan: { id: "floor-plan", label: "the floor plan" },
@@ -30,50 +26,11 @@ export const SECTIONS = {
   booking_form: { id: "contact", label: "the tour booking form" },
 };
 
-export const TALKIE_TOOLS = [
-  {
-    type: "function",
-    name: "show_room",
-    description:
-      "Show the visitor a room of this house in the 3D virtual tour on the page. Call this whenever they ask to see, " +
-      "go to, look at or be taken to a room or part of the house, or say 'show me' about one. Prefer calling it over " +
-      "describing a room they asked to see.",
-    parameters: {
-      type: "object",
-      properties: {
-        room: {
-          type: "string",
-          enum: ROOMS.map((r) => r.id),
-          description:
-            "Room id, lowercase. Pick the closest match: " +
-            ROOMS.map((r) => `${r.id} (${ROOM_HINTS[r.id] ?? r.label.toLowerCase()})`).join(", ") +
-            ". E.g. 'the kitchen' → kitchen, 'the nursery' → room-1, 'the whole house' → dollhouse.",
-        },
-      },
-      required: ["room"],
-    },
-  },
-  {
-    type: "function",
-    name: "go_to_section",
-    description:
-      "Scroll the page to one of its sections. Call this when the visitor asks to see the floor plan, the photos, " +
-      "the location or neighbourhood map, the 3D tour, or to book or schedule a viewing (booking_form).",
-    parameters: {
-      type: "object",
-      properties: {
-        section: {
-          type: "string",
-          enum: Object.keys(SECTIONS),
-          description:
-            "Section id, lowercase. E.g. 'where is it' → location, 'pictures' → gallery, " +
-            "'I want to book a viewing' → booking_form, 'back to the top' → overview.",
-        },
-      },
-      required: ["section"],
-    },
-  },
-];
+/** The place_type values show_nearby_places accepts: "nearest" plus each landmark category. */
+export const PLACE_TYPES = ["nearest", ...CATEGORIES.map((c) => c.id)];
+
+/** The tools this page can run; the server profile must declare exactly these. */
+export const HANDLED_TOOLS = ["show_room", "go_to_section", "show_nearby_places"];
 
 /**
  * Build the handler the assistant runs for each tool call.
@@ -115,15 +72,43 @@ export function createToolHandler({ getTour, getElement, reduceMotion }) {
       return { ok: true, now_showing: section.label };
     }
 
+    if (name === "show_nearby_places") {
+      const type = args.place_type;
+      const cat = CATEGORIES.find((c) => c.id === type);
+      if (type !== "nearest" && !cat) {
+        return { error: `Unknown place_type '${type}'. Valid: ${PLACE_TYPES.join(", ")}.` };
+      }
+      const el = getElement(SECTIONS.location.id);
+      if (!el) return { error: "The location map is not on this page. Say you can't show it right now." };
+      el.scrollIntoView({ block: "start", behavior: reduceMotion() ? "auto" : "smooth" });
+      // Same chips a visitor would tap (neighborhood.js): "all" is the "Nearest" chip.
+      getElement("nbhdFilters")?.querySelector(`[data-cat="${cat ? cat.id : "all"}"]`)?.click();
+      const found = cat
+        ? places.filter((p) => p.cat === cat.id)
+        : CATEGORIES.map((c) => places.find((p) => p.cat === c.id)).filter(Boolean);
+      return {
+        ok: true,
+        now_showing: `the location map, ${cat ? cat.label.toLowerCase() : "the nearest place of each kind"}`,
+        places: found.map((p) => ({
+          name: p.name,
+          type: CATEGORIES.find((c) => c.id === p.cat).label.toLowerCase(),
+          distance: fmtKm(p.m),
+        })),
+        note: "Distances are straight-line from the home, not driving distance.",
+      };
+    }
+
     return { error: `Unknown tool '${name}'.` };
   };
 }
 
-/** Give the page's <talkie-assistant> these tools. Safe before the embed bundle has loaded. */
+/**
+ * Give the page's <talkie-assistant> the tool handler. The definitions come from the server
+ * profile, so `el.tools` stays unset. Safe before the embed bundle has loaded.
+ */
 export function wireTalkieTools(doc = document) {
   const el = doc.querySelector("talkie-assistant");
   if (!el) return;
-  el.tools = TALKIE_TOOLS;
   el.onToolCall = createToolHandler({
     getTour: () => window.tour,
     getElement: (id) => doc.getElementById(id),

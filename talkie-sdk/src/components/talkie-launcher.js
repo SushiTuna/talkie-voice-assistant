@@ -15,6 +15,21 @@ function iconMic() {
   </svg>`;
 }
 
+/** Voice bars bouncing in the button while the agent talks behind a minimized panel. */
+function iconTalking() {
+  return html`<span class="talking" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`;
+}
+
+/** Stroke colour of the waves per conversation state (matches the widget's state colours). */
+const WAVE_COLORS = {
+  idle: '#5fd9c6',
+  listening: '#ff8a4c',
+  transcribing: '#ffc96b',
+  thinking: '#7fb5ff',
+  speaking: '#8be28b',
+  error: '#ff6b6b',
+};
+
 /**
  * Floating mic launcher button with pulse ring, floaty animation, hover label,
  * and nudge toast.
@@ -24,6 +39,10 @@ export class TalkieLauncher extends ScopedLitElement {
     label:  { type: String, attribute: 'label' },
     open:   { type: Boolean, reflect: true },
     nudged: { type: Boolean, reflect: true },
+    // A conversation is running behind a minimized panel: the button shows rippling
+    // waves, coloured and scaled by `state`, and tapping it brings the panel back.
+    active: { type: Boolean, reflect: true },
+    state:  { type: String, reflect: true },
     _timer: { type: Object, state: true },
   };
 
@@ -162,6 +181,78 @@ export class TalkieLauncher extends ScopedLitElement {
         background: #ff8a4c;
         transform: rotate(45deg);
       }
+      /* ── Live conversation behind a minimized panel ── */
+      .waves {
+        position: absolute;
+        inset: -46px;
+        width: calc(100% + 92px);
+        height: calc(100% + 92px);
+        pointer-events: none;
+        overflow: visible;
+        display: none;
+      }
+      :host([active]) .waves { display: block; }
+      :host([active]) .launcher-btn { animation: none; }
+      :host([active]) .launcher-btn::after { display: none; }
+      :host([active]) .nudge-toast { display: none; }
+      .waves .ring {
+        fill: none;
+        stroke-width: 2.5;
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: tl-wave 2.4s cubic-bezier(.2,.6,.3,1) infinite;
+      }
+      .waves .ring:nth-of-type(2) { animation-delay: .8s; }
+      .waves .ring:nth-of-type(3) { animation-delay: 1.6s; }
+      .waves .glow {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: tl-breathe 1.6s ease-in-out infinite;
+      }
+      @keyframes tl-wave {
+        0%   { transform: scale(.62); opacity: .95; }
+        100% { transform: scale(1.18); opacity: 0; }
+      }
+      @keyframes tl-breathe {
+        0%, 100% { transform: scale(.66); opacity: .45; }
+        50%      { transform: scale(.78); opacity: .7; }
+      }
+      /* The agent is talking: faster ripples, and bars in place of the mic. */
+      :host([state='speaking']) .waves .ring { animation-duration: 1.5s; }
+      :host([state='speaking']) .waves .ring:nth-of-type(2) { animation-delay: .5s; }
+      :host([state='speaking']) .waves .ring:nth-of-type(3) { animation-delay: 1s; }
+      .talking {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 24px;
+      }
+      .talking i {
+        display: block;
+        width: 3.5px;
+        height: 100%;
+        border-radius: 2px;
+        background: currentColor;
+        transform-origin: center;
+        animation: tl-talk .9s ease-in-out infinite;
+      }
+      .talking i:nth-child(1) { animation-delay: -.45s; }
+      .talking i:nth-child(2) { animation-delay: -.15s; }
+      .talking i:nth-child(3) { animation-delay: -.6s; }
+      .talking i:nth-child(4) { animation-delay: -.3s; }
+      .talking i:nth-child(5) { animation-delay: -.75s; }
+      @keyframes tl-talk {
+        0%, 100% { transform: scaleY(.25); }
+        50%      { transform: scaleY(1); }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .talking i { animation: none; transform: scaleY(.6); }
+        .talking i:nth-child(odd) { transform: scaleY(.9); }
+        .waves .ring, .waves .glow { animation: none; }
+        .waves .ring:nth-of-type(n+2) { display: none; }
+        .waves .ring { transform: scale(.85); opacity: .8; }
+      }
+
       @keyframes tl-nudge {
         0%   { opacity: 0; transform: translateY(8px); }
         7%   { opacity: 1; transform: none;            }
@@ -176,6 +267,8 @@ export class TalkieLauncher extends ScopedLitElement {
     this.label = 'Product Expert · Voice';
     this.open  = false;
     this.nudged = false;
+    this.active = false;
+    this.state = 'idle';
     this._timer = null;
   }
 
@@ -210,12 +303,31 @@ export class TalkieLauncher extends ScopedLitElement {
   render() {
     return html`
       <div class="launcher-wrap">
+        ${this.active ? this._renderWaves() : ''}
         ${this.nudged ? html`<div class="nudge-toast">Have a question? Tap to ask.</div>` : ''}
-        <span class="hover-label">${this.label}</span>
-        <lion-button class="launcher-btn" aria-label="Open Product Expert">
-          ${iconMic()}
+        <span class="hover-label">${this.active ? 'Conversation on · tap to open' : this.label}</span>
+        <lion-button class="launcher-btn"
+            aria-label=${this.active ? 'Open the voice assistant, the conversation is still on' : 'Open Product Expert'}>
+          ${this.active && this.state === 'speaking' ? iconTalking() : iconMic()}
         </lion-button>
       </div>
     `;
+  }
+
+  /** Plain circles rippling out from the button, coloured by the conversation state. */
+  _renderWaves() {
+    const color = WAVE_COLORS[this.state] ?? WAVE_COLORS.idle;
+    return html`<svg class="waves" viewBox="0 0 152 152" aria-hidden="true">
+      <defs>
+        <radialGradient id="tl-glow">
+          <stop offset="55%" stop-color=${color} stop-opacity=".55"/>
+          <stop offset="100%" stop-color=${color} stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <circle class="glow" cx="76" cy="76" r="56" fill="url(#tl-glow)"/>
+      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
+      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
+      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
+    </svg>`;
   }
 }

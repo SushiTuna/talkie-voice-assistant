@@ -111,12 +111,15 @@ checkout is, **ask** — do not guess or scaffold one. What this SDK relies on f
 |---|---|
 | `GET /health` | liveness |
 | `GET /agent/token` | `VoiceAgentBackend` — returns `{ token, expires_in_seconds }` (default 300) |
-| `GET /agent/context[?profile=]` | demo scenarios 8–9, `<talkie-assistant>` — `{ profile, description, system_prompt, keyterms, voice, greeting }`; `greeting` is passed only in conversation mode (README explains) |
+| `GET /agent/context[?profile=]` | demo scenarios 8–9, `<talkie-assistant>`, `fetchAgentContext` — `{ profile, description, system_prompt, keyterms, voice, greeting, tools, prompt_source }`; `greeting` is passed only in conversation mode (README explains); `tools` are used only when the page sets none |
+| `GET /agent/profiles` | `listAgentProfiles` (site console and playground) — `{ default, profiles: [{ name, description }] }` |
+| `PUT /agent/profiles/{name}[?overwrite=true]` | `saveAgentProfile` (site console) — Bearer `TALKIE_PROFILE_ADMIN_TOKEN`; 403 when unset, 401 wrong token, 409 exists without `overwrite` |
 | `POST /chat/session`, `GET /stt/token`, `POST /chat/ask`, `POST /tts`, `POST /chat/session/{id}/end` | `HttpBackend` (README documents shapes) |
 
-Its environment: `ASSEMBLYAI_API_KEY` (required for the agent) and `TALKIE_ALLOWED_ORIGINS`
+Its environment: `ASSEMBLYAI_API_KEY` (required for the agent), `TALKIE_ALLOWED_ORIGINS`
 (comma-separated CORS allow-list; unset means only `http://localhost:8081` and
-`http://127.0.0.1:8081`). It calls `load_dotenv(override=True)`: a key present in its `.env` beats
+`http://127.0.0.1:8081`) and `TALKIE_PROFILE_ADMIN_TOKEN` (optional; unset keeps
+`PUT /agent/profiles` disabled). It calls `load_dotenv(override=True)`: a key present in its `.env` beats
 the same variable in the shell. So when `TALKIE_ALLOWED_ORIGINS` is not set in that `.env`, pass it
 at launch to allow the example page (if it *is* set there, the `.env` value wins — ask before
 editing that file):
@@ -133,6 +136,9 @@ talkie-sdk/
   SPEC.md                   original build spec (see §14 for superseded parts)
   README.md                 consumer docs
   docs/integration.md       framework snippets, embed attributes, CORS/CSP/HTTPS
+  docs/production-checklist.md  launch checklist
+  build-site.mjs            esbuild → site/dist/ (one bundle per page; clears the folder first)
+  site/                     web UI: index, playground, console, docs pages; sources in site/src/
   package.json              scripts, exports map
   build.mjs                 esbuild → dist/talkie-embed.js (IIFE)
   server.mjs                zero-dep static server; bundles the demo at startup
@@ -143,6 +149,7 @@ talkie-sdk/
     embed.js                embed entry: registers all elements, exposes window.Talkie
     core/state-machine.js   StateMachine, VALID_STATES, ERROR_REASONS, TRANSITIONS
     core/backend.js         TalkieBackendError, BACKEND_ERROR_REASONS, contract JSDoc
+    core/agent-profiles.js  listAgentProfiles, fetchAgentContext, saveAgentProfile, AgentProfileError
     backends/mock-backend.js        MockBackend, SCRIPT, chunkText
     backends/http-backend.js        HttpBackend
     backends/voice-agent-backend.js VoiceAgentBackend (+ private ReplyTurn class)
@@ -325,7 +332,8 @@ Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release.
   route that opens the widget gets one), prewarms with `mic: false`, and disposes on close, removal
   and `pagehide`. Properties `tools` and `onToolCall` (functions cannot be attributes) are read
   on each open; values a page sets before the element is defined are re-applied in
-  `connectedCallback`. `_createBackend(options)` is a test seam, not public API.
+  `connectedCallback`. With `tools` unset, the context's `tools` are sent instead
+  (`#sessionTools`), with a `console.warn` when there is no `onToolCall` to run them. `_createBackend(options)` is a test seam, not public API.
 - `src/embed.js` → `build.mjs` → `dist/talkie-embed.js`. Exposes `window.Talkie` with
   `TalkieAssistant`, `TalkieWidget`, `TalkieLauncher`, `VoiceAgentBackend`, `HttpBackend`,
   `MockBackend`, `TalkieBackendError`.
@@ -378,7 +386,8 @@ report lists what was verified and what is left for the human to check in a brow
 Styles are in `static get styles()` of the component. Use the existing tokens:
 `--talkie-paper`, `--talkie-surface`, `--talkie-ink`, `--talkie-ink-soft`, `--talkie-state`,
 `--talkie-font-display`, `--talkie-font-body`, `--talkie-font-mono`, `--talkie-launcher-bg`,
-`--talkie-launcher-offset-right`, `--talkie-launcher-offset-bottom`, `--talkie-wave-height`,
+`--talkie-launcher-offset-right`, `--talkie-launcher-offset-bottom`, `--talkie-sheet-offset-bottom`,
+`--talkie-wave-height`,
 `--talkie-wave-color`, `--talkie-wave-bar-count`, `--talkie-wave-bar-width`,
 `--talkie-wave-container-width`, `--talkie-wave-static-height`. Spacing inside a `lion-button`
 must be a margin on the child, not a `gap` on the button (§11). Add a CSS guard to
@@ -411,10 +420,12 @@ exits non-zero stops the run.
 | `pcm-codec.mjs` | 25 | base64, silence, WAV |
 | `pcm-player.mjs` | 30 | scheduling, stalls, position, stop/drain |
 | `voice-agent-backend.mjs` | 209 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
-| `talkie-assistant.mjs` | 49 | embed element wiring, tools properties, modes |
+| `talkie-assistant.mjs` | 64 | embed element wiring, tools properties and server-profile tools, modes |
+| `agent-profiles.mjs` | 24 | list / fetch / save profile client against a fake `fetch`: URLs, auth header, error codes |
 | `embed-bundle.mjs` | 9 | runs `build.mjs`, boots the bundle as a classic script |
+| `site.mjs` | 52 | site pure modules (snippet, profile converters), page markup, `build-site.mjs` output |
 
-Total **518**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
+Total **609**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
 
 ### 8.2 Conventions
 - No framework. Each file defines `check(name, condition, detail)` and counts passes/failures.

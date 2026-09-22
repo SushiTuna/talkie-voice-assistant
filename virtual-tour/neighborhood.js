@@ -28,12 +28,13 @@ function distance(a, b) {
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
 }
-const fmtKm = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
+export const fmtKm = (m) => (m < 1000 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000).toFixed(1)} km`);
 const catLabel = (id) => CATEGORIES.find((c) => c.id === id).label;
 const directions = (p) =>
   `https://www.google.com/maps/dir/?api=1&origin=${PROPERTY.lat},${PROPERTY.lng}&destination=${p.lat},${p.lng}`;
 
-const places = LANDMARKS
+/** Every landmark with its straight-line distance `m` from the property, nearest first. */
+export const places = LANDMARKS
   .map((p, i) => ({ ...p, i, m: distance(PROPERTY, p) }))
   .sort((a, b) => a.m - b.m);
 

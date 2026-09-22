@@ -34,11 +34,18 @@ Closing the panel, removing the element or leaving the page ends the agent sessi
 | `mode` | `conversation` | `conversation`: hands-free, the agent takes turns, greets, can be interrupted. `push-to-talk`: Start / Stop & Send |
 | `idle-timeout` | `60` | Conversation mode: seconds of silence before the conversation (and the mic stream) ends; `0` never |
 | `barge-in` | on | `off` stops the caller interrupting a reply by talking; try it if the agent cuts itself off on loudspeakers |
+| `layout` | `auto` | `auto`: a bottom sheet on phones (≤600px wide), a floating panel elsewhere. `sheet` / `floating` force one. Lift the sheet above a bottom bar with `--talkie-sheet-offset-bottom` |
 | `fonts` | off | `google` loads Space Grotesk + Instrument Sans from Google Fonts |
 
 `fonts` is opt-in because the request sends each visitor's IP address to Google; without it the
-widget falls back to the page's sans-serif. Script access: `el.open()`, `el.close()`, and
-`el.widget` for the `talkie-*` events.
+widget falls back to the page's sans-serif. Script access: `el.open()`, `el.close()`,
+`el.minimize()` / `el.restore()`, and `el.widget` for the `talkie-*` events.
+
+The panel's minimize button (and the sheet's grab handle) hides it without ending the
+conversation: the mic stays open, the launcher comes back with circles rippling out from it,
+coloured by the conversation state (and bouncing voice bars in place of the mic while the agent
+talks), and tapping it restores the panel. The ✕ ends the
+conversation and closes it.
 
 **Tools** are properties, since a handler cannot be an attribute. Both are read on each open,
 and may be set before the embed bundle has defined the element:
@@ -62,7 +69,14 @@ The handler's value goes back to the agent as the tool result; throw, or return
 `{ error: '…' }`, to report a failure. The model reads that text, so say what went wrong and
 what to ask next. The API does not validate `parameters`
 ([AssemblyAI docs](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/tools/client-side-tools)),
-so test your schemas locally. `virtual-tour/talkie-tools.js` is a worked example.
+so test your schemas locally.
+
+**Tools from the server.** Leave `el.tools` unset and the element uses the `tools` of its
+server profile (from `/agent/context`), so the list can change without a new page build.
+The page still runs every call, so `onToolCall` must handle each name the profile lists;
+without a handler the element logs a warning and each call fails back to the agent. Tools
+the page sets itself always win. `virtual-tour/talkie-tools.js` is a worked example: its
+definitions live in the voice server's `property` profile, and the page supplies only the handler.
 
 A worked example lives at [`../examples/embed.html`](../examples/embed.html) — see
 [Running the example](#running-the-example).

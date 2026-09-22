@@ -1,10 +1,15 @@
 // Tests for talkie-tools.js — the voice agent's page-navigation tools. Plain Node: the tour
-// (window.tour) and the page's sections are faked, so this checks the tool definitions and
-// what each call does and answers, not the 3D camera or the scroll itself.
+// (window.tour) and the page's sections are faked, so this checks what each call does and
+// answers, not the 3D camera or the scroll itself.
+//
+// The tool definitions live in the voice server's `property` profile. When that file is
+// reachable (TALKIE_AGENTS_DIR, default ~/Develop/voice/agents) they are checked here against
+// this page's rooms, sections and place types; otherwise those checks are skipped, loudly.
 // Usage: node tests/talkie-tools.mjs
-import { TALKIE_TOOLS, SECTIONS, createToolHandler } from "../talkie-tools.js";
-import { ROOM_ANCHORS, DOLLHOUSE } from "../anchors.js";
+import { SECTIONS, ROOMS, PLACE_TYPES, HANDLED_TOOLS, createToolHandler, wireTalkieTools } from "../talkie-tools.js";
 import { readFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
 let passed = 0, failed = 0;
 function check(name, cond, detail = "") {
@@ -25,24 +30,54 @@ function fakePage() {
   return { scrolled, getElement: (id) => els[id] ?? null };
 }
 
-// ── definitions: the API does not validate schemas, so check them here ──
+// ── definitions, from the voice server profile ──
 // "parameters is not validated at session.update time. Malformed schemas ... break tool
 // calling at runtime. Validate locally." — AssemblyAI client-side tools docs.
-for (const tool of TALKIE_TOOLS) {
-  const p = tool.parameters;
-  check(`${tool.name}: a function tool with a snake_case name`, tool.type === "function" && /^[a-z]+(_[a-z]+)+$/.test(tool.name));
-  check(`${tool.name}: has a description`, tool.description.length > 40);
-  check(`${tool.name}: parameters are a JSON Schema object`, p.type === "object" && typeof p.properties === "object");
-  check(`${tool.name}: every required field is declared`, p.required.every((k) => k in p.properties));
-  check(`${tool.name}: every property is described and typed`,
-    Object.values(p.properties).every((prop) => prop.type === "string" && prop.description && Array.isArray(prop.enum) && prop.enum.length));
-}
-const roomEnum = TALKIE_TOOLS.find((t) => t.name === "show_room").parameters.properties.room.enum;
-check("show_room offers exactly the tour's anchors plus the dollhouse",
-  JSON.stringify([...roomEnum].sort()) === JSON.stringify([DOLLHOUSE.id, ...ROOM_ANCHORS.map((a) => a.id)].sort()));
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 check("every go_to_section target exists in index.html",
   Object.values(SECTIONS).every(({ id }) => html.includes(`id="${id}"`)));
+
+const agentsDir = process.env.TALKIE_AGENTS_DIR ?? join(homedir(), "Develop", "voice", "agents");
+const profilePath = join(agentsDir, "property.json");
+let serverTools = null;
+try {
+  serverTools = JSON.parse(await readFile(profilePath, "utf8")).tools ?? [];
+} catch (err) {
+  console.log(`SKIP tool definition checks: couldn't read ${profilePath} (${err.code ?? err.message}). ` +
+    "Set TALKIE_AGENTS_DIR to the voice server's agents/ folder to run them.");
+}
+
+if (serverTools) {
+  const byName = Object.fromEntries(serverTools.map((t) => [t.name, t]));
+  check("the property profile declares exactly the tools this page handles",
+    JSON.stringify(Object.keys(byName).sort()) === JSON.stringify([...HANDLED_TOOLS].sort()),
+    `profile has ${Object.keys(byName).join(", ") || "none"}`);
+  for (const tool of serverTools) {
+    const p = tool.parameters;
+    check(`${tool.name}: a function tool with a snake_case name`, tool.type === "function" && /^[a-z]+(_[a-z]+)+$/.test(tool.name));
+    check(`${tool.name}: has a description`, typeof tool.description === "string" && tool.description.length > 40);
+    check(`${tool.name}: parameters are a JSON Schema object`, p?.type === "object" && typeof p.properties === "object");
+    check(`${tool.name}: every required field is declared`, (p?.required ?? []).every((k) => k in p.properties));
+    check(`${tool.name}: every property is described and typed`,
+      Object.values(p?.properties ?? {}).every((prop) => prop.type === "string" && prop.description && Array.isArray(prop.enum) && prop.enum.length));
+  }
+  const enumOf = (tool, prop) => [...(byName[tool]?.parameters?.properties?.[prop]?.enum ?? [])].sort();
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify([...b].sort());
+  check("show_room offers exactly the tour's anchors plus the dollhouse",
+    same(enumOf("show_room", "room"), ROOMS.map((r) => r.id)), enumOf("show_room", "room").join(", "));
+  check("go_to_section offers exactly this page's sections",
+    same(enumOf("go_to_section", "section"), Object.keys(SECTIONS)), enumOf("go_to_section", "section").join(", "));
+  check("show_nearby_places offers exactly 'nearest' plus the landmark categories",
+    same(enumOf("show_nearby_places", "place_type"), PLACE_TYPES), enumOf("show_nearby_places", "place_type").join(", "));
+}
+
+// ── wiring ──
+{
+  const el = {};
+  wireTalkieTools({ querySelector: () => el, getElementById: () => null });
+  check("the page leaves el.tools unset, so the server profile's tools are used", !("tools" in el));
+  check("...and supplies the handler", typeof el.onToolCall === "function");
+}
 
 // ── show_room ──
 {
@@ -90,6 +125,33 @@ check("every go_to_section target exists in index.html",
   const bad = await run({ name: "go_to_section", arguments: { section: "pool" } });
   check("an unknown section is an error naming the valid ones", bad.error.includes("pool") && bad.error.includes("gallery"));
 }
+
+// ── show_nearby_places ──
+{
+  const page = fakePage();
+  const clicked = [];
+  const chips = { querySelector: (sel) => ({ click: () => clicked.push(sel) }) };
+  const getElement = (id) => (id === "nbhdFilters" ? chips : page.getElement(id));
+  const run = createToolHandler({ getTour: () => undefined, getElement, reduceMotion: () => false });
+
+  const res = await run({ name: "show_nearby_places", arguments: { place_type: "school" } });
+  check("show_nearby_places scrolls to the location section", page.scrolled[0]?.id === "location", JSON.stringify(page.scrolled));
+  check("...and taps the matching category chip", clicked[0] === '[data-cat="school"]', JSON.stringify(clicked));
+  check("...and returns only schools, nearest first, with distances",
+    res.ok === true && res.places.length > 0 && res.places.every((p) => p.type === "schools" && /\d (m|km)$/.test(p.distance)),
+    JSON.stringify(res));
+
+  const near = await run({ name: "show_nearby_places", arguments: { place_type: "nearest" } });
+  check("'nearest' taps the Nearest chip and returns one place per category",
+    clicked[1] === '[data-cat="all"]' && new Set(near.places.map((p) => p.type)).size === near.places.length && near.places.length === 5,
+    JSON.stringify(near));
+
+  const bad = await run({ name: "show_nearby_places", arguments: { place_type: "casino" } });
+  check("an unknown place_type is an error naming the valid ones, and nothing scrolls",
+    bad.error.includes("casino") && bad.error.includes("church") && page.scrolled.length === 2, JSON.stringify(bad));
+}
+check("every show_nearby_places category has a chip id the page renders",
+  PLACE_TYPES.length === 6 && html.includes('id="nbhdFilters"'));
 
 // ── anything else ──
 {

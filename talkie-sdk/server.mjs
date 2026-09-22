@@ -34,6 +34,7 @@ const MIME = {
   '.svg':  'image/svg+xml',
   '.ico':  'image/x-icon',
   '.wasm': 'application/wasm',
+  '.md':   'text/markdown; charset=utf-8',
 };
 
 /* ----------------------------------------------------------------- bundler */
@@ -73,7 +74,9 @@ async function buildBundle() {
 
 async function serveFile(req, res, filePath) {
   try {
-    const st = await stat(filePath);
+    let st = await stat(filePath);
+    if (st.isDirectory()) filePath = join(filePath, 'index.html');
+    st = await stat(filePath);
     if (!st.isFile()) throw Object.assign(new Error('not a file'), { code: 'ENOENT' });
 
     const data = await readFile(filePath);

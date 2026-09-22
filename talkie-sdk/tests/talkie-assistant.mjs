@@ -57,7 +57,7 @@ function stubFetch(routes) {
  * `beforeConnect(el)` runs on the bare element first.
  * @returns {{ el: any, appended: any[], head: any[], win: EventTarget }}
  */
-function mount(attrs = {}, beforeConnect = null) {
+function mount(attrs = {}, beforeConnect = null, { phone = false } = {}) {
   const Ctor = customElements.get('talkie-assistant');
   const el = new Ctor();
   beforeConnect?.(el);
@@ -66,6 +66,8 @@ function mount(attrs = {}, beforeConnect = null) {
   const appended = [];
   const head = [];
   const win = new EventTarget();
+  // Only the sheet query is asked; `phone` answers it.
+  win.matchMedia = () => Object.assign(new EventTarget(), { matches: phone });
   const doc = {
     defaultView: win,
     head: { append: (n) => head.push(n) },
@@ -148,6 +150,45 @@ async function testToolsSetBeforeUpgradeSurvive() {
   check('...and reach the session', options.tools === tools
     && (await options.onToolCall({ name: 'go_to_room', arguments: {} })) === 'early');
   el.close();
+}
+
+async function testServerToolsFromContext() {
+  const served = [{ type: 'function', name: 'open_door', description: 'Open it.', parameters: { type: 'object', properties: {} } }];
+  stubFetch({ 'http://localhost:8000/agent/context': { system_prompt: 'x', greeting: 'Hi', tools: served } });
+
+  const { el } = mount();
+  el.onToolCall = () => ({ ok: true });
+  await tick();
+  const options = await openCapturing(el);
+  check('with no page tools, the server profile\'s tools reach the session', options.tools === served);
+  el.close();
+
+  const pageTools = [{ type: 'function', name: 'go_to_room', description: 'Go.', parameters: {} }];
+  const { el: own } = mount();
+  own.tools = pageTools;
+  own.onToolCall = () => ({ ok: true });
+  await tick();
+  const ownOptions = await openCapturing(own);
+  check('tools the page sets take precedence over the server\'s', ownOptions.tools === pageTools);
+  own.close();
+
+  const warnings = [];
+  const quietWarn = console.warn;
+  console.warn = (msg) => warnings.push(String(msg));
+  const { el: unhandled } = mount();
+  await tick();
+  await openCapturing(unhandled);
+  console.warn = quietWarn;
+  check('server tools without an onToolCall log a warning naming them',
+    warnings.some((w) => w.includes('open_door') && w.includes('onToolCall')), warnings.join(' | '));
+  unhandled.close();
+
+  stubFetch({ 'http://localhost:8000/agent/context': { system_prompt: 'x', greeting: 'Hi', tools: [] } });
+  const { el: none } = mount();
+  await tick();
+  const noneOptions = await openCapturing(none);
+  check('an empty server tools list sends no tools', noneOptions.tools === undefined);
+  none.close();
 }
 
 async function testConversationIsTheDefault() {
@@ -354,10 +395,56 @@ async function testLabelIsForwarded() {
   check('a changed label is forwarded live', appended[0].getAttribute('label') === 'Ask HR');
 }
 
+// ── minimize ────────────────────────────────────────────────────────────────
+async function testMinimizeKeepsTheConversation() {
+  stubFetch({ 'http://localhost:8000/agent/token': { token: 'tok', expires_in_seconds: 300 } });
+  const { el, appended } = mount();
+  const launcher = appended[0];
+  await el.open();
+  const backend = el.backend;
+
+  el.minimize();
+  check('minimizing hides the panel but leaves it open', el.widget.minimized === true && el.widget.open === true);
+  check('...and keeps the agent session', el.backend === backend && el.backend !== null);
+  check('...and brings the launcher back, showing the live conversation',
+    launcher.open === false && launcher.active === true);
+
+  el.widget._onSmChange({ from: 'idle', to: 'speaking' });
+  check('the launcher follows the conversation state while minimized', launcher.state === 'speaking');
+
+  el._onLaunch(new CustomEvent('talkie-launch'));
+  check('tapping the launcher restores the same conversation',
+    el.widget.minimized === false && el.widget.open === true && el.backend === backend);
+  check('...and the launcher steps aside again', launcher.open === true && launcher.active === false);
+
+  el.minimize();
+  el.close();
+  check('closing from minimized ends the session and stops the waves',
+    el.backend === null && el.widget.minimized === false && launcher.active === false);
+}
+
+// ── layout ──────────────────────────────────────────────────────────────────
+async function testSheetLayoutOnPhones() {
+  stubFetch({});
+  const { el } = mount({}, null, { phone: true });
+  check('a phone gets the bottom sheet', el.widget.layout === 'sheet');
+  check('...spanning the bottom edge',
+    el.widget.style.left === '0' && el.widget.style.right === '0' && el.widget.style.bottom.includes('--talkie-sheet-offset-bottom'),
+    JSON.stringify(el.widget.style));
+
+  const { el: forced } = mount({ layout: 'floating' }, null, { phone: true });
+  check('layout="floating" keeps the floating panel on a phone',
+    forced.widget.layout === undefined && forced.widget.style.bottom === '104px');
+
+  const { el: desk } = mount({ layout: 'sheet' });
+  check('layout="sheet" forces the sheet on a wide screen', desk.widget.layout === 'sheet');
+}
+
 await testMountsLauncherAndWidget();
 await testToolsReachTheBackend();
 await testToolHandlerIsReadPerCall();
 await testToolsSetBeforeUpgradeSurvive();
+await testServerToolsFromContext();
 await testConversationIsTheDefault();
 await testPushToTalkAndOptOuts();
 await testDefaultUrls();
@@ -372,6 +459,8 @@ await testPageHideEndsSession();
 await testRemovalCleansUp();
 await testFontsAreOptIn();
 await testLabelIsForwarded();
+await testMinimizeKeepsTheConversation();
+await testSheetLayoutOnPhones();
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

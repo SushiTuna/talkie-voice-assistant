@@ -96,8 +96,15 @@ The page embeds the Talkie voice assistant from the sibling `talkie-sdk/` the do
   via `window.tour.goTo`; on first use it starts the 3D load and answers at once rather than
   waiting for it. `go_to_section` scrolls to the overview, floor plan, 3D tour, gallery, location
   or booking form. Each returns what is now on screen (the anchor's label and caption) for the
-  agent to talk about. New anchors are picked up automatically; a new section needs an entry in
-  `SECTIONS`. The voice server's persona doesn't mention the tools; their descriptions carry it.
+  agent to talk about.
+  The tool **definitions** (names, descriptions, parameter lists) live on the voice server, in the
+  `tools` of its `property` profile (`~/Develop/voice/agents/property.json`), and reach the page
+  through `/voice/agent/context`: edit a description there and refresh, no page release. The page
+  leaves `el.tools` unset and only supplies the handlers (`onToolCall`), which must run here.
+  Adding an anchor, a section (`SECTIONS`) or a landmark category therefore means updating the
+  matching `enum` in the profile too; `node tests/talkie-tools.mjs` fails until the two agree
+  (it reads the profile from `TALKIE_AGENTS_DIR`, default `~/Develop/voice/agents`, and skips
+  those checks if it can't).
 - **Conversation:** hands-free. Press **Start conversation** once; the agent greets the visitor,
   then they just talk and it answers and listens again. Talking over an answer interrupts it;
   **Stop** cuts an answer short; **End conversation** ends it. It ends itself after 60 s with

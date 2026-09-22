@@ -164,7 +164,7 @@ visibility off `:host(:not([open]))`, never `:host([open=""])` or `:host([open="
 which invert the intended behaviour.
 Events (all `CustomEvent`, composed, bubbling, `talkie-` prefixed): `talkie-state-change`
 (`{from, to}`), `talkie-transcript` (`{text}`), `talkie-response` (`{text}`), `talkie-error`
-(`{reason, error}`), `talkie-open`, `talkie-close`.
+(`{reason, error}`), `talkie-open`, `talkie-close`, `talkie-minimize`, `talkie-restore`.
 
 Properties-in / events-out is what makes this work in every framework: Angular binds `[backend]` and
 `(talkie-error)`, Vue binds `:backend` and `@talkie-error`, React 19 binds both natively.

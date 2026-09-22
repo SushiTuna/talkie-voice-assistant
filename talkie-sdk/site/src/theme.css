@@ -1,0 +1,478 @@
+/* ------------------------------------------------------------------- tokens */
+
+:root {
+  --bg: #fff;
+  --surface: #f7f7f8;
+  --raised: #fff;
+  --ink: #111;
+  --ink-soft: #555;
+  --line: #e2e2e5;
+  --accent: #2563eb;
+  --accent-ink: #fff;
+  --accent-soft: #eff4ff;
+  --focus: #60a5fa;
+  --danger: #dc2626;
+  --success: #15803d;
+  --code-bg: #0f172a;
+  --code-ink: #e2e8f0;
+  --radius: 8px;
+  --shadow: 0 10px 30px rgb(0 0 0 / 0.12);
+  --header-h: 56px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f0f10;
+    --surface: #1a1a1c;
+    --raised: #232326;
+    --ink: #eee;
+    --ink-soft: #a8a8ad;
+    --line: #333338;
+    --accent: #60a5fa;
+    --accent-ink: #0b1220;
+    --accent-soft: #15233b;
+    --focus: #93c5fd;
+    --danger: #f87171;
+    --success: #4ade80;
+    --code-bg: #0b0b0d;
+    --shadow: 0 10px 30px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+
+/* ------------------------------------------------------------------- body & base */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); }
+
+*:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 200;
+  padding: 0.5rem 0.75rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 6px;
+}
+.skip-link:focus { top: 0.5rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+[hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------- lion fields */
+
+lion-input,
+lion-textarea,
+lion-select,
+lion-input-range,
+lion-radio-group {
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+lion-input > label[slot="label"],
+lion-textarea > label[slot="label"],
+lion-select > label[slot="label"],
+lion-input-range > label[slot="label"],
+lion-radio-group > label[slot="label"] {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+[slot="help-text"] {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+lion-input > input[slot="input"],
+lion-textarea > textarea[slot="input"],
+lion-select > select[slot="input"] {
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+lion-textarea > textarea[slot="input"] {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  min-height: 4.5rem;
+}
+
+lion-input > input[slot="input"]:hover,
+lion-textarea > textarea[slot="input"]:hover,
+lion-select > select[slot="input"]:hover {
+  border-color: var(--ink-soft);
+}
+
+lion-input > input[slot="input"]:focus-visible,
+lion-textarea > textarea[slot="input"]:focus-visible,
+lion-select > select[slot="input"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+  border-color: var(--accent);
+}
+
+lion-input[type="color"] > input[slot="input"] {
+  height: 2.5rem;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+
+/* Invalid fields, once Lion decides to show the error. */
+[shows-feedback-for~="error"] > [slot="input"] {
+  border-color: var(--danger);
+}
+[slot="feedback"] {
+  display: block;
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+lion-input-range > input[slot="input"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+lion-radio {
+  display: block;
+  padding: 0.15rem 0;
+}
+lion-radio > input[slot="input"] { accent-color: var(--accent); }
+
+/* ------------------------------------------------------------------- lion-switch */
+
+/* The label and the button are two shadow-DOM groups; lay them out on one line. */
+lion-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+lion-switch > [slot="input"] {
+  flex: none;
+  width: 2.25rem;
+}
+lion-switch > label[slot="label"] {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+lion-form lion-switch {
+  display: flex;
+  margin-bottom: 1.1rem;
+}
+
+/* ------------------------------------------------------------------- buttons */
+
+/* Secondary by default; add .primary for the one main action in a group. */
+lion-button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: 6px;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+lion-button:hover,
+.btn:hover {
+  border-color: var(--ink-soft);
+}
+
+lion-button.primary,
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+lion-button.primary:hover,
+.btn.primary:hover {
+  filter: brightness(1.08);
+}
+
+lion-button.danger,
+.btn.danger {
+  color: var(--danger);
+}
+lion-button.danger:hover,
+.btn.danger:hover {
+  border-color: var(--danger);
+}
+.btn.danger.primary {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+lion-button[disabled],
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: none;
+}
+
+/* Plain invoker buttons of lion-collapsible / lion-accordion. */
+lion-collapsible > button[slot="invoker"],
+lion-accordion [slot="invoker"] > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+lion-collapsible > button[slot="invoker"]::after,
+lion-accordion [slot="invoker"] > button::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+  flex: none;
+}
+lion-collapsible[opened] > button[slot="invoker"]::after,
+lion-accordion [slot="invoker"] > button[expanded]::after {
+  transform: rotate(-135deg);
+}
+lion-collapsible > button[slot="invoker"]:hover,
+lion-accordion [slot="invoker"] > button:hover {
+  background: var(--surface);
+}
+
+lion-collapsible {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------- lion-dialog */
+
+/* The overlay supplies no surface of its own. */
+.dialog {
+  box-sizing: border-box;
+  width: min(92vw, 520px);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ------------------------------------------------------------------- lion-tabs */
+
+lion-tabs [slot="tab"] {
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+lion-tabs [slot="tab"]:hover {
+  color: var(--ink);
+}
+
+lion-tabs [slot="tab"][selected] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- code */
+
+pre.code {
+  margin: 0;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------- header & nav */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  min-height: var(--header-h);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  gap: 0.25rem 1rem;
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+.site-brand::before {
+  content: "";
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2bb3a0, #1c7f70);
+}
+
+.site-nav {
+  display: flex;
+  gap: 0.15rem;
+  margin-right: auto;
+}
+
+.site-nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.925rem;
+  white-space: nowrap;
+}
+
+.site-nav a:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.site-nav [aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.site-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.site-controls lion-input {
+  margin: 0;
+}
+.site-controls lion-input > label[slot="label"] {
+  /* The placeholder-free field still needs a name for screen readers. */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+}
+.site-controls lion-input > input[slot="input"] {
+  width: 15rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.backend-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.backend-badge[data-live] {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+/* ------------------------------------------------------------------- responsive */
+
+@media (max-width: 720px) {
+  .site-header {
+    padding: 0.4rem 0.75rem;
+  }
+  .site-nav {
+    order: 3;
+    width: 100%;
+    margin: 0 -0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .site-controls {
+    margin-left: auto;
+  }
+  .site-controls lion-input {
+    order: 5;
+    flex-basis: 100%;
+  }
+  .site-controls lion-input > input[slot="input"] {
+    width: 100%;
+  }
+}

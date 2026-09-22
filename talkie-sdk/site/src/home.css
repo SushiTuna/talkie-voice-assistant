@@ -1,0 +1,251 @@
+/* ------------------------------------------------------------------- hero */
+
+#main:focus { outline: none; }
+
+.home-hero {
+  text-align: center;
+  padding: 4.5rem 1rem 3rem;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.home-hero .eyebrow {
+  display: inline-block;
+  margin: 0 0 1rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.home-hero h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+
+.home-hero .subline {
+  font-size: 1.15rem;
+  color: var(--ink-soft);
+  margin: 0 auto 2rem;
+  max-width: 34rem;
+}
+
+.home-hero .btn-row {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.btn-lg {
+  min-height: 2.75rem;
+  padding: 0.6rem 1.3rem;
+  font-size: 1rem;
+}
+
+.home-hero .demo-note {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------- section layout */
+
+.home-section {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem;
+}
+
+.home-section h2 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.25rem;
+}
+
+/* ------------------------------------------------------------------- how it works */
+
+.how-it-works-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  counter-reset: step;
+}
+
+.how-it-works-steps > * {
+  counter-increment: step;
+  min-width: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+/* The first step carries the code: give it the full width. */
+.how-it-works-steps > :first-child {
+  grid-column: 1 / -1;
+}
+
+.step-number {
+  margin: 0 0 0.6rem;
+}
+.step-number::before {
+  content: counter(step);
+  display: block;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.step-title {
+  font-weight: 650;
+  font-size: 1.02rem;
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+}
+
+.step-desc {
+  margin: 0;
+  font-size: 0.925rem;
+  color: var(--ink-soft);
+}
+
+.step-snippet {
+  margin-top: 0.9rem;
+}
+
+/* ------------------------------------------------------------------- features grid */
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+  gap: 1rem;
+}
+
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem;
+}
+
+.feature-card h3 {
+  font-size: 0.975rem;
+  font-weight: 650;
+  margin: 0 0 0.35rem;
+  color: var(--ink);
+}
+
+.feature-card p {
+  font-size: 0.875rem;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+/* ------------------------------------------------------------------- what you provide */
+
+.what-you-provide,
+.good-to-know {
+  max-width: 760px;
+}
+
+.what-you-provide ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: need;
+}
+
+.what-you-provide li {
+  counter-increment: need;
+  position: relative;
+  padding: 0.75rem 0 0.75rem 2.25rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+}
+
+.what-you-provide li::before {
+  content: "✓";
+  position: absolute;
+  left: 0.25rem;
+  top: 0.75rem;
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* ------------------------------------------------------------------- good to know */
+
+.good-to-know lion-accordion {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.good-to-know lion-accordion [slot="invoker"] {
+  margin: 0;
+  font-size: 1rem;
+  border-top: 1px solid var(--line);
+}
+.good-to-know lion-accordion [slot="invoker"]:first-of-type {
+  border-top: 0;
+}
+
+.good-to-know lion-accordion [slot="content"] {
+  padding: 0 0.9rem 0.9rem;
+  color: var(--ink-soft);
+  font-size: 0.925rem;
+}
+
+/* ------------------------------------------------------------------- footer */
+
+.home-footer {
+  padding: 1.5rem 1rem 2rem;
+  border-top: 1px solid var(--line);
+  margin-top: 2rem;
+}
+
+.home-footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.home-footer-links a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.home-footer-links a:hover {
+  color: var(--accent);
+}
+
+/* ------------------------------------------------------------------- responsive */
+
+@media (max-width: 760px) {
+  .how-it-works-steps {
+    grid-template-columns: 1fr;
+  }
+  .home-hero {
+    padding: 3rem 1rem 2rem;
+  }
+  .home-section {
+    padding: 2rem 1rem;
+  }
+}

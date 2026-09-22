@@ -62,6 +62,12 @@ function iconMic() {
   </svg>`;
 }
 
+function iconMinimize() {
+  return svg`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+    <line x1="6" y1="18" x2="18" y2="18"/>
+  </svg>`;
+}
+
 const STATE_LABELS = {
   idle:     'Idle',
   listening:    'Listening',
@@ -128,6 +134,12 @@ export class TalkieWidget extends ScopedLitElement {
   static properties = {
     backend: { type: Object },
     open:   { type: Boolean, reflect: true },
+    // Open but tucked away: the panel is hidden and the conversation keeps running. The
+    // launcher stands in for it (talkie-assistant.js). restore() brings the panel back.
+    minimized: { type: Boolean, reflect: true },
+    // 'sheet': a full-width bottom sheet, for phones. Set by <talkie-assistant>; unset is the
+    // floating panel.
+    layout: { type: String, reflect: true },
     state:  { type: String, reflect: true },
     _tx:    { type: String, state: true },
     _rp:    { type: String, state: true },
@@ -177,10 +189,18 @@ export class TalkieWidget extends ScopedLitElement {
         transition: box-shadow .4s, opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1);
         position: relative;
       }
-      :host(:not([open])) {
+      :host(:not([open])),
+      :host([minimized]) {
         opacity: 0;
         transform: translateY(18px) scale(.92);
         pointer-events: none;
+        visibility: hidden;
+        transition: box-shadow .4s, opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s .35s;
+      }
+      /* Minimizing shrinks toward the launcher in the corner. */
+      :host([minimized]) {
+        transform-origin: 100% 100%;
+        transform: translateY(40px) scale(.2);
       }
       /* Padding is here, not on :host, so an outer-document reset like '* { padding: 0 }' can't
          strip it away — the host element itself is matched by '*' in the light DOM. */
@@ -356,6 +376,26 @@ export class TalkieWidget extends ScopedLitElement {
         place-items: center;
         transition: background .2s, color .2s, transform .2s;
       }
+      .min-btn {
+        position: absolute;
+        top: 13px;
+        right: 51px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(16,29,32,.07);
+        color: var(--talkie-ink-soft, #4a5a58);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        transition: background .2s, color .2s;
+      }
+      .min-btn:hover {
+        background: var(--talkie-ink, #101d20);
+        color: var(--talkie-surface, #f6f4ec);
+      }
+      .grabber { display: none; }
       .close-btn:hover {
         background: var(--talkie-ink, #101d20);
         color: var(--talkie-surface, #f6f4ec);
@@ -425,11 +465,16 @@ export class TalkieWidget extends ScopedLitElement {
         font-size: 24px;
         box-shadow: 0 0 0 8px rgba(255,107,107,.18);
       }
+      /* Capped, and scrolled to the newest words as they stream (updated()), so a long reply
+         can't push the panel past the top of the viewport. */
       .resp-area {
         font-size: 17px;
         line-height: 1.65;
         margin: 16px 0 24px;
         min-height: 110px;
+        max-height: min(38vh, 320px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
         color: #1c2b2e;
       }
       .waveform-host {
@@ -466,6 +511,73 @@ export class TalkieWidget extends ScopedLitElement {
         50%      { transform: scaleY(1);   }
       }
       @keyframes twk-blinkC { 50% { opacity: 0; } }
+
+      /* Bottom sheet (layout="sheet", phones): full width along the bottom edge, the page
+         still visible above it; slides down out of the way when minimized or closed. */
+      :host([layout='sheet']) {
+        width: 100%;
+        min-height: 0;
+        max-height: min(62dvh, 520px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        border-radius: 22px 22px 0 0;
+        box-shadow: 0 -18px 50px -18px rgba(0,0,0,.55),
+                    0 0 0 1px rgba(255,255,255,.07),
+                    0 -8px 50px -22px var(--talkie-state, #8aa39e);
+      }
+      :host([layout='sheet']:not([open])),
+      :host([layout='sheet'][minimized]) {
+        opacity: 1;
+        transform: translateY(calc(100% + 24px));
+        transition: transform .32s cubic-bezier(.4,0,.2,1), visibility 0s .32s;
+      }
+      :host([layout='sheet']) .view-wrapper {
+        padding: 30px 20px calc(34px + env(safe-area-inset-bottom));
+      }
+      :host([layout='sheet']) .hintline-bottom {
+        bottom: calc(10px + env(safe-area-inset-bottom));
+      }
+      :host([layout='sheet']) .grabber {
+        display: block;
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 88px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      :host([layout='sheet']) .grabber::before {
+        content: '';
+        position: absolute;
+        top: 8px;
+        left: 26px;
+        right: 26px;
+        height: 5px;
+        border-radius: 3px;
+        background: rgba(16,29,32,.22);
+      }
+      :host([layout='sheet']) .min-btn { top: 10px; right: 48px; }
+      :host([layout='sheet']) .close-btn { top: 10px; right: 10px; }
+
+      /* Phones: a compact panel. The desktop spacing and type fill most of a small screen. */
+      @media (max-width: 600px) {
+        :host { min-height: 0; border-radius: 18px; }
+        .view-wrapper { padding: 34px 20px 32px; }
+        .close-btn { top: 8px; right: 8px; }
+        .min-btn { top: 8px; right: 44px; }
+        .big { font-size: 24px; margin: 6px 0 12px; }
+        .sub { font-size: 13px; }
+        .status-text { font-size: 21px; margin-bottom: 4px; }
+        .center-layout { gap: 10px; }
+        .waveform-host { height: 48px; }
+        .resp-area { font-size: 15.5px; line-height: 1.55; margin: 10px 0 14px; min-height: 0; max-height: 26vh; }
+        talkie-transcript { font-size: 13.5px; max-height: 4.6em; overflow-y: auto; margin: 4px 0; }
+        .hintline-bottom { bottom: 10px; left: 20px; right: 20px; }
+      }
     `;
   }
 
@@ -487,6 +599,7 @@ export class TalkieWidget extends ScopedLitElement {
     this._onStartActivate = this._onStartActivate.bind(this);
     this._onBtnClick    = this._onBtnClick.bind(this);
     this._onCloseClick  = this._onCloseClick.bind(this);
+    this._onMinimizeClick = this._onMinimizeClick.bind(this);
     this._onRetryClick  = this._onRetryClick.bind(this);
     this._onStopClick   = this._onStopClick.bind(this);
     this._onAskAnotherClick = this._onAskAnotherClick.bind(this);
@@ -530,12 +643,19 @@ export class TalkieWidget extends ScopedLitElement {
       this._tx = this.#sm.transcript;
       this._rp = this.#sm.response;
     }
+    if (changed.has('_shown')) {
+      const resp = this.renderRoot.querySelector('.resp-area');
+      if (resp) resp.scrollTop = resp.scrollHeight;
+    }
   }
 
   /* ── Public API ─────────────────────────────── */
 
   show() {
-    if (this.open) return;
+    if (this.open) {
+      this.restore();
+      return;
+    }
     if (this.#sm.state !== 'idle') {
       // #cancelConversation already returns the machine to idle; transitioning
       // again would be an illegal idle -> idle and throw.
@@ -549,8 +669,23 @@ export class TalkieWidget extends ScopedLitElement {
   hide(reason) {
     if (!this.open) return;
     this.#cancelConversation(reason ?? 'widget closed');
+    this.minimized = false;
     this.open = false;
     this._emitEvent('talkie-close', { reason });
+  }
+
+  /** Hide the panel but keep the conversation (and the mic) going. */
+  minimize() {
+    if (!this.open || this.minimized) return;
+    this.minimized = true;
+    this._emitEvent('talkie-minimize');
+  }
+
+  /** Bring a minimized panel back. */
+  restore() {
+    if (!this.minimized) return;
+    this.minimized = false;
+    this._emitEvent('talkie-restore');
   }
 
   reset() {
@@ -1146,6 +1281,10 @@ export class TalkieWidget extends ScopedLitElement {
     this.hide('user closed');
   }
 
+  _onMinimizeClick() {
+    this.minimize();
+  }
+
   _onRetryClick() {
     if (this.#sm.state !== 'error') return;
     this.#sm.transition('idle');
@@ -1206,7 +1345,8 @@ export class TalkieWidget extends ScopedLitElement {
   /* ── Escape key handler (Defect 6) ──────────── */
 
   _onKeydown(e) {
-    if (!this.open) return;
+    // A minimized panel is out of the way: the page's own keys are the page's.
+    if (!this.open || this.minimized) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       this.#cancelConversation('escaped');
@@ -1222,7 +1362,12 @@ export class TalkieWidget extends ScopedLitElement {
   render() {
     const s = this.#sm.state;
     return html`
-      <lion-button class="close-btn" @click=${this._onCloseClick} aria-label="Collapse to floating icon">✕</lion-button>
+      ${this.layout === 'sheet'
+        ? html`<button type="button" class="grabber" @click=${this._onMinimizeClick} aria-label="Minimize, keep talking"></button>`
+        : ''}
+      <lion-button class="min-btn" @click=${this._onMinimizeClick}
+          aria-label="Minimize, keep talking" title="Minimize — the conversation keeps going">${iconMinimize()}</lion-button>
+      <lion-button class="close-btn" @click=${this._onCloseClick} aria-label="End and close" title="End and close">✕</lion-button>
       <div class="view-wrapper">
         ${this._renderView(s)}
       </div>

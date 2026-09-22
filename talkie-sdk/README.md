@@ -34,6 +34,70 @@ The voice server must list the page's origin in `TALKIE_ALLOWED_ORIGINS`. `npm r
 serves a sample host page on `:5173`. Attributes, CORS, CSP and HTTPS notes are in
 [docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step).
 
+### Tools: let the agent act on the page
+
+The agent can call functions the page runs: show a room, scroll to a section, fill a form.
+The page needs one thing, an `onToolCall` handler. The tool *definitions* (names,
+descriptions, parameter schemas) can come from the voice server's profile, so leave `tools`
+unset:
+
+```html
+<script src="/path/to/talkie-embed.js" defer></script>
+<talkie-assistant api="http://localhost:8000" profile="property"></talkie-assistant>
+
+<script>
+  const el = document.querySelector('talkie-assistant');
+
+  // el.tools is unset: the profile's `tools` (from /agent/context) are used.
+  el.onToolCall = async ({ name, arguments: args }) => {
+    switch (name) {
+      case 'show_room':
+        await window.tour.goTo(args.room);            // do the thing on the page
+        return { ok: true, now_showing: args.room };  // becomes the tool result
+      case 'go_to_section':
+        document.getElementById(args.section)?.scrollIntoView({ behavior: 'smooth' });
+        return { ok: true };
+      default:
+        return { error: `Unknown tool '${name}'.` };   // the model reads this text
+    }
+  };
+</script>
+```
+
+- A call arrives as `{ name, arguments, call_id }`, with `arguments` already parsed. The awaited
+  return value goes back to the agent as the tool result, so describe what is now on screen.
+- Throw, or return `{ error: '…' }`, to report a failure. The model reads it verbatim: say
+  what went wrong and what to ask next.
+- The handler may be set before the embed script loads, and is looked up on every call.
+- Every tool the profile lists needs a case here. With server tools and no handler, each call
+  fails back to the agent and the element logs a `[talkie]` warning naming the tools.
+- To keep the definitions in the page instead, set `el.tools = [{ type: 'function', … }]`
+  before the conversation opens. Tools the page sets always win over the server's. See
+  [docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step) for the
+  full schema, and `virtual-tour/talkie-tools.js` for a worked handler.
+
+## Web UI
+
+```bash
+npm run site       # -> http://localhost:8081/site/
+```
+
+Four pages, built with Lion components, for showing and setting up the assistant:
+
+| Page | For |
+|---|---|
+| Overview | What Talkie does, with a live assistant to try |
+| Playground | Every attribute and theme token in a form, the preview updating as you go, and the embed snippet to copy |
+| Persona console | Browse and open the voice server's personas, write and test profiles, and send them back (or export the file for its `agents/` folder) |
+| Docs | This README, the integration guide and the production checklist, rendered from these files |
+
+Each page runs on `MockBackend` (scripted answers, no mic) until **Live voice server** is
+switched on in the header, and then talks to the server at the URL given there. Console
+profiles are kept in the browser's `localStorage`; they reach the voice server only through
+**Send to server…** (which needs its `TALKIE_PROFILE_ADMIN_TOKEN`), and a copy opened from the
+server is not refreshed by itself — the console flags one that differs. Sources are in
+`site/src/`; `npm run build:site` bundles them into `site/dist/`.
+
 ## Install & use
 
 ### Side-effect-free import (advanced / controlled registration)
@@ -181,7 +245,8 @@ and dropped on an interrupted `reply.done`. The widget sees one turn: `ask()` yi
 transition phrase and the answer, and playback runs across both. A call that arrives for a turn
 already finished or cancelled is not run; it is answered with an error so the agent is not left
 waiting, and the reply that answer triggers is dropped rather than shown as the reply to the
-next question. On `<talkie-assistant>`, set the `tools` and `onToolCall` properties
+next question. On `<talkie-assistant>`, set the `tools` and `onToolCall` properties, or
+leave `tools` unset to use the server profile's
 ([integration guide](docs/integration.md#drop-in-embed-any-web-page-no-build-step)).
 
 Pass `agentId: '<id>'` instead of the inline fields to use an agent you created with the
@@ -329,6 +394,9 @@ shadow DOM:
   --talkie-launcher-offset-right: 28px;
   --talkie-launcher-offset-bottom: 28px;
 
+  /* <talkie-assistant> bottom sheet (phones): distance from the bottom edge */
+  --talkie-sheet-offset-bottom: 0px;
+
   /* Waveform height */
   --talkie-wave-height: 72px;
 }
@@ -360,6 +428,8 @@ ancestor level (including `document`). Prefix is always `talkie-`:
 | `talkie-error`        | `{ reason, error }`          | Backend rejects / unhandled error  |
 | `talkie-open`         | —                            | Widget opens (`show()` called)     |
 | `talkie-close`        | `{ reason }`                 | Widget closes (`hide()` called)    |
+| `talkie-minimize`     | —                            | Panel hidden, conversation kept (`minimize()`) |
+| `talkie-restore`      | —                            | Minimized panel back (`restore()`, or `show()`) |
 
 Example listener:
 
@@ -417,7 +487,48 @@ transcript.
 | `startConversation(src)` | `void`       | Start a conversation (what Start does in conversation mode). No-op unless `idle`. |
 | `endConversation()` | `void`            | End the running conversation and return to idle. |
 
-## Known gaps
+### Profiles on the voice server
+
+List the server's personas and read one — both open routes, the same data
+`<talkie-assistant profile="…">` loads:
+
+```js
+import { listAgentProfiles, fetchAgentContext } from '@talkie/voice-ui/core/agent-profiles.js';
+
+const { default: def, profiles } = await listAgentProfiles({ api: 'http://localhost:8000' });
+// profiles: [{ name: 'property', description: '…' }, …]; def: the profile served when none is named
+
+const ctx = await fetchAgentContext({ api: 'http://localhost:8000', profile: 'it-support' });
+// { profile, system_prompt, greeting, keyterms, voice, description, tools, prompt_source }
+```
+
+`prompt_source` is `composed` when the server builds the prompt from the profile's sections,
+`override` when the profile sets a fixed `system_prompt_override`.
+
+Saving is for admin tools such as the persona console, not for pages visitors load:
+
+```js
+import { saveAgentProfile, AgentProfileError } from '@talkie/voice-ui/core/agent-profiles.js';
+
+try {
+  const { replaced } = await saveAgentProfile({
+    api: 'http://localhost:8000',
+    name: 'tour-guide',                      // becomes agents/tour-guide.json
+    profile: { greeting: 'Hi!', system_prompt_override: 'You are a friendly tour guide.', tools: [] },
+    adminToken,                              // the server's TALKIE_PROFILE_ADMIN_TOKEN
+    overwrite: false,                        // true to replace an existing profile
+  });
+} catch (err) {
+  if (err instanceof AgentProfileError && err.code === 'exists') { /* ask, then retry with overwrite */ }
+}
+```
+
+It calls `PUT ${api}/agent/profiles/{name}`, which the voice server only enables when
+`TALKIE_PROFILE_ADMIN_TOKEN` is set. `err.code` is one of `unreachable`, `disabled` (no token
+configured), `unauthorized`, `exists`, `not-found`, `invalid` or `failed` (the same for all three
+functions); `err.message` carries the
+server's reason. Anyone with the token can rewrite what the agent says, so never ship it in a page.
+
 
 These are intentionally out of scope for the current release. See linked issues for tracking.
 

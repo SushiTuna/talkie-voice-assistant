@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Talkie — Playground</title>
+  <link rel="stylesheet" href="src/theme.css" />
+  <link rel="stylesheet" href="src/playground.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main id="main" tabindex="-1">
+    <div class="page-intro">
+      <h1>Playground</h1>
+      <p>Change a setting and the preview launcher (bottom-right) picks it up. Copy the snippet when it looks right.</p>
+    </div>
+
+    <!-- ===== LEFT COLUMN ===== -->
+    <div class="playground-form">
+      <lion-tabs>
+        <button slot="tab" type="button">Configure</button>
+        <button slot="tab" type="button">Theme</button>
+        <button slot="tab" type="button">Events</button>
+
+        <!-- TAB 1: Configure. Field names are the <talkie-assistant> attribute names. -->
+        <div slot="panel">
+          <lion-form id="config">
+            <form>
+              <lion-input name="api" label="API" help-text="Origin of the voice server"></lion-input>
+              <lion-input name="token-url" label="Token URL" help-text="Token route, if it lives elsewhere (default: {api}/agent/token)"></lion-input>
+              <lion-input name="profile" label="Profile" help-text="Agent profile, sent as ?profile= to /agent/context"></lion-input>
+              <lion-textarea name="system-prompt" label="System prompt" help-text="Used only when /agent/context is missing or fails"></lion-textarea>
+              <lion-input name="voice" label="Voice" help-text="Output voice (server's, else anna)"></lion-input>
+              <lion-input name="label" label="Label" help-text="Launcher hover label"></lion-input>
+              <lion-radio-group name="mode" label="Mode" help-text="Mock backend always runs push-to-talk">
+                <lion-radio label="Conversation (hands-free)" data-choice="conversation"></lion-radio>
+                <lion-radio label="Push-to-talk" data-choice="push-to-talk"></lion-radio>
+              </lion-radio-group>
+              <lion-input-range name="idle-timeout" min="0" max="300" step="10" unit="s" label="Idle timeout" help-text="Seconds of silence before a conversation ends; 0 = never (don't ship 0 on a public page)"></lion-input-range>
+              <lion-switch name="barge-in" label="Let the caller interrupt (barge-in)"></lion-switch>
+              <lion-radio-group name="layout" label="Layout">
+                <lion-radio label="Auto" data-choice="auto"></lion-radio>
+                <lion-radio label="Floating" data-choice="floating"></lion-radio>
+                <lion-radio label="Sheet" data-choice="sheet"></lion-radio>
+              </lion-radio-group>
+              <lion-switch name="fonts" label="Load Google Fonts (sends visitor IP to Google)"></lion-switch>
+            </form>
+          </lion-form>
+        </div>
+
+        <!-- TAB 2: Theme. Field names are the CSS custom properties they set. -->
+        <div slot="panel">
+          <lion-form id="theme" class="theme-controls">
+            <form>
+              <h3 class="section-title">Colours</h3>
+              <div class="theme-colors">
+                <lion-input type="color" name="--talkie-ink" label="Ink"></lion-input>
+                <lion-input type="color" name="--talkie-ink-soft" label="Ink soft"></lion-input>
+                <lion-input type="color" name="--talkie-paper" label="Paper"></lion-input>
+                <lion-input type="color" name="--talkie-surface" label="Surface"></lion-input>
+                <lion-input type="color" name="--talkie-launcher-bg" label="Launcher background" help-text="Default is a teal gradient"></lion-input>
+                <lion-input type="color" name="--talkie-wave-color" label="Wave colour" help-text="Setting this replaces the per-state colours"></lion-input>
+              </div>
+              <div class="theme-ranges">
+                <h3 class="section-title">Offsets</h3>
+                <lion-input-range name="--talkie-launcher-offset-right" min="0" max="200" step="1" unit="px" label="Launcher offset right"></lion-input-range>
+                <lion-input-range name="--talkie-launcher-offset-bottom" min="0" max="200" step="1" unit="px" label="Launcher offset bottom"></lion-input-range>
+                <lion-input-range name="--talkie-sheet-offset-bottom" min="0" max="200" step="1" unit="px" label="Sheet offset bottom"></lion-input-range>
+              </div>
+            </form>
+            <lion-button id="theme-reset" class="reset-btn">Reset theme</lion-button>
+          </lion-form>
+        </div>
+
+        <!-- TAB 3: Events -->
+        <div slot="panel">
+          <div class="events-section">
+            <h3 class="section-title">Control the preview</h3>
+            <div class="event-buttons">
+              <lion-button id="btn-open" class="primary">Open</lion-button>
+              <lion-button id="btn-minimize">Minimize</lion-button>
+              <lion-button id="btn-restore">Restore</lion-button>
+              <lion-button id="btn-close">Close</lion-button>
+            </div>
+
+            <lion-collapsible opened class="event-log-container">
+              <button slot="invoker" type="button">Event log</button>
+              <div slot="content">
+                <ol id="event-log" aria-live="polite"></ol>
+              </div>
+            </lion-collapsible>
+
+            <lion-button id="btn-clear" class="action-btn">Clear log</lion-button>
+          </div>
+        </div>
+      </lion-tabs>
+    </div>
+
+    <!-- ===== RIGHT COLUMN: Preview & Snippet Card ===== -->
+    <aside class="preview-card" aria-label="Preview and snippet">
+      <div class="preview-head">
+        <p class="section-title">Preview</p>
+        <span class="backend-badge" id="backend-badge"></span>
+      </div>
+      <p class="status-line" id="status-line"></p>
+      <lion-button id="btn-preview" class="primary">Open preview</lion-button>
+
+      <div class="snippet-head">
+        <p class="section-title">Snippet</p>
+        <lion-button id="btn-copy">Copy</lion-button>
+      </div>
+      <pre class="code"><code id="snippet-code"></code></pre>
+      <p class="copy-status" id="copy-status" role="status"></p>
+    </aside>
+
+  </main>
+  <script type="module" src="dist/playground.js"></script>
+</body>
+</html>

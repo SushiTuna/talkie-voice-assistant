@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Talkie — Persona console</title>
+  <link rel="stylesheet" href="src/theme.css" />
+  <link rel="stylesheet" href="src/console.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main id="main" tabindex="-1">
+    <div class="console-layout">
+      <aside class="console-list-panel">
+        <h1>Personas</h1>
+        <p class="lede">A persona is the system prompt, greeting and voice your voice server hands the agent.</p>
+        <lion-select label="Profile" id="profile-select">
+          <select slot="input">
+            <option value="">— select or create —</option>
+          </select>
+        </lion-select>
+        <div class="list-actions">
+          <lion-button id="btn-new" class="primary">New profile</lion-button>
+          <lion-button id="btn-duplicate">Duplicate</lion-button>
+          <lion-button id="btn-delete" class="danger">Delete</lion-button>
+        </div>
+        <p class="note">Profiles are kept in this browser. <strong>Send to server</strong> writes one to the voice server, which then serves it from <code>/agent/context?profile=</code>.</p>
+        <section class="server-personas" aria-labelledby="server-title">
+          <div class="server-head">
+            <h2 id="server-title">On the voice server</h2>
+            <lion-button id="btn-server-load">Load</lion-button>
+          </div>
+          <p id="server-status" class="server-status" role="status"></p>
+          <ul id="server-list" class="server-list"></ul>
+        </section>
+      </aside>
+
+      <section class="console-editor-panel" aria-labelledby="editor-title">
+        <div class="editor-head">
+          <h2 id="editor-title">Edit profile</h2>
+          <span id="form-status" class="form-status" role="status"></span>
+        </div>
+        <div id="server-drift" class="drift-notice" hidden>
+          <p id="server-drift-text"></p>
+          <lion-button id="btn-server-sync">Use the server's version</lion-button>
+        </div>
+        <lion-form id="profile-form">
+          <form>
+            <div class="field-row">
+              <lion-input label="Name" name="name" help-text="Also becomes the profile id (slugified)"></lion-input>
+              <lion-input label="Voice" name="voice" help-text="Output voice; empty = the server's default"></lion-input>
+            </div>
+            <lion-input label="Description" name="description"></lion-input>
+            <lion-textarea label="System prompt" name="systemPrompt" rows="5" help-text="Who the agent is and how it should answer"></lion-textarea>
+            <lion-input label="Greeting" name="greeting" help-text="Spoken when a conversation starts; the voice server requires one"></lion-input>
+            <lion-textarea label="Keyterms" name="keyterms" help-text="Words the speech recogniser should expect: product names, jargon. Comma or newline separated."></lion-textarea>
+            <lion-textarea label="Tools (JSON)" name="tools" rows="4" help-text='An array of { "type": "function", "name", "description", "parameters" }. Stored on the server with the profile; the embedding page runs each call through onToolCall.'></lion-textarea>
+          </form>
+        </lion-form>
+        <div class="form-actions">
+          <lion-button id="btn-send" class="primary">Send to server…</lion-button>
+          <lion-button id="btn-test">Test persona</lion-button>
+          <lion-button id="btn-export">Export JSON</lion-button>
+          <lion-button id="btn-import">Import…</lion-button>
+        </div>
+        <p class="mock-info" id="mock-note-info"></p>
+
+        <div class="context-block">
+          <p class="section-title">Agent context <span class="hint">— what /agent/context should return for this profile</span></p>
+          <pre id="context-preview" class="code context-preview"></pre>
+        </div>
+        <lion-collapsible id="test-log-collapsible">
+          <button slot="invoker" type="button">Test log</button>
+          <div slot="content">
+            <ol id="test-log" class="test-log" aria-live="polite"></ol>
+          </div>
+        </lion-collapsible>
+      </section>
+    </div>
+
+    <!-- Delete confirmation dialog -->
+    <lion-dialog id="delete-dialog">
+      <div slot="content" class="dialog" role="alertdialog" aria-labelledby="delete-title" aria-describedby="delete-confirm-message">
+        <h3 id="delete-title">Delete profile?</h3>
+        <p id="delete-confirm-message"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn danger primary danger-btn">Delete</button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Send to voice server dialog -->
+    <lion-dialog id="send-dialog">
+      <div slot="content" class="dialog" role="dialog" aria-labelledby="send-title" aria-describedby="send-target">
+        <h3 id="send-title">Send to voice server</h3>
+        <p id="send-target" class="send-target"></p>
+        <lion-input id="send-api" label="Voice server URL"></lion-input>
+        <lion-input id="send-token" type="password" label="Admin token" help-text="The server's TALKIE_PROFILE_ADMIN_TOKEN. Kept for this browser tab only."></lion-input>
+        <p id="send-warning" class="warning-msg"></p>
+        <p id="send-error" class="error-msg" role="alert"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary send-btn">Send</button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Generic confirmation dialog -->
+    <lion-dialog id="confirm-dialog">
+      <div slot="content" class="dialog" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+        <h3 id="confirm-title"></h3>
+        <p id="confirm-message"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary confirm-btn"></button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Import profile dialog -->
+    <lion-dialog id="import-dialog">
+      <div slot="content" class="dialog" role="dialog" aria-labelledby="import-title">
+        <h3 id="import-title">Import profile</h3>
+        <lion-textarea label="Profile JSON" rows="8" help-text="Paste an exported profile or an agents/*.json file, or choose a file below."></lion-textarea>
+        <div class="file-row">
+          <label for="import-file">Or choose a file</label>
+          <input type="file" accept="application/json,.json" id="import-file" />
+        </div>
+        <p id="import-error" class="error-msg" role="alert"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary import-btn">Import</button>
+        </div>
+      </div>
+    </lion-dialog>
+  </main>
+  <script type="module" src="dist/console.js"></script>
+</body>
+</html>

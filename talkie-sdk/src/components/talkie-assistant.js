@@ -23,12 +23,18 @@
  *                  0 never ends it (the mic then streams until closed).
  *   barge-in       `off` stops the caller interrupting a reply by talking (conversation
  *                  mode). Try it if the agent keeps cutting itself off on loudspeakers.
+ *   layout         `auto` (default): a bottom sheet on phones (max-width 600px), a floating
+ *                  panel above the launcher elsewhere. `sheet` or `floating` forces one.
+ *                  The sheet sits on the bottom edge; lift it with
+ *                  `--talkie-sheet-offset-bottom` when the page has a bottom bar.
  *   fonts          `google` loads the widget's typefaces from Google Fonts. Off by default:
  *                  that request sends each visitor's IP to Google, which is the host page's
  *                  call to make, not the widget's.
  *
  * Properties (script only — functions and objects cannot be attributes):
  *   tools          Function-tool definitions for the agent, in the Voice Agent API's shape.
+ *                  Unset, the profile's `tools` from `/agent/context` are used instead; the
+ *                  page still runs every call, so it needs `onToolCall` either way.
  *   onToolCall     `({ name, arguments, call_id }) => result`, run for each tool call; its
  *                  (awaited) value goes back to the agent. Throw to report a failure.
  * Both are read on each open, and may be set before this element is defined:
@@ -54,12 +60,15 @@ const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@6
  */
 const Z_INDEX = '2147483000';
 
+/** Viewports that get the bottom-sheet layout under `layout="auto"`. */
+const SHEET_QUERY = '(max-width: 600px)';
+
 /** Conversation mode ends itself after this much silence unless `idle-timeout` says otherwise. */
 const DEFAULT_IDLE_TIMEOUT_S = 60;
 
 export class TalkieAssistant extends HTMLElement {
   static get observedAttributes() {
-    return ['label'];
+    return ['label', 'layout'];
   }
 
   /** @type {HTMLElement | null} */ #launcher = null;
@@ -70,6 +79,7 @@ export class TalkieAssistant extends HTMLElement {
   /** @type {boolean} Guards against a double-click opening two sessions. */ #opening = false;
   /** @type {Array<object> | null} */ #tools = null;
   /** @type {((call: object) => any) | null} */ #onToolCall = null;
+  /** @type {MediaQueryList | null} */ #sheetQuery = null;
 
   constructor() {
     super();
@@ -77,6 +87,10 @@ export class TalkieAssistant extends HTMLElement {
     this._onOpen = this._onOpen.bind(this);
     this._onClose = this._onClose.bind(this);
     this._onPageHide = this._onPageHide.bind(this);
+    this._onMinimize = this._onMinimize.bind(this);
+    this._onRestore = this._onRestore.bind(this);
+    this._onStateChange = this._onStateChange.bind(this);
+    this._applyLayout = this._applyLayout.bind(this);
   }
 
   // ── configuration, read fresh on each open so attribute edits take effect ──
@@ -155,20 +169,20 @@ export class TalkieAssistant extends HTMLElement {
     this.#launcher.style.zIndex = Z_INDEX;
 
     this.#widget = this.ownerDocument.createElement('talkie-widget');
-    // Above the launcher, which sits 28px from the corner and is 60px tall. The width cap
-    // keeps a 16px gutter on a phone; the widget's own :host caps it at 430px.
-    Object.assign(this.#widget.style, {
-      position: 'fixed',
-      right: '28px',
-      bottom: '104px',
-      width: 'min(430px, calc(100vw - 32px))',
-      zIndex: Z_INDEX,
-    });
+    this.#widget.style.position = 'fixed';
+    this.#widget.style.zIndex = Z_INDEX;
+    const win = this.ownerDocument.defaultView;
+    this.#sheetQuery = typeof win?.matchMedia === 'function' ? win.matchMedia(SHEET_QUERY) : null;
+    this.#sheetQuery?.addEventListener?.('change', this._applyLayout);
+    this._applyLayout();
 
     this.append(this.#launcher, this.#widget);
     this.addEventListener('talkie-launch', this._onLaunch);
     this.#widget.addEventListener('talkie-open', this._onOpen);
     this.#widget.addEventListener('talkie-close', this._onClose);
+    this.#widget.addEventListener('talkie-minimize', this._onMinimize);
+    this.#widget.addEventListener('talkie-restore', this._onRestore);
+    this.#widget.addEventListener('talkie-state-change', this._onStateChange);
     // disconnectedCallback does not run when the tab closes, and an open agent session
     // otherwise lingers at the vendor until its resume window lapses.
     this.ownerDocument.defaultView?.addEventListener('pagehide', this._onPageHide);
@@ -184,6 +198,8 @@ export class TalkieAssistant extends HTMLElement {
       if (this.isConnected) return;
       this.removeEventListener('talkie-launch', this._onLaunch);
       this.ownerDocument.defaultView?.removeEventListener('pagehide', this._onPageHide);
+      this.#sheetQuery?.removeEventListener?.('change', this._applyLayout);
+      this.#sheetQuery = null;
       this.#endSession();
       this.#launcher?.remove();
       this.#widget?.remove();
@@ -195,6 +211,10 @@ export class TalkieAssistant extends HTMLElement {
   }
 
   attributeChangedCallback(name, _old, value) {
+    if (name === 'layout') {
+      if (this.#widget) this._applyLayout();
+      return;
+    }
     if (name === 'label' && this.#launcher) {
       if (value === null) this.#launcher.removeAttribute('label');
       else this.#launcher.setAttribute('label', value);
@@ -217,6 +237,16 @@ export class TalkieAssistant extends HTMLElement {
     }
   }
 
+  /** Hide the panel and keep the conversation going; the launcher shows it is still on. */
+  minimize() {
+    this.#widget?.minimize();
+  }
+
+  /** Bring a minimized panel back. */
+  restore() {
+    this.#widget?.restore();
+  }
+
   /** Close the assistant and end its agent session. */
   close() {
     this.#widget?.hide('closed by host');
@@ -227,7 +257,55 @@ export class TalkieAssistant extends HTMLElement {
   _onLaunch(e) {
     // The launcher's event is ours alone; a host page listening higher up has no use for it.
     e.stopPropagation();
-    this.open();
+    if (this.#widget?.minimized) this.#widget.restore();
+    else this.open();
+  }
+
+  /** @returns {'sheet' | 'floating'} */
+  get layout() {
+    const attr = this.getAttribute('layout');
+    if (attr === 'sheet' || attr === 'floating') return attr;
+    return this.#sheetQuery?.matches ? 'sheet' : 'floating';
+  }
+
+  /**
+   * Place the widget for the current layout. Floating: above the launcher, which sits 28px
+   * from the corner and is 60px tall; the width cap keeps a 16px gutter on a phone and the
+   * widget's own :host caps it at 430px. Sheet: the full width of the bottom edge.
+   */
+  _applyLayout() {
+    const w = this.#widget;
+    if (!w) return;
+    if (this.layout === 'sheet') {
+      w.layout = 'sheet';
+      Object.assign(w.style, {
+        left: '0', right: '0', width: 'auto',
+        bottom: 'var(--talkie-sheet-offset-bottom, 0px)',
+      });
+    } else {
+      w.layout = undefined;
+      w.removeAttribute('layout');
+      Object.assign(w.style, {
+        left: '', right: '28px', width: 'min(430px, calc(100vw - 32px))', bottom: '104px',
+      });
+    }
+  }
+
+  _onMinimize() {
+    if (!this.#launcher) return;
+    this.#launcher.state = this.#widget?.state ?? 'idle';
+    this.#launcher.active = true;
+    this.#launcher.open = false;
+  }
+
+  _onRestore() {
+    if (!this.#launcher) return;
+    this.#launcher.active = false;
+    this.#launcher.open = true;
+  }
+
+  _onStateChange(e) {
+    if (this.#launcher) this.#launcher.state = e.detail?.to ?? 'idle';
   }
 
   /**
@@ -251,7 +329,7 @@ export class TalkieAssistant extends HTMLElement {
       systemPrompt: context?.system_prompt ?? this.getAttribute('system-prompt') ?? FALLBACK_PROMPT,
       keyterms: context?.keyterms ?? undefined,
       voice: context?.voice ?? this.getAttribute('voice') ?? undefined,
-      tools: this.#tools ?? undefined,
+      tools: this.#sessionTools(context),
       // Looked up per call, so a handler replaced while the panel is open is the one used.
       onToolCall: (call) => {
         if (!this.#onToolCall) throw new Error(`No handler for tool "${call.name}"`);
@@ -265,6 +343,22 @@ export class TalkieAssistant extends HTMLElement {
   }
 
   /**
+   * The page's tools when it set any (it holds their handlers), else the server profile's.
+   * @returns {Array<object> | undefined}
+   */
+  #sessionTools(context) {
+    if (this.#tools) return this.#tools;
+    const served = Array.isArray(context?.tools) && context.tools.length ? context.tools : undefined;
+    if (served && !this.#onToolCall) {
+      console.warn(
+        `[talkie] the server profile declares tools (${served.map((t) => t.name).join(', ')}) `
+        + 'but no onToolCall is set, so every call will fail. Set el.onToolCall.',
+      );
+    }
+    return served;
+  }
+
+  /**
    * Build the session's backend. A seam for tests and subclasses; not part of the public API.
    * @param {object} options - `VoiceAgentBackend` constructor options.
    * @returns {VoiceAgentBackend}
@@ -274,7 +368,10 @@ export class TalkieAssistant extends HTMLElement {
   }
 
   _onClose() {
-    if (this.#launcher) this.#launcher.open = false;
+    if (this.#launcher) {
+      this.#launcher.open = false;
+      this.#launcher.active = false;
+    }
     this.#endSession();
   }
 

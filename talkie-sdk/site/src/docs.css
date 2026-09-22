@@ -1,0 +1,305 @@
+/* ------------------------------------------------------------------- layout */
+
+.docs-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+.docs-page:focus { outline: none; }
+
+/* Tabs bar: sticks under the site header so switching docs is always one click away. */
+#tabs-bar > [slot="tab"] {
+  padding: 0.85rem 1rem;
+}
+
+/* A panel is TOC | article once rendered. */
+.markdown-body.has-toc {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+.docs-article {
+  min-width: 0;
+  max-width: 80ch;
+}
+
+/* ------------------------------------------------------------------- sidebar TOC */
+
+.docs-toc {
+  position: sticky;
+  top: calc(var(--header-h) + 1rem);
+  align-self: start;
+  max-height: calc(100vh - var(--header-h) - 2rem);
+  overflow-y: auto;
+  font-size: 0.85rem;
+  padding-right: 0.25rem;
+}
+
+.docs-toc-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin: 0 0 0.5rem;
+}
+
+.markdown-body .docs-toc ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-left: 1px solid var(--line);
+}
+
+.markdown-body .docs-toc li { margin: 0; }
+
+.markdown-body .docs-toc a {
+  display: block;
+  padding: 0.25rem 0.75rem;
+  margin-left: -1px;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.docs-toc a:hover {
+  color: var(--ink);
+}
+
+.docs-toc a[aria-current] {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.docs-toc a[data-level="3"] {
+  padding-left: 1.5rem;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 860px) {
+  .markdown-body.has-toc {
+    display: block;
+  }
+  .docs-toc {
+    display: none;
+  }
+}
+
+/* Hide inactive tab panels */
+.markdown-body[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------------- rendered markdown */
+
+.markdown-body {
+  padding: 2rem 0.5rem 4rem;
+}
+
+.markdown-body :is(h1, h2, h3, h4) {
+  scroll-margin-top: calc(var(--header-h) + 1rem);
+}
+
+.markdown-body h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 1rem;
+  color: var(--ink);
+}
+
+.markdown-body h2 {
+  font-size: 1.35rem;
+  font-weight: 600;
+  margin: 2rem 0 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.markdown-body h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.5rem;
+  color: var(--ink);
+}
+
+.markdown-body h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.markdown-body p {
+  margin: 0 0 1rem;
+  line-height: 1.65;
+}
+
+.markdown-body a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.markdown-body a[target="_blank"]::after {
+  content: " ↗";
+  font-size: 0.8em;
+}
+
+/* Code blocks */
+.markdown-body code {
+  font-family: var(--talkie-font-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 0.85em;
+  background: var(--surface);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+
+.markdown-body pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0;
+  margin: 0 0 1rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+.markdown-body pre code {
+  display: block;
+  padding: 1rem 4.5rem 1rem 1rem;
+  background: transparent;
+  border: none;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* Copy button on pre blocks */
+.markdown-body pre .copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  font-size: 0.75rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.markdown-body pre:hover .copy-btn,
+.markdown-body pre .copy-btn:focus-visible {
+  opacity: 1;
+}
+
+/* No hover on touch screens: always show it. */
+@media (hover: none) {
+  .markdown-body pre .copy-btn { opacity: 1; }
+}
+
+.markdown-body pre .copy-btn:hover {
+  opacity: 1;
+  filter: brightness(1.1);
+}
+
+/* Tables */
+.markdown-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+}
+
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.markdown-body th {
+  background: var(--surface);
+  font-weight: 600;
+}
+
+/* Horizontal scroll wrapper for wide tables */
+.markdown-body .table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 0 1rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.markdown-body .table-scroll table {
+  margin: 0;
+  min-width: 100%;
+}
+
+/* Checkboxes in lists */
+.markdown-body input[type="checkbox"] {
+  margin-right: 0.5rem;
+  accent-color: var(--accent);
+}
+
+/* Lists */
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 1rem;
+  padding-left: 1.5rem;
+}
+
+.markdown-body li {
+  margin-bottom: 0.25rem;
+}
+
+/* Blockquotes */
+.markdown-body blockquote {
+  border-left: 3px solid var(--accent);
+  padding: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  background: var(--surface);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Hr */
+.markdown-body hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 2rem 0;
+}
+
+/* Loading / error states */
+.markdown-body .loading-msg {
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.markdown-body .error-msg {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+/* ------------------------------------------------------------------- responsive overrides */
+
+@media (max-width: 480px) {
+  .markdown-body {
+    padding: 1.5rem 1rem 2rem;
+  }
+  .markdown-body h1 {
+    font-size: 1.4rem;
+  }
+  .markdown-body h2 {
+    font-size: 1.2rem;
+  }
+}

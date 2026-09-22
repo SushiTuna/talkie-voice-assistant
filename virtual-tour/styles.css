@@ -788,9 +788,24 @@ talkie-assistant {
 }
 @media (max-width: 899px) {
   /* Clear the sticky CTA bar, whose "Schedule a tour" button sits under the default 28px corner. */
-  talkie-assistant { --talkie-launcher-offset-bottom: calc(76px + 16px + env(safe-area-inset-bottom)); }
-  /* The widget's inline `bottom: 104px` (launcher offset + 60px launcher + 16px) moves with it. */
-  talkie-assistant > talkie-widget { bottom: calc(76px + 16px + 60px + 16px + env(safe-area-inset-bottom)) !important; }
+  talkie-assistant {
+    --talkie-launcher-offset-bottom: calc(76px + 16px + env(safe-area-inset-bottom));
+    --talkie-launcher-offset-right: 16px;
+    /* Phones get the bottom sheet (talkie-assistant.js, layout="auto"): it docks on top of the
+       sticky CTA bar rather than covering "Schedule a tour". */
+    --talkie-sheet-offset-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  /* Floating panel (tablets): its inline `bottom: 104px` (launcher offset + 60px launcher +
+     16px) moves with the launcher, and its inline `right: 28px` matches the 16px gutter its
+     inline width leaves on the left. Capped below the sticky header (~72px) so it never covers
+     the whole screen, and scrolls if a small screen still can't fit it. */
+  talkie-assistant > talkie-widget:not([layout="sheet"]) {
+    bottom: calc(76px + 16px + 60px + 12px + env(safe-area-inset-bottom)) !important;
+    right: 16px !important;
+    max-height: calc(100dvh - 76px - 16px - 60px - 12px - env(safe-area-inset-bottom) - 80px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 /* iOS pseudo-fullscreen shares the launcher's z-index and would be covered by it. */
 body:has(#tour.pseudo-fullscreen) talkie-assistant { display: none; }
