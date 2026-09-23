@@ -143,12 +143,18 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 ## Load performance
 
-- **Lossless asset compression** (`npm run optimize`, needs `brew install webp`): rebuilds the served
+- **Asset compression** (`npm run optimize`, needs `brew install webp`): rebuilds the served
   models and pine textures from the originals in `models/source/`, `models/props/source/` and
-  `assets/tex/source/`. Geometry is meshopt-compressed without quantization and PNGs become
-  lossless WebP (`cwebp -exact`). The script decodes every output again and aborts if a single
-  vertex attribute or pixel differs. To optimize a new house model, put it in `models/source/`,
-  add it to `GLBS` in `tools/optimize-models.mjs` and run the script (unoptimized models still load).
+  `assets/tex/source/`. GLBs are lossy but tuned per asset (`ASSETS` in
+  `tools/optimize-models.mjs`): textures resized per slot and re-encoded as WebP (colour q85,
+  normal maps near-lossless), quantized meshopt geometry, the cars simplified to ~55 % of their
+  triangles, and unused tangents and textures dropped. The house keeps float positions, because
+  `cars.js` places the cars through its node matrix. The script aborts if a node, mesh or material
+  name changes or a mesh loses more triangles than its budget. Check a change with before/after
+  screenshots: run `SHOTS_DIR=tests/shots/before node tests/anchor-shots.mjs`, rebuild, then do the
+  same run into `after`. The pine PNGs stay lossless WebP (`cwebp -exact`, pixel-checked). To
+  optimize a new model, put it in a `source/` folder, add it to `ASSETS` and run the script
+  (unoptimized models still load).
 - **Bundling**: `server.mjs` bundles `page.js`/`main.js` + Babylon in memory with esbuild
   (`/dist/*`, rebuilt on file change), and Babylon stays a lazy chunk (`engine.js`). Without esbuild
   it falls back to the raw modules plus the import map.
@@ -222,7 +228,7 @@ CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; cr
 Broadleaf trees: **“Low Poly Tree Scene Free”** by *Nicholas-3D*,
 [Sketchfab](https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd), licensed **CC BY 4.0** (credit required).
 Modified: `models/props/broadleaf_trees.glb` keeps only the trees (grass, ground and water removed, textures
-resized to ≤1024 px); the original download is `models/props/low_poly_tree_scene_free.glb` (not loaded).
+resized to ≤512 px); the original download is `models/props/low_poly_tree_scene_free.glb` (not loaded).
 
 Distant mountains: **“Mountain low poly For distant mountains”** by *adventurer*,
 [Sketchfab](https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8), licensed **CC BY 4.0** (credit required).
