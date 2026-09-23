@@ -9,6 +9,8 @@
 
 // ── Install DOM globals BEFORE any component import ────────────────────
 import * as shim from '@lit-labs/ssr-dom-shim';
+// Plain data, no DOM: safe to import ahead of the shim.
+import { STATE_COLORS } from '../src/core/state-colors.js';
 
 for (const k of [
   'HTMLElement', 'customElements', 'Element', 'Event', 'CustomEvent',
@@ -143,6 +145,64 @@ for (const [tag, importPath] of TAGS) {
     hintRule !== '' && !/letter-spacing\s*:/.test(hintRule), hintRule.trim());
   check('layout guard: the footer hint is not monospace',
     hintRule !== '' && !/monospace|font-mono/.test(hintRule), hintRule.trim());
+  // Pinned to the bottom, it ran into any view taller than the panel's minimum height.
+  check('layout guard: the footer hint sits in the flow, not pinned absolutely',
+    !/position\s*:\s*absolute/.test(hintRule), hintRule.trim());
+
+  // Theming: README's dark theme sets only the public tokens. A fixed colour anywhere in
+  // the answer left dark text on the dark paper.
+  const respRule = css.match(/\.resp-area\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('theme guard: the answer text takes the ink colour, not a fixed one',
+    /color\s*:\s*var\(--_ink\)/.test(respRule), respRule.trim());
+  check('theme guard: no rgba(16,29,32) ink tints left (they ignore --talkie-ink)',
+    !/rgba\(\s*16\s*,\s*29\s*,\s*32/.test(css));
+  for (const [state, color] of Object.entries(STATE_COLORS)) {
+    check(`theme guard: the ${state} state colours the panel, and --talkie-state still overrides it`,
+      css.includes(`:host([state='${state}']) { --_state: var(--talkie-state, ${color}); }`));
+  }
+  // README's dark theme sets paper and ink but not surface: a fixed light surface left the
+  // Start and Stop labels light on light.
+  check('theme guard: button text falls back to the paper colour, not a fixed light one',
+    css.includes('--_surface: var(--talkie-surface, var(--_paper));'));
+  check('theme guard: secondary buttons need no !important to win',
+    !/\.btn-secondary[^{]*\{[^}]*!important/.test(css));
+  check('motion guard: prefers-reduced-motion stills the widget\'s own animations',
+    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.dot(?![\w-])[^{]*\{\s*animation:\s*none/.test(css));
+
+  const w = new WidgetCtor();
+  check('the waveform is given the shared colour for the current state',
+    w._getStateColor() === STATE_COLORS[w.state], `${w.state} → ${w._getStateColor()}`);
+})();
+
+// ── Theme guards on talkie-launcher and talkie-waveform ───────────────────
+// The playground's Launcher background and Wave colour did nothing: the launcher re-declared
+// --talkie-launcher-bg on its own :host, and the waves were drawn from JS colours only.
+(function checkLauncherAndWaveTokens() {
+  const cssOf = (Ctor) => [Ctor.styles].flat()
+    .map((x) => x?.cssText ?? '').join('\n').replace(/\/\*[\s\S]*?\*\//g, '');
+  const Launcher = customElements.get('talkie-launcher');
+  const Waveform = customElements.get('talkie-waveform');
+  if (typeof Launcher !== 'function' || typeof Waveform !== 'function') {
+    check('theme guard: talkie-launcher and talkie-waveform registered', false);
+    return;
+  }
+
+  const css = cssOf(Launcher);
+  const hostRule = css.match(/:host\s*\{([^}]*)\}/)?.[1] ?? '';
+  check('theme guard: the launcher does not set --talkie-launcher-bg itself (a page\'s value would lose)',
+    !/--talkie-launcher-bg\s*:/.test(hostRule), hostRule.trim());
+  check('theme guard: the launcher\'s ripples take --talkie-wave-color before the state colour',
+    /\.waves \.ring\s*\{\s*stroke:\s*var\(--talkie-wave-color, var\(--_wave\)\)/.test(css)
+      && /\.waves stop\s*\{\s*stop-color:\s*var\(--talkie-wave-color, var\(--_wave\)\)/.test(css));
+
+  const wave = new Waveform();
+  const saved = globalThis.getComputedStyle;
+  try {
+    globalThis.getComputedStyle = () => ({ getPropertyValue: () => ' #123456 ' });
+    check('theme guard: the canvas waveform reads --talkie-wave-color', wave._pageColor() === '#123456');
+  } finally {
+    globalThis.getComputedStyle = saved;
+  }
 })();
 
 // ── Ask another goes straight into the next recording ───────────────────
@@ -417,6 +477,84 @@ await (async function checkConversationFallsBackWithoutConverse() {
   check('conversation: a backend without converse() falls back to push-to-talk',
     captures === 1 && w.state === 'listening');
   check('conversation: ...and says so once', warned === 1, `warned ${warned}x`);
+})();
+
+// ── Panel copy: `heading` and `subtitle` ─────────────────────────────────
+await (async function checkPanelCopy() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const LauncherCtor = customElements.get('talkie-launcher');
+  if (typeof WidgetCtor !== 'function' || typeof LauncherCtor !== 'function') return;
+  const { ReactiveElement } = await import('lit');
+  const HEADING = 'Product Expert';
+  const SUBTITLE = 'Ask about features, pricing, integrations, or compatibility.';
+  /** Every string interpolated into a template, nested templates included. */
+  const strings = (t) => (t?.values ?? []).flatMap((v) => (typeof v === 'string' ? [v] : strings(v)));
+  // Runs Lit's attribute reflection without rendering (the shim has no DOM to render into).
+  const reflect = (el) => ReactiveElement.prototype.update.call(el, new Map());
+
+  // Defaults: the text every existing embed shows.
+  let w = new WidgetCtor();
+  check('copy: heading defaults to "Product Expert"', w.heading === HEADING && strings(w.render()).includes(HEADING));
+  check('copy: subtitle defaults to the features line', w.subtitle === SUBTITLE && strings(w._renderIdle()).includes(SUBTITLE));
+  w.mode = 'conversation';
+  w.backend = scriptedConversation().backend; // conversation mode needs converse()
+  check('copy: conversation mode still puts "Just talk." before the default subtitle',
+    strings(w._renderIdle()).includes(`Just talk. ${SUBTITLE}`));
+  reflect(w);
+  check('copy: the defaults are not written out as attributes, so existing embeds are unchanged',
+    !w.hasAttribute('heading') && !w.hasAttribute('subtitle'));
+
+  // Custom text, from attributes.
+  w = new WidgetCtor();
+  w.setAttribute('heading', 'Travel Guide');
+  w.attributeChangedCallback('heading', null, 'Travel Guide');
+  w.setAttribute('subtitle', 'Ask about destinations, visas, or packing.');
+  w.attributeChangedCallback('subtitle', null, 'Ask about destinations, visas, or packing.');
+  check('copy: the heading attribute sets the eyebrow',
+    w.heading === 'Travel Guide' && strings(w.render()).includes('Travel Guide') && !strings(w.render()).includes(HEADING));
+  check('copy: the subtitle attribute sets the Start screen line',
+    strings(w._renderIdle()).includes('Ask about destinations, visas, or packing.') && !strings(w._renderIdle()).includes(SUBTITLE));
+  w.mode = 'conversation';
+  w.backend = scriptedConversation().backend;
+  check('copy: conversation mode puts "Just talk." before a custom subtitle',
+    strings(w._renderIdle()).includes('Just talk. Ask about destinations, visas, or packing.'));
+  w.removeAttribute('heading');
+  w.attributeChangedCallback('heading', 'Travel Guide', null);
+  check('copy: removing the heading attribute brings the default back', w.heading === HEADING);
+
+  // Custom text, from properties: reflected to the attributes.
+  w = new WidgetCtor();
+  w.heading = 'Travel Guide';
+  w.subtitle = 'Ask about destinations.';
+  reflect(w);
+  check('copy: heading and subtitle reflect to their attributes',
+    w.getAttribute('heading') === 'Travel Guide' && w.getAttribute('subtitle') === 'Ask about destinations.',
+    `${w.getAttribute('heading')} | ${w.getAttribute('subtitle')}`);
+
+  // The silence message still replaces a custom subtitle.
+  w = new WidgetCtor();
+  w.mode = 'conversation';
+  w.subtitle = 'Ask about destinations.';
+  const script = scriptedConversation();
+  w.backend = script.backend;
+  w.startConversation('test');
+  await new Promise((r) => setTimeout(r, 10));
+  await script.finish();
+  const idle = strings(w._renderIdle());
+  check('copy: ending for silence still says why, with a custom subtitle',
+    idle.some((v) => v.includes('silence')) && !idle.some((v) => v.includes('Ask about destinations.')), idle.join(' | '));
+
+  // Launcher: the accessible name and default hover label follow the heading.
+  const l = new LauncherCtor();
+  check('copy: the launcher keeps its default label and accessible name',
+    l.label === 'Product Expert · Voice' && strings(l.render()).includes('Open Product Expert'));
+  l.heading = 'Travel Guide';
+  check('copy: the launcher\'s label and accessible name follow its heading',
+    l.label === 'Travel Guide · Voice' && strings(l.render()).includes('Open Travel Guide'));
+  l.label = 'Ask me';
+  check('copy: an explicit launcher label still wins', l.label === 'Ask me');
+  l.label = null;
+  check('copy: clearing the label goes back to following the heading', l.label === 'Travel Guide · Voice');
 })();
 
 console.log(`\n${passed}/${passed + failed} tests passed`);

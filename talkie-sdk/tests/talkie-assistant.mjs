@@ -22,6 +22,8 @@ globalThis.window ??= globalThis;
 globalThis.document ??= shim.document;
 
 await import('../src/define/talkie-assistant.js');
+// The Persona Console's subclass, which tests a persona that may not be on the server.
+await import('../site/src/preview.js');
 
 // Node has no AudioContext, so every prewarm logs a failed audio step, and the fallback
 // tests log the missing context route on purpose. Both are expected; keep the output to
@@ -57,8 +59,8 @@ function stubFetch(routes) {
  * `beforeConnect(el)` runs on the bare element first.
  * @returns {{ el: any, appended: any[], head: any[], win: EventTarget }}
  */
-function mount(attrs = {}, beforeConnect = null, { phone = false } = {}) {
-  const Ctor = customElements.get('talkie-assistant');
+function mount(attrs = {}, beforeConnect = null, { phone = false, tag = 'talkie-assistant' } = {}) {
+  const Ctor = customElements.get(tag);
   const el = new Ctor();
   beforeConnect?.(el);
   for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
@@ -395,6 +397,26 @@ async function testLabelIsForwarded() {
   check('a changed label is forwarded live', appended[0].getAttribute('label') === 'Ask HR');
 }
 
+async function testCopyIsForwarded() {
+  stubFetch({});
+  const plain = mount();
+  check('no heading or subtitle: the children keep their defaults',
+    !plain.appended[0].hasAttribute('heading') && !plain.appended[1].hasAttribute('heading')
+      && !plain.appended[1].hasAttribute('subtitle'));
+
+  const { el, appended } = mount({ heading: 'Travel Guide', subtitle: 'Ask about visas.' });
+  const [launcher, widget] = appended;
+  check('heading reaches the widget and the launcher',
+    widget.getAttribute('heading') === 'Travel Guide' && launcher.getAttribute('heading') === 'Travel Guide');
+  check('subtitle reaches the widget', widget.getAttribute('subtitle') === 'Ask about visas.');
+  el.setAttribute('subtitle', 'Ask about packing.');
+  el.attributeChangedCallback('subtitle', 'Ask about visas.', 'Ask about packing.');
+  check('a changed subtitle is forwarded live', widget.getAttribute('subtitle') === 'Ask about packing.');
+  el.removeAttribute('heading');
+  el.attributeChangedCallback('heading', 'Travel Guide', null);
+  check('a removed heading is removed from both', !widget.hasAttribute('heading') && !launcher.hasAttribute('heading'));
+}
+
 // ── minimize ────────────────────────────────────────────────────────────────
 async function testMinimizeKeepsTheConversation() {
   stubFetch({ 'http://localhost:8000/agent/token': { token: 'tok', expires_in_seconds: 300 } });
@@ -440,6 +462,30 @@ async function testSheetLayoutOnPhones() {
   check('layout="sheet" forces the sheet on a wide screen', desk.widget.layout === 'sheet');
 }
 
+// ── the Persona Console's preview ───────────────────────────────────────────
+async function testPreviewUsesTheConsolePersona() {
+  const calls = stubFetch({
+    'http://localhost:8000/agent/context': { profile: 'property', system_prompt: 'You are the property assistant.', greeting: 'Welcome home!' },
+  });
+  const persona = { profile: 'finance', system_prompt: 'You are the finance assistant.', greeting: 'Hi, finance here.', voice: 'nova', keyterms: ['ISA'] };
+  const { el } = mount({ backend: 'live' }, (bare) => { bare.context = persona; }, { tag: 'talkie-preview' });
+  const options = await openCapturing(el);
+
+  check('the preview does not fetch the server\'s default profile',
+    !calls.some((u) => u.includes('/agent/context')), calls.join(','));
+  check('the preview session gets the console\'s prompt, not the default profile\'s',
+    options?.systemPrompt === 'You are the finance assistant.', options?.systemPrompt);
+  check('the preview session gets the console\'s greeting, voice and keyterms',
+    options.greeting === 'Hi, finance here.' && options.voice === 'nova' && options.keyterms?.[0] === 'ISA');
+  el.close();
+
+  const fallback = stubFetch({});
+  const { el: plain } = mount({ backend: 'live', profile: 'finance' }, null, { tag: 'talkie-preview' });
+  await tick();
+  check('a preview with no persona still loads its profile from the server',
+    fallback[0] === 'http://localhost:8000/agent/context?profile=finance', fallback.join(','));
+}
+
 await testMountsLauncherAndWidget();
 await testToolsReachTheBackend();
 await testToolHandlerIsReadPerCall();
@@ -459,8 +505,10 @@ await testPageHideEndsSession();
 await testRemovalCleansUp();
 await testFontsAreOptIn();
 await testLabelIsForwarded();
+await testCopyIsForwarded();
 await testMinimizeKeepsTheConversation();
 await testSheetLayoutOnPhones();
+await testPreviewUsesTheConsolePersona();
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

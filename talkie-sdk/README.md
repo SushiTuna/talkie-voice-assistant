@@ -95,7 +95,9 @@ Each page runs on `MockBackend` (scripted answers, no mic) until **Live voice se
 switched on in the header, and then talks to the server at the URL given there. Console
 profiles are kept in the browser's `localStorage`; they reach the voice server only through
 **Send to server…** (which needs its `TALKIE_PROFILE_ADMIN_TOKEN`), and a copy opened from the
-server is not refreshed by itself — the console flags one that differs. Sources are in
+server is not refreshed by itself — the console flags one that differs. A profile's tools are listed by
+name and description; Edit opens a dialog for one tool and its parameters (type, required,
+allowed values), and a JSON view edits the raw array. Both write the same JSON. Sources are in
 `site/src/`; `npm run build:site` bundles them into `site/dist/`.
 
 ## Install & use
@@ -363,7 +365,7 @@ cd <voice-server-checkout> && .venv/bin/uvicorn server:app --port 8000
 npm start
 ```
 
-Then open `http://localhost:8081/demo/index.html` and pick **Live backend** on the rail, or
+Then open `http://localhost:8081/demo/` and pick **Live backend** on the rail, or
 `?api=https://your-server` to point somewhere else. That scenario is the only one that touches the
 microphone, so the browser will ask for permission.
 
@@ -386,8 +388,10 @@ shadow DOM:
   --talkie-font-body: 'Instrument Sans', sans-serif;
   --talkie-font-mono: 'IBM Plex Mono', monospace;
 
-  /* State accent colors (used in box-shadow glow + dot indicators) */
-  --talkie-state: #5fd9c6;      /* default (idle); per-state overrides work too */
+  /* State accent (glow, status dot, spinner, Start button shadow). Leave it unset to keep a
+     colour per state (src/core/state-colors.js); set here, one colour serves every state.
+     Per state: talkie-widget[state="listening"] { --talkie-state: #ff8a4c; } */
+  --talkie-state: #5fd9c6;
 
   /* Launcher floating button gradient */
   --talkie-launcher-bg: linear-gradient(145deg, #6ee7d4, #1c7f70);
@@ -414,6 +418,11 @@ shadow DOM:
 
 Each component also accepts per-instance overrides via attributes (e.g. `color` on
 `<talkie-waveform>`).
+
+**Dark mode.** With paper and ink left unset, the panel follows the page's `color-scheme`: a page
+that declares `color-scheme: dark` (or `light dark` on a dark system) gets a dark panel
+(`#16191b` paper, `#eceeef` ink); a page that declares nothing keeps the light one. Setting any of
+the tokens above wins over this in both schemes.
 
 ## Events
 
@@ -484,6 +493,8 @@ transcript.
 | `releaseListening(src)` | `void`        | Stop recording and send, as Stop & Send does. No-op unless `listening`. |
 | `mode`            | `string` (reflect)  | `'push-to-talk'` (default) or `'conversation'`. |
 | `idleTimeout`     | `number`            | Conversation mode: seconds of silence before it ends; `0` = never. Attribute `idle-timeout`. |
+| `heading`         | `string` (reflect)  | Eyebrow at the top of the panel. Default `'Product Expert'`. |
+| `subtitle`        | `string` (reflect)  | Start screen line; conversation mode prefixes `Just talk.` Default `'Ask about features, pricing, integrations, or compatibility.'` |
 | `startConversation(src)` | `void`       | Start a conversation (what Start does in conversation mode). No-op unless `idle`. |
 | `endConversation()` | `void`            | End the running conversation and return to idle. |
 
@@ -504,6 +515,10 @@ const ctx = await fetchAgentContext({ api: 'http://localhost:8000', profile: 'it
 
 `prompt_source` is `composed` when the server builds the prompt from the profile's sections,
 `override` when the profile sets a fixed `system_prompt_override`.
+
+`listVoices({ api })` reads `GET /agent/voices`: the output voices a profile can use, as
+`{ default, voices: [{ id, language, accent }] }`. AssemblyAI has no endpoint that lists voices,
+so the voice server keeps the list from its [voices page](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/voices).
 
 Saving is for admin tools such as the persona console, not for pages visitors load:
 
@@ -545,7 +560,7 @@ These are intentionally out of scope for the current release. See linked issues 
 ## Testing
 
 ```bash
-npm test          # 518 assertions across ten suites — state machine, backends, audio, widget, embed and the built bundle
+npm test          # 758 assertions across thirteen suites — state machine, backends, audio, widget, embed, the built bundle, the site and its dev server
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

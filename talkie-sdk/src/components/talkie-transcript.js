@@ -17,17 +17,23 @@ export class TalkieTranscript extends LitElement {
 
   static get styles() {
     return css`
+      /* A chat bubble for the caller's words. The tint comes from the ink, so it shows on a
+         dark theme too (a fixed black tint vanished there). */
       :host {
         display: block;
+        box-sizing: border-box;
+        width: fit-content;
+        max-width: min(100%, 34ch);
         font-size: 15px;
         line-height: 1.5;
-        color: var(--talkie-ink-soft, #4a5a58);
-        padding: 8px 12px;
-        margin: 8px 0;
-        background: rgba(0,0,0,.04);
-        border-radius: 8px;
-        word-break: break-word;
+        text-align: start;
+        color: var(--talkie-ink, light-dark(#101d20, #eceeef));
+        padding: 9px 14px;
+        background: color-mix(in srgb, var(--talkie-ink, light-dark(#101d20, #eceeef)) 7%, transparent);
+        border-radius: 16px 16px 4px 16px;
+        overflow-wrap: anywhere;
       }
+      p { margin: 0; }
     `;
   }
 

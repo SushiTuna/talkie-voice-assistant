@@ -12,7 +12,11 @@
   <main id="main" tabindex="-1">
     <div class="page-intro">
       <h1>Playground</h1>
-      <p>Change a setting and the preview launcher (bottom-right) picks it up. Copy the snippet when it looks right.</p>
+      <ol class="start-steps" aria-label="Get started">
+        <li><span><strong>Try it.</strong> Press <em>Open preview</em>, or the launcher at the bottom right.</span></li>
+        <li><span><strong>Tune it.</strong> Every setting below updates the preview and the snippet.</span></li>
+        <li><span><strong>Ship it.</strong> Copy the snippet into your page.</span></li>
+      </ol>
     </div>
 
     <!-- ===== LEFT COLUMN ===== -->
@@ -26,18 +30,26 @@
         <div slot="panel">
           <lion-form id="config">
             <form>
+              <h3 class="section-title">Connection</h3>
               <lion-input name="api" label="API" help-text="Origin of the voice server"></lion-input>
               <lion-input name="token-url" label="Token URL" help-text="Token route, if it lives elsewhere (default: {api}/agent/token)"></lion-input>
-              <lion-input name="profile" label="Profile" help-text="Agent profile, sent as ?profile= to /agent/context"></lion-input>
+              <h3 class="section-title">Persona</h3>
+              <lion-input name="profile" label="Profile" help-text="Agent profile, sent as ?profile= to /agent/context. Picking one of the server's fills the prompt and voice below."></lion-input>
               <lion-textarea name="system-prompt" label="System prompt" help-text="Used only when /agent/context is missing or fails"></lion-textarea>
-              <lion-input name="voice" label="Voice" help-text="Output voice (server's, else anna)"></lion-input>
-              <lion-input name="label" label="Label" help-text="Launcher hover label"></lion-input>
+              <lion-select name="voice" label="Voice" help-text="Output voice, from the voice server's list">
+                <select slot="input"><option value="">Profile's voice</option></select>
+              </lion-select>
+              <h3 class="section-title">Conversation</h3>
               <lion-radio-group name="mode" label="Mode" help-text="Mock backend always runs push-to-talk">
                 <lion-radio label="Conversation (hands-free)" data-choice="conversation"></lion-radio>
                 <lion-radio label="Push-to-talk" data-choice="push-to-talk"></lion-radio>
               </lion-radio-group>
               <lion-input-range name="idle-timeout" min="0" max="300" step="10" unit="s" label="Idle timeout" help-text="Seconds of silence before a conversation ends; 0 = never (don't ship 0 on a public page)"></lion-input-range>
               <lion-switch name="barge-in" label="Let the caller interrupt (barge-in)"></lion-switch>
+              <h3 class="section-title">Appearance</h3>
+              <lion-input name="heading" label="Heading" placeholder="Product Expert" help-text="The assistant's name, at the top of the panel"></lion-input>
+              <lion-input name="subtitle" label="Subtitle" placeholder="Ask about features, pricing, integrations, or compatibility." help-text="The line on the Start screen. Conversation mode puts &quot;Just talk.&quot; first"></lion-input>
+              <lion-input name="label" label="Label" help-text="Launcher hover label (default: heading · Voice)"></lion-input>
               <lion-radio-group name="layout" label="Layout">
                 <lion-radio label="Auto" data-choice="auto"></lion-radio>
                 <lion-radio label="Floating" data-choice="floating"></lion-radio>
@@ -102,8 +114,11 @@
         <p class="section-title">Preview</p>
         <span class="backend-badge" id="backend-badge"></span>
       </div>
-      <p class="status-line" id="status-line"></p>
-      <lion-button id="btn-preview" class="primary">Open preview</lion-button>
+      <p class="status-line" id="status-line" role="status"></p>
+      <lion-button id="btn-preview" class="primary btn-block">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></g></svg>
+        Open preview
+      </lion-button>
 
       <div class="snippet-head">
         <p class="section-title">Snippet</p>

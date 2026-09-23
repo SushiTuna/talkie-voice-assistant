@@ -59,17 +59,17 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
       Never pass them to `innerHTML`, `eval` or a URL without checking. The API does not validate
       `parameters` schemas (`docs/integration.md` → *Tools*).
 - [ ] **Decide whether to publish the source map.** `npm run build` writes
-      `dist/talkie-embed.js.map` (about 536 KiB) next to the bundle (`build.mjs`: `sourcemap: true`).
+      `dist/talkie-embed.js.map` (about 548 KiB) next to the bundle (`build.mjs`: `sourcemap: true`).
 
 ## 3. Hosting and delivery
 
-- [ ] **Build and pin the bundle.** Run `npm run build` → `dist/talkie-embed.js` (113.5 KiB
-      minified, about 34 KiB gzip, measured 2026-09-21). `dist/` is not committed; whether it
+- [ ] **Build and pin the bundle.** Run `npm run build` → `dist/talkie-embed.js` (118.7 KiB
+      minified, about 36 KiB gzip, measured 2026-09-23). `dist/` is not committed; whether it
       should be is an open decision (AGENTS.md §16). Serve it with a versioned file name or a
       content hash, long-cache headers, and compression.
 - [ ] **Subresource Integrity** (`integrity="sha384-…"`) if the bundle is served from a CDN or
       another origin.
-- [ ] **Update the size in `docs/integration.md`.** It still says ~88 KiB.
+- [x] **Update the size in `docs/integration.md`.** It says ~119 KiB, measured 2026-09-23.
 - [ ] **npm publishing**, if wanted. There is no `files` field yet, so the package would ship
       demo files, tests and the mockup `Qwen_html_20260920_2zzvkipj6.html`. The name and version
       are an open decision (AGENTS.md §16; README → *Not on npm yet*).
@@ -94,10 +94,11 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
 
 ## 5. Product copy and branding
 
-- [ ] **Hard-coded "Product Expert" copy.** The eyebrow in the idle and speaking views
-      (`talkie-widget.js`), the launcher's default label `Product Expert · Voice` and its
-      `aria-label="Open Product Expert"` (`talkie-launcher.js`) are fixed strings. `label` only
-      changes the hover label. Make them configurable, or accept them.
+- [x] **"Product Expert" copy is configurable.** `heading` sets the panel's eyebrow, the
+      launcher's `aria-label` (`Open <heading>`) and its default hover label
+      (`<heading> · Voice`); `subtitle` sets the Start screen line. Both default to the old text
+      (`docs/integration.md` attribute table). Set them, or accept the defaults. "Have a
+      question?", the hints and the nudge toast are still fixed (see *No localisation*).
 - [ ] **No localisation.** All UI strings, including error messages (`ERROR_MESSAGES` in
       `talkie-widget.js`), are English.
 - [ ] **No text-input fallback** for visitors who cannot or will not speak (README →

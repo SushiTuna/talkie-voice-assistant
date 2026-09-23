@@ -19,20 +19,29 @@
             <option value="">— select or create —</option>
           </select>
         </lion-select>
-        <div class="list-actions">
-          <lion-button id="btn-new" class="primary">New profile</lion-button>
-          <lion-button id="btn-duplicate">Duplicate</lion-button>
-          <lion-button id="btn-delete" class="danger">Delete</lion-button>
-        </div>
-        <p class="note">Profiles are kept in this browser. <strong>Send to server</strong> writes one to the voice server, which then serves it from <code>/agent/context?profile=</code>.</p>
-        <section class="server-personas" aria-labelledby="server-title">
+        <section class="server-current" aria-labelledby="server-title">
           <div class="server-head">
             <h2 id="server-title">On the voice server</h2>
             <lion-button id="btn-server-load">Load</lion-button>
           </div>
+          <div id="server-item" class="server-item" hidden>
+            <span class="server-item-name" id="server-item-name"></span>
+            <span class="server-item-desc" id="server-item-desc"></span>
+          </div>
           <p id="server-status" class="server-status" role="status"></p>
-          <ul id="server-list" class="server-list"></ul>
         </section>
+        <div class="list-actions">
+          <lion-button id="btn-new" class="primary icon-btn" aria-label="New profile" title="New profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </lion-button>
+          <lion-button id="btn-duplicate" class="icon-btn" aria-label="Duplicate profile" title="Duplicate profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></g></svg>
+          </lion-button>
+          <lion-button id="btn-delete" class="danger icon-btn" aria-label="Delete profile" title="Delete profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></g></svg>
+          </lion-button>
+        </div>
+        <p class="note">Profiles are kept in this browser. <strong>Send to server</strong> writes one to the voice server, which then serves it from <code>/agent/context?profile=</code>. Personas that are only on the server are listed in the Profile menu once loaded.</p>
       </aside>
 
       <section class="console-editor-panel" aria-labelledby="editor-title">
@@ -48,13 +57,30 @@
           <form>
             <div class="field-row">
               <lion-input label="Name" name="name" help-text="Also becomes the profile id (slugified)"></lion-input>
-              <lion-input label="Voice" name="voice" help-text="Output voice; empty = the server's default"></lion-input>
+              <lion-select label="Voice" name="voice" help-text="Output voice, from the voice server's list">
+                <select slot="input"><option value="">Server default</option></select>
+              </lion-select>
             </div>
             <lion-input label="Description" name="description"></lion-input>
             <lion-textarea label="System prompt" name="systemPrompt" rows="5" help-text="Who the agent is and how it should answer"></lion-textarea>
             <lion-input label="Greeting" name="greeting" help-text="Spoken when a conversation starts; the voice server requires one"></lion-input>
             <lion-textarea label="Keyterms" name="keyterms" help-text="Words the speech recogniser should expect: product names, jargon. Comma or newline separated."></lion-textarea>
-            <lion-textarea label="Tools (JSON)" name="tools" rows="4" help-text='An array of { "type": "function", "name", "description", "parameters" }. Stored on the server with the profile; the embedding page runs each call through onToolCall.'></lion-textarea>
+            <section id="tool-editor" class="tool-editor" aria-labelledby="tool-editor-title">
+              <div class="tool-editor-head">
+                <h3 id="tool-editor-title" class="tool-editor-title">Tools</h3>
+                <div class="tool-mode" role="group" aria-label="Edit tools as">
+                  <button type="button" class="tool-mode-btn" data-mode="form" aria-pressed="true">Form</button>
+                  <button type="button" class="tool-mode-btn" data-mode="json" aria-pressed="false">JSON</button>
+                </div>
+              </div>
+              <p class="tool-editor-help">Actions the agent can ask this page to run. They are stored on the server with the profile; the embedding page runs each call through <code>onToolCall</code>.</p>
+              <p class="tool-editor-note" role="status"></p>
+              <div class="tool-form">
+                <ul class="tool-list"></ul>
+                <button type="button" class="btn tool-add">+ Add a tool</button>
+              </div>
+              <lion-textarea label="Tools (JSON)" name="tools" rows="8" hidden help-text='An array of { "type": "function", "name", "description", "parameters" }.'></lion-textarea>
+            </section>
           </form>
         </lion-form>
         <div class="form-actions">
@@ -114,6 +140,20 @@
         <div class="dialog-buttons">
           <button type="button" class="btn cancel-btn">Cancel</button>
           <button type="button" class="btn primary confirm-btn"></button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Add / edit one tool; tool-editor.js fills the body -->
+    <lion-dialog id="tool-dialog">
+      <div slot="content" class="dialog tool-dialog" role="dialog" aria-labelledby="tool-dialog-title">
+        <h3 id="tool-dialog-title" class="tool-dialog-title">Edit tool</h3>
+        <div class="tool-dialog-body"></div>
+        <div class="dialog-buttons">
+          <button type="button" class="btn danger delete-btn">Delete tool</button>
+          <span class="dialog-spacer"></span>
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary save-btn">Save</button>
         </div>
       </div>
     </lion-dialog>

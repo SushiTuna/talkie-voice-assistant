@@ -10,7 +10,8 @@ import '../lion.js';
 import { mountShell, getBackendSettings } from '../shell.js';
 import '../preview.js';
 import { buildSnippet, DEFAULTS } from '../snippet.js';
-import { listAgentProfiles } from '../../../src/core/agent-profiles.js';
+import { listAgentProfiles, fetchAgentContext } from '../../../src/core/agent-profiles.js';
+import { loadVoices, showVoice } from '../voices.js';
 
 mountShell('playground');
 
@@ -72,6 +73,20 @@ function setThemeDefaults() {
   for (const [name, value] of Object.entries(THEME_DEFAULTS)) field(themeForm, name).modelValue = value;
 }
 
+/** Show each colour's hex beside its swatch; the native colour input only shows the colour. */
+function addHexReadouts() {
+  for (const colorField of themeForm.querySelectorAll('lion-input[type="color"]')) {
+    const hex = document.createElement('span');
+    hex.slot = 'prefix'; // inside Lion's input row, so it sits beside the swatch, not under it
+    hex.className = 'color-hex';
+    colorField.append(hex);
+    colorField.requestUpdate(); // Lion renders the prefix slot only once it has a child
+    const sync = () => { hex.textContent = String(colorField.modelValue ?? '').toLowerCase(); };
+    colorField.addEventListener('model-value-changed', sync);
+    sync();
+  }
+}
+
 /* ---------------------------------------------------------------- reading state */
 
 /** The config form as <talkie-assistant> attribute strings. */
@@ -84,6 +99,8 @@ function attrs() {
     profile: text(v.profile),
     'system-prompt': text(v['system-prompt']),
     voice: text(v.voice),
+    heading: text(v.heading),
+    subtitle: text(v.subtitle),
     label: text(v.label),
     mode: v.mode || DEFAULTS.mode,
     'idle-timeout': String(v['idle-timeout'] ?? DEFAULTS['idle-timeout']),
@@ -220,17 +237,25 @@ $('btn-clear').addEventListener('click', () => eventLog.replaceChildren());
 $('btn-preview').addEventListener('click', () => preview?.open());
 
 let copyTimer = 0;
-$('btn-copy').addEventListener('click', async () => {
+const copyBtn = $('btn-copy');
+copyBtn.addEventListener('click', async () => {
   clearTimeout(copyTimer);
   try {
     await navigator.clipboard.writeText(snippet());
     copyStatus.textContent = 'Copied to clipboard.';
     copyStatus.dataset.kind = 'ok';
+    // The button is where the eye is; the status line below it is for screen readers too.
+    copyBtn.textContent = 'Copied ✓';
+    copyBtn.dataset.copied = '';
   } catch {
     copyStatus.textContent = 'Copy failed. Select the snippet and copy it by hand.';
     copyStatus.dataset.kind = 'error';
   }
-  copyTimer = setTimeout(() => { copyStatus.textContent = ''; }, 2500);
+  copyTimer = setTimeout(() => {
+    copyStatus.textContent = '';
+    copyBtn.textContent = 'Copy';
+    delete copyBtn.dataset.copied;
+  }, 2500);
 });
 
 window.addEventListener('talkie-site-backend', ({ detail }) => {
@@ -245,6 +270,8 @@ window.addEventListener('talkie-site-backend', ({ detail }) => {
 // the request would just fail, and the mock backend ignores the profile anyway.
 const profileField = field(configForm, 'profile');
 const PROFILE_HELP = profileField.getAttribute('help-text');
+/** Persona names from the last successful list load. */
+let serverPersonas = new Set();
 const personaList = document.createElement('datalist');
 personaList.id = 'server-personas';
 document.body.append(personaList);
@@ -253,12 +280,14 @@ async function suggestPersonas() {
   const input = profileField.querySelector('input');
   if (backend.backend !== 'live') {
     personaList.replaceChildren();
+    serverPersonas = new Set();
     profileField.helpText = PROFILE_HELP;
     return;
   }
   input?.setAttribute('list', personaList.id);
   try {
     const { default: def, profiles } = await listAgentProfiles({ api: backend.api });
+    serverPersonas = new Set(profiles.map((p) => p.name));
     personaList.replaceChildren(...profiles.map(({ name, description }) => {
       const option = document.createElement('option');
       option.value = name;
@@ -270,20 +299,55 @@ async function suggestPersonas() {
       : 'The server has no personas yet; create one in the Persona console.';
   } catch (err) {
     personaList.replaceChildren();
+    serverPersonas = new Set();
     profileField.helpText = `${PROFILE_HELP}. Couldn't list the server's personas: ${err.message}`;
   }
 }
 
 window.addEventListener('talkie-site-backend', () => suggestPersonas());
 
+// Picking one of the server's personas fills the fields it defines, so what the snippet and
+// the preview show matches that persona (and can be edited from there).
+const promptField = field(configForm, 'system-prompt');
+const voiceField = field(configForm, 'voice');
+let personaTimer = 0;
+let personaRequest = 0;
+
+async function fillFromPersona(name) {
+  const request = ++personaRequest;
+  try {
+    const ctx = await fetchAgentContext({ api: backend.api, profile: name });
+    if (request !== personaRequest) return; // another persona was picked meanwhile
+    promptField.modelValue = ctx.system_prompt ?? '';
+    showVoice(voiceField, ctx.voice ?? '');
+    voiceField.modelValue = ctx.voice ?? '';
+    profileField.helpText = `Filled from "${name}" on the server.`;
+  } catch (err) {
+    if (request === personaRequest) profileField.helpText = `Couldn't load "${name}": ${err.message}`;
+  }
+}
+
+profileField.addEventListener('model-value-changed', () => {
+  if (!ready) return;
+  clearTimeout(personaTimer);
+  const name = (profileField.modelValue ?? '').trim();
+  if (!serverPersonas.has(name)) return;
+  personaTimer = setTimeout(() => fillFromPersona(name), 300);
+});
+
+const VOICE_EMPTY = "Profile's voice";
+window.addEventListener('talkie-site-backend', ({ detail }) => loadVoices(voiceField, detail.api, VOICE_EMPTY));
+
 /* ---------------------------------------------------------------- start */
 
 // Lion fields settle their initial values asynchronously; ignore the change events that causes.
 await Promise.all([configForm.updateComplete, themeForm.updateComplete]);
 setConfigDefaults();
+addHexReadouts();
 setThemeDefaults();
 requestAnimationFrame(() => { ready = true; });
 renderSnippet();
 renderStatus();
 buildPreview();
 suggestPersonas();
+loadVoices(voiceField, backend.api, VOICE_EMPTY);

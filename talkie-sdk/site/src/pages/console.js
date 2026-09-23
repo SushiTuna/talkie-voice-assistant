@@ -10,6 +10,8 @@ import {
   toServerProfile, fromServerProfile, serverProfileProblems,
 } from '../profile.js';
 import { listAgentProfiles, fetchAgentContext, saveAgentProfile } from '../../../src/core/agent-profiles.js';
+import { loadVoices, showVoice } from '../voices.js';
+import { mountToolEditor } from '../tool-editor.js';
 import { Required, Validator } from '@lion/ui/form-core.js';
 
 mountShell('console');
@@ -86,6 +88,12 @@ const mockNoteInfo = document.getElementById('mock-note-info');
 const importTextarea = importDialog?.querySelector('lion-textarea');
 const importFileInput = document.getElementById('import-file');
 const importError = document.getElementById('import-error');
+const voiceField = formEl.querySelector('[name="voice"]');
+const toolEditor = mountToolEditor(
+  document.getElementById('tool-editor'),
+  formEl.querySelector('[name="tools"]'),
+  document.getElementById('tool-dialog'),
+);
 
 /* =================================================================== Validators on form fields */
 
@@ -115,7 +123,9 @@ let filling = false;
 /** Fill the form without autosaving; Lion settles values asynchronously, so wait a frame. */
 function fill(values) {
   filling = true;
-  formEl.querySelectorAll('lion-input, lion-textarea').forEach((el) => {
+  // A voice missing from the list still needs an option, or the select can't show it.
+  showVoice(voiceField, values.voice ?? '');
+  formEl.querySelectorAll('lion-input, lion-textarea, lion-select').forEach((el) => {
     el.modelValue = values[el.name] ?? '';
   });
   requestAnimationFrame(() => { filling = false; });
@@ -136,18 +146,28 @@ function setStatus(text, kind = '', { sticky = false } = {}) {
   if (text && !sticky) statusTimer = setTimeout(() => { formStatus.textContent = ''; }, 3000);
 }
 
+/** Option values for server personas without a local copy; choosing one opens it. */
+const SERVER_PREFIX = 'server:';
+
 function populateSelect() {
   const profiles = readProfiles();
-  // Clear existing options except the first
-  while (selectInput.options.length > 1) {
-    selectInput.remove(1);
-  }
-  profiles.forEach((p) => {
+  const first = selectInput.options[0];
+  const local = profiles.map((p) => {
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name || '(unnamed)';
-    selectInput.appendChild(opt);
+    return opt;
   });
+  const serverOnly = serverProfiles.filter(({ name }) => !localCopyOf(name, profiles));
+  const group = document.createElement('optgroup');
+  group.label = 'On the voice server';
+  group.append(...serverOnly.map(({ name }) => {
+    const opt = document.createElement('option');
+    opt.value = SERVER_PREFIX + name;
+    opt.textContent = name === serverDefault ? `${name} (default)` : name;
+    return opt;
+  }));
+  selectInput.replaceChildren(first, ...local, ...(serverOnly.length ? [group] : []));
   // Rebuilding the options drops the selection; keep showing the profile being edited.
   selectInput.value = currentId ?? '';
   updateActions();
@@ -163,6 +183,7 @@ function loadProfile(id) {
 
   fill(profile);
   updateActions();
+  renderServerCard();
   checkServerCopy(profile);
 
   updatePreview();
@@ -225,6 +246,7 @@ function scheduleAutosave() {
 }
 
 function checkFormErrors() {
+  if (toolEditor.hasProblems()) return true;
   const fieldEls = formEl.querySelectorAll('lion-input, lion-textarea');
   for (const el of fieldEls) {
     if (el.hasFeedbackFor && el.hasFeedbackFor.includes('error')) {
@@ -250,6 +272,7 @@ function showUnsaved() {
       names.push(el.label || el.name);
     }
   });
+  if (toolEditor.hasProblems() && !names.includes('Tools (JSON)')) names.push('Tools');
   setStatus(
     names.length ? `Not saved: fix ${names.join(', ')}` : 'Not saved: fix the highlighted fields',
     'error',
@@ -272,14 +295,20 @@ function updatePreview() {
 /* =================================================================== Event listeners */
 
 // Select change
-selectInput.addEventListener('change', () => {
-  if (selectInput.value) {
-    loadProfile(selectInput.value);
+selectInput.addEventListener('change', async () => {
+  const value = selectInput.value;
+  if (value.startsWith(SERVER_PREFIX)) {
+    // Stay on the current profile until the server's one has loaded (or failed to).
+    selectInput.value = currentId ?? '';
+    await openServerPersona(value.slice(SERVER_PREFIX.length));
+  } else if (value) {
+    loadProfile(value);
   } else {
     currentId = null;
     fill({});
     updateActions();
     updatePreview();
+    renderServerCard();
     clearSaveIndicator();
   }
 });
@@ -304,6 +333,7 @@ btnNew.addEventListener('click', () => {
   selectInput.value = '';
   updateActions();
   updatePreview();
+  renderServerCard();
   setStatus('New profile: give it a name and a system prompt to save it.', '', { sticky: true });
   // Focus name field
   const nameField = formEl.querySelector('[name="name"]');
@@ -364,6 +394,7 @@ function deleteProfile() {
     fill({});
     populateSelect();
     updatePreview();
+    renderServerCard();
   }
   setStatus(`Deleted "${name || 'profile'}"`, 'ok');
 }
@@ -516,7 +547,13 @@ const driftBox = document.getElementById('server-drift');
 const driftText = document.getElementById('server-drift-text');
 /** Names from the last successful list load; empty until then. */
 let serverNames = new Set();
-const serverList = document.getElementById('server-list');
+/** The last successful list load: every persona, and which is the server's default. */
+let serverProfiles = [];
+let serverDefault = '';
+let serverLoaded = false;
+const serverItem = document.getElementById('server-item');
+const serverItemName = document.getElementById('server-item-name');
+const serverItemDesc = document.getElementById('server-item-desc');
 const btnServerLoad = document.getElementById('btn-server-load');
 
 function setServerStatus(text, kind = '') {
@@ -538,15 +575,22 @@ async function loadServerList() {
   try {
     const { default: def, profiles } = await listAgentProfiles({ api });
     serverNames = new Set(profiles.map((p) => p.name));
-    renderServerList(profiles, def);
+    serverProfiles = profiles;
+    serverDefault = def;
+    serverLoaded = true;
+    populateSelect();
+    renderServerCard();
     const current = readProfiles().find((p) => p.id === currentId);
     if (current) checkServerCopy(current);
     setServerStatus(profiles.length
       ? `${profiles.length} persona${profiles.length > 1 ? 's' : ''} on ${api}.`
       : `No personas on ${api} yet. Send one to create it.`);
   } catch (err) {
-    serverList.replaceChildren();
     serverNames = new Set();
+    serverProfiles = [];
+    serverLoaded = false;
+    populateSelect();
+    renderServerCard();
     driftBox.hidden = true;
     setServerStatus(err.message, 'error');
   } finally {
@@ -555,27 +599,22 @@ async function loadServerList() {
   }
 }
 
-function renderServerList(profiles, def) {
-  const local = readProfiles();
-  serverList.replaceChildren(...profiles.map(({ name, description }) => {
-    const li = document.createElement('li');
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'server-item';
-    btn.title = `Open "${name}" in the editor`;
-    const title = document.createElement('span');
-    title.className = 'server-item-name';
-    title.textContent = name;
-    if (name === def) title.append(badge('default'));
-    if (localCopyOf(name, local)) title.append(badge('in this browser'));
-    const desc = document.createElement('span');
-    desc.className = 'server-item-desc';
-    desc.textContent = description || 'No description';
-    btn.append(title, desc);
-    btn.addEventListener('click', () => openServerPersona(name, btn));
-    li.append(btn);
-    return li;
-  }));
+/** The server's copy of the selected profile, or a note that it has none. */
+function renderServerCard() {
+  const profile = readProfiles().find((p) => p.id === currentId);
+  if (!serverLoaded || !profile) {
+    serverItem.hidden = true;
+    return;
+  }
+  const name = profile.serverName || slugify(profile.name || '');
+  const onServer = serverProfiles.find((p) => p.name === name);
+  serverItem.hidden = false;
+  serverItem.toggleAttribute('data-missing', !onServer);
+  serverItemName.replaceChildren(name || '(unnamed)');
+  if (onServer && name === serverDefault) serverItemName.append(badge('default'));
+  serverItemDesc.textContent = onServer
+    ? onServer.description || 'No description'
+    : 'Not on the voice server yet. Send it to create it.';
 }
 
 function badge(text) {
@@ -624,8 +663,8 @@ document.getElementById('btn-server-sync').addEventListener('click', (e) => {
 });
 
 /** Fetch one persona and make it the profile being edited, as a local copy. */
-async function openServerPersona(name, btn, { confirm = true } = {}) {
-  btn.disabled = true;
+async function openServerPersona(name, btn = null, { confirm = true } = {}) {
+  if (btn) btn.disabled = true;
   try {
     const ctx = await fetchAgentContext({ api: serverApi(), profile: name });
     const record = recordFromContext(ctx, name);
@@ -656,7 +695,7 @@ async function openServerPersona(name, btn, { confirm = true } = {}) {
   } catch (err) {
     setServerStatus(`Couldn't open "${name}": ${err.message}`, 'error');
   } finally {
-    btn.disabled = false;
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -756,7 +795,7 @@ sendBtn.addEventListener('click', async () => {
       Object.assign(record, { serverName: name, promptSource: 'override' });
       writeProfiles(sent);
     }
-    if (serverList.children.length || serverStatus.dataset.kind === 'error') loadServerList();
+    if (serverLoaded || serverStatus.dataset.kind === 'error') loadServerList();
   } catch (err) {
     if (err.code === 'exists') {
       confirmOverwrite = true;
@@ -801,13 +840,9 @@ function runTest() {
     preview.setAttribute('api', settings.api);
   }
 
-  // Set attributes inherited by TalkieAssistant.
-  if (data.systemPrompt) {
-    preview.setAttribute('system-prompt', data.systemPrompt);
-  }
-  if (data.voice) {
-    preview.setAttribute('voice', data.voice);
-  }
+  // The form is the persona under test. Without this the preview fetches the server's
+  // default /agent/context, whose prompt, voice and greeting win over any attribute.
+  preview.context = toAgentContext(data);
 
   const toolResult = validateTools(data.tools);
   if (toolResult.ok && toolResult.tools.length > 0) {
@@ -896,11 +931,16 @@ renderMockNote(getBackendSettings());
 
 // With a live server expected, show its personas straight away; otherwise wait for Load,
 // so a visitor without one does not get a connection error on arrival.
-setServerStatus('Load the personas your voice server has, and open any of them here.');
+setServerStatus('Load the personas your voice server has, and open any of them from the Profile menu.');
 if (getBackendSettings().backend === 'live') loadServerList();
+
+// The voice list comes from the voice server too; without one, the field says why it is short.
+const VOICE_EMPTY = 'Server default';
+loadVoices(voiceField, serverApi(), VOICE_EMPTY);
 
 // Backend switch → update mock note text, and follow a live server's URL.
 window.addEventListener('talkie-site-backend', ({ detail }) => {
   renderMockNote(detail);
   if (detail.backend === 'live') loadServerList();
+  loadVoices(voiceField, detail.api, VOICE_EMPTY);
 });

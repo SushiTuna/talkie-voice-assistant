@@ -15,7 +15,11 @@
  *   profile        Server agent profile, passed to `${api}/agent/context?profile=`.
  *   system-prompt  Used only when the server has no context route or it fails.
  *   voice          Output voice, when the server context does not name one.
- *   label          Launcher hover label.
+ *   label          Launcher hover label. Default `<heading> · Voice`.
+ *   heading        The assistant's name: the panel's eyebrow and the launcher's accessible
+ *                  name. Default `Product Expert`.
+ *   subtitle       The line on the Start screen. Default `Ask about features, pricing,
+ *                  integrations, or compatibility.` Conversation mode puts `Just talk.` first.
  *   mode           `conversation` (default): the mic stays open and the agent takes turns
  *                  by itself, speaks its greeting and can be talked over. `push-to-talk`:
  *                  Start Recording / Stop & Send, one question at a time.
@@ -63,12 +67,15 @@ const Z_INDEX = '2147483000';
 /** Viewports that get the bottom-sheet layout under `layout="auto"`. */
 const SHEET_QUERY = '(max-width: 600px)';
 
+/** Copy attributes passed on as they are, and the child elements that take each one. */
+const COPY_TARGETS = { heading: ['launcher', 'widget'], subtitle: ['widget'] };
+
 /** Conversation mode ends itself after this much silence unless `idle-timeout` says otherwise. */
 const DEFAULT_IDLE_TIMEOUT_S = 60;
 
 export class TalkieAssistant extends HTMLElement {
   static get observedAttributes() {
-    return ['label', 'layout'];
+    return ['label', 'layout', ...Object.keys(COPY_TARGETS)];
   }
 
   /** @type {HTMLElement | null} */ #launcher = null;
@@ -176,6 +183,8 @@ export class TalkieAssistant extends HTMLElement {
     this.#sheetQuery?.addEventListener?.('change', this._applyLayout);
     this._applyLayout();
 
+    for (const name of Object.keys(COPY_TARGETS)) this.#forwardCopy(name, this.getAttribute(name));
+
     this.append(this.#launcher, this.#widget);
     this.addEventListener('talkie-launch', this._onLaunch);
     this.#widget.addEventListener('talkie-open', this._onOpen);
@@ -189,7 +198,7 @@ export class TalkieAssistant extends HTMLElement {
 
     // Fetched ahead of the first open so opening is not held up by it. Cheap, and it
     // mints nothing: the token is only requested once the widget opens.
-    this.#context = this.#fetchContext().then((ctx) => (this.#contextValue = ctx));
+    this.#context = Promise.resolve(this._loadContext()).then((ctx) => (this.#contextValue = ctx));
   }
 
   disconnectedCallback() {
@@ -218,6 +227,16 @@ export class TalkieAssistant extends HTMLElement {
     if (name === 'label' && this.#launcher) {
       if (value === null) this.#launcher.removeAttribute('label');
       else this.#launcher.setAttribute('label', value);
+    }
+    if (name in COPY_TARGETS && this.#widget) this.#forwardCopy(name, value);
+  }
+
+  /** Set (or, for null, remove) a copy attribute on the children that show it. */
+  #forwardCopy(name, value) {
+    const children = { launcher: this.#launcher, widget: this.#widget };
+    for (const target of COPY_TARGETS[name]) {
+      if (value === null) children[target].removeAttribute(name);
+      else children[target].setAttribute(name, value);
     }
   }
 
@@ -390,6 +409,15 @@ export class TalkieAssistant extends HTMLElement {
   }
 
   /** @returns {Promise<object | null>} The server's agent context, or null without one. */
+  /**
+   * The session's persona: the server's `/agent/context` reply, or null for the fallback.
+   * A seam for tests and subclasses; not part of the public API.
+   * @returns {Promise<object | null> | object | null}
+   */
+  _loadContext() {
+    return this.#fetchContext();
+  }
+
   async #fetchContext() {
     try {
       const res = await fetch(this.contextUrl);

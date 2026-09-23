@@ -1,7 +1,9 @@
 /**
- * The voice server's agent profiles (personas): list them, read one, save one.
+ * The voice server's agent profiles (personas): list them, read one, save one; and the output
+ * voices a profile can use.
  *
  *   GET ${api}/agent/profiles                → listAgentProfiles
+ *   GET ${api}/agent/voices                  → listVoices
  *   GET ${api}/agent/context?profile=<name>  → fetchAgentContext
  *   PUT ${api}/agent/profiles/{name}         → saveAgentProfile
  *
@@ -70,6 +72,27 @@ export async function listAgentProfiles({ api, fetch: doFetch = globalThis.fetch
     profiles: profiles
       .filter((p) => p && typeof p.name === 'string')
       .map((p) => ({ name: p.name, description: typeof p.description === 'string' ? p.description : '' })),
+  };
+}
+
+/**
+ * The output voices the server's agent can speak with. The vendor has no endpoint for this,
+ * so the voice server serves its list; a client never hard-codes one.
+ *
+ * @param {object} opts
+ * @param {string} opts.api
+ * @param {typeof fetch} [opts.fetch]
+ * @returns {Promise<{ default: string, voices: Array<{ id: string, language: string, accent: string }> }>}
+ */
+export async function listVoices({ api, fetch: doFetch = globalThis.fetch }) {
+  const body = await request(doFetch, api, '/agent/voices');
+  const voices = Array.isArray(body?.voices) ? body.voices : [];
+  const text = (x) => (typeof x === 'string' ? x : '');
+  return {
+    default: text(body?.default),
+    voices: voices
+      .filter((v) => v && typeof v.id === 'string' && v.id)
+      .map((v) => ({ id: v.id, language: text(v.language), accent: text(v.accent) })),
   };
 }
 

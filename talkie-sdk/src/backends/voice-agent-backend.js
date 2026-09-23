@@ -1282,9 +1282,23 @@ export class VoiceAgentBackend {
         // turn that is over or cancelled still gets a result — the agent waits on one — but
         // it is not run, and the reply it triggers is dropped rather than leaking into the
         // caller's next question.
+        // The vendor can also send a call with no reply.started before it. In a conversation a
+        // finished turn is only the previous answer, not a cancelled question, so the call
+        // opens the new question's turn.
+        if (this.#conv && this.#turn?.settled && !this.#discarding) this.#turn = null;
         const live = !this.#discarding && !this.#turn?.settled;
         // No turn yet means no reply event since the press: the call is this question's.
-        if (live) this.#beginTurn().awaitingFollowUp = true;
+        if (live) {
+          const turn = this.#beginTurn();
+          turn.awaitingFollowUp = true;
+          // Nothing has told the widget a reply began, and the follow-up only continues this
+          // turn, so without this it would wait on "Understanding…" forever.
+          const conv = this.#conv;
+          if (conv && conv.replyTurn !== turn && !conv.waiting.includes(turn)) {
+            if (conv.replyTurn) conv.waiting.push(turn);
+            else this.#playConversationReply(turn);
+          }
+        }
         this.#runTool(evt, { live });
         break;
       }

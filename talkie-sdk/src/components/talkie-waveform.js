@@ -157,7 +157,7 @@ export class TalkieWaveform extends LitElement {
     if (!ctx) return;
     const W = this._canvasWidth;
     const H = this.clientHeight || 72;
-    const c = this.color || '#ff8a4c';
+    const c = this._pageColor() || this.color || '#ff8a4c';
     const N = this._bars.length;
 
     this._time += 0.09;
@@ -183,6 +183,14 @@ export class TalkieWaveform extends LitElement {
       ctx.lineTo(px, py + h);
       ctx.stroke();
     }
+  }
+
+  /**
+   * A page's --talkie-wave-color, which wins over `color` as it does for the static bars.
+   * The canvas can't read CSS, so this is looked up each frame and a theme change shows at once.
+   */
+  _pageColor() {
+    return getComputedStyle(this).getPropertyValue('--talkie-wave-color').trim();
   }
 
   /* ── Static bar field (Fix 5) ───────────────── */

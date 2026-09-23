@@ -2,7 +2,7 @@
  * Tests for the voice server profile client: list, fetch and save.
  */
 
-import { listAgentProfiles, fetchAgentContext, saveAgentProfile, AgentProfileError } from '../src/core/agent-profiles.js';
+import { listAgentProfiles, listVoices, fetchAgentContext, saveAgentProfile, AgentProfileError } from '../src/core/agent-profiles.js';
 
 let passed = 0;
 let failed = 0;
@@ -104,6 +104,25 @@ for (const [status, code] of [[401, 'unauthorized'], [403, 'disabled'], [409, 'e
 
   const err = await rejection(fetchAgentContext({ api: 'x', profile: 'nope', fetch: fakeFetch(404, { detail: "No profile 'nope'" }) }));
   check('a missing profile is code "not-found" with the server\'s message', err?.code === 'not-found' && err.message.includes('nope'), err?.message);
+}
+
+{
+  const f = fakeFetch(200, { default: 'anna', voices: [
+    { id: 'anna', language: 'English', accent: 'British' },
+    { id: 'lola', language: 'Spanish' },
+    { language: 'no id' }, null,
+  ] });
+  const list = await listVoices({ api: 'http://localhost:8000/', fetch: f });
+  check('listVoices GETs /agent/voices', f.calls[0].url === 'http://localhost:8000/agent/voices' && !f.calls[0].init?.method, f.calls[0].url);
+  check('...returns the default voice', list.default === 'anna');
+  check('...and each voice, with an empty accent when missing and junk dropped',
+    list.voices.length === 2 && list.voices[1].id === 'lola' && list.voices[1].accent === '', JSON.stringify(list.voices));
+
+  const empty = await listVoices({ api: 'x', fetch: fakeFetch(200, {}) });
+  check('an unexpected voices body gives an empty list, not a crash', empty.voices.length === 0 && empty.default === '');
+
+  const err = await rejection(listVoices({ api: 'x', fetch: fakeFetch(404, { detail: 'Not Found' }) }));
+  check('a server without the route is code "not-found"', err?.code === 'not-found', err?.message);
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);

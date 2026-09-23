@@ -3,6 +3,7 @@ import { ScopedElementsMixin } from '@open-wc/scoped-elements';
 import { svg } from 'lit-html';
 import { LionIcon } from '@lion/ui/icon.js';
 import { LionButton } from '@lion/ui/button.js';
+import { STATE_COLORS } from '../core/state-colors.js';
 
 /** Mixin-applied base class for scoped element composition. */
 const ScopedLitElement = ScopedElementsMixin(LitElement);
@@ -20,15 +21,6 @@ function iconTalking() {
   return html`<span class="talking" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>`;
 }
 
-/** Stroke colour of the waves per conversation state (matches the widget's state colours). */
-const WAVE_COLORS = {
-  idle: '#5fd9c6',
-  listening: '#ff8a4c',
-  transcribing: '#ffc96b',
-  thinking: '#7fb5ff',
-  speaking: '#8be28b',
-  error: '#ff6b6b',
-};
 
 /**
  * Floating mic launcher button with pulse ring, floaty animation, hover label,
@@ -36,6 +28,10 @@ const WAVE_COLORS = {
  */
 export class TalkieLauncher extends ScopedLitElement {
   static properties = {
+    // The assistant's name: the button's accessible name says "Open <heading>", and the hover
+    // label defaults to "<heading> · Voice". <talkie-assistant> passes its own `heading` on.
+    heading: { type: String, reflect: true, useDefault: true },
+    // Hover label. Unset (or removed), it follows `heading`; the getter below supplies that.
     label:  { type: String, attribute: 'label' },
     open:   { type: Boolean, reflect: true },
     nudged: { type: Boolean, reflect: true },
@@ -60,7 +56,6 @@ export class TalkieLauncher extends ScopedLitElement {
         z-index: 60;
         width: 60px;
         height: 60px;
-        --talkie-launcher-bg: linear-gradient(145deg, #6ee7d4, #1c7f70);
       }
       :host([open]) {
         opacity: 0;
@@ -126,7 +121,7 @@ export class TalkieLauncher extends ScopedLitElement {
         white-space: nowrap;
         background: #101d20;
         color: #eaf4f1;
-        font-family: monospace;
+        font-family: var(--talkie-font-mono, monospace);
         font-size: 11px;
         letter-spacing: 1px;
         padding: 9px 14px;
@@ -161,7 +156,7 @@ export class TalkieLauncher extends ScopedLitElement {
         white-space: nowrap;
         background: #ff8a4c;
         color: #20100a;
-        font-family: 'Space Grotesk', sans-serif;
+        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
         font-weight: 600;
         font-size: 12.5px;
         padding: 9px 14px;
@@ -195,6 +190,9 @@ export class TalkieLauncher extends ScopedLitElement {
       :host([active]) .launcher-btn { animation: none; }
       :host([active]) .launcher-btn::after { display: none; }
       :host([active]) .nudge-toast { display: none; }
+      /* --_wave is the state's colour, set per render; a page's --talkie-wave-color wins. */
+      .waves .ring { stroke: var(--talkie-wave-color, var(--_wave)); }
+      .waves stop { stop-color: var(--talkie-wave-color, var(--_wave)); }
       .waves .ring {
         fill: none;
         stroke-width: 2.5;
@@ -262,9 +260,21 @@ export class TalkieLauncher extends ScopedLitElement {
     `;
   }
 
+  /** @type {string | null | undefined} An explicitly set hover label */
+  #label = null;
+
+  // Lit wraps these accessors, so setting `label` still requests an update.
+  get label() {
+    return this.#label ?? `${this.heading} · Voice`;
+  }
+
+  set label(value) {
+    this.#label = value;
+  }
+
   constructor() {
     super();
-    this.label = 'Product Expert · Voice';
+    this.heading = 'Product Expert';
     this.open  = false;
     this.nudged = false;
     this.active = false;
@@ -307,7 +317,7 @@ export class TalkieLauncher extends ScopedLitElement {
         ${this.nudged ? html`<div class="nudge-toast">Have a question? Tap to ask.</div>` : ''}
         <span class="hover-label">${this.active ? 'Conversation on · tap to open' : this.label}</span>
         <lion-button class="launcher-btn"
-            aria-label=${this.active ? 'Open the voice assistant, the conversation is still on' : 'Open Product Expert'}>
+            aria-label=${this.active ? 'Open the voice assistant, the conversation is still on' : `Open ${this.heading}`}>
           ${this.active && this.state === 'speaking' ? iconTalking() : iconMic()}
         </lion-button>
       </div>
@@ -316,18 +326,19 @@ export class TalkieLauncher extends ScopedLitElement {
 
   /** Plain circles rippling out from the button, coloured by the conversation state. */
   _renderWaves() {
-    const color = WAVE_COLORS[this.state] ?? WAVE_COLORS.idle;
-    return html`<svg class="waves" viewBox="0 0 152 152" aria-hidden="true">
+    // The same colours as the widget's (core/state-colors.js).
+    const color = STATE_COLORS[this.state] ?? STATE_COLORS.idle;
+    return html`<svg class="waves" viewBox="0 0 152 152" aria-hidden="true" style=${`--_wave: ${color}`}>
       <defs>
         <radialGradient id="tl-glow">
-          <stop offset="55%" stop-color=${color} stop-opacity=".55"/>
-          <stop offset="100%" stop-color=${color} stop-opacity="0"/>
+          <stop offset="55%" stop-opacity=".55"/>
+          <stop offset="100%" stop-opacity="0"/>
         </radialGradient>
       </defs>
       <circle class="glow" cx="76" cy="76" r="56" fill="url(#tl-glow)"/>
-      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
-      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
-      <circle class="ring" cx="76" cy="76" r="62" stroke=${color}/>
+      <circle class="ring" cx="76" cy="76" r="62"/>
+      <circle class="ring" cx="76" cy="76" r="62"/>
+      <circle class="ring" cx="76" cy="76" r="62"/>
     </svg>`;
   }
 }

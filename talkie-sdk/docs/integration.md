@@ -8,7 +8,7 @@ All frameworks share the same runtime API: properties in, events out.
 The fastest route, and the only one that needs no bundler. Build the one-file bundle:
 
 ```bash
-npm run build        # → dist/talkie-embed.js (~88 KiB, every dependency inlined)
+npm run build        # → dist/talkie-embed.js (~119 KiB, every dependency inlined)
 ```
 
 Host that file anywhere your page can load it, then add two lines:
@@ -30,12 +30,24 @@ Closing the panel, removing the element or leaving the page ends the agent sessi
 | `profile` | server default | Agent profile, sent as `?profile=` to `/agent/context` |
 | `system-prompt` | a short generic prompt | Used only when `/agent/context` is missing or fails |
 | `voice` | server's, else `anna` | Output voice |
-| `label` | `Product Expert · Voice` | Launcher hover label |
+| `heading` | `Product Expert` | The assistant's name: the eyebrow at the top of the panel, and the launcher's accessible name (`Open Product Expert`) |
+| `subtitle` | `Ask about features, pricing, integrations, or compatibility.` | The line on the Start screen. Conversation mode shows it as `Just talk. <subtitle>`, and after ending for silence it says why instead |
+| `label` | `<heading> · Voice` | Launcher hover label |
 | `mode` | `conversation` | `conversation`: hands-free, the agent takes turns, greets, can be interrupted. `push-to-talk`: Start / Stop & Send |
 | `idle-timeout` | `60` | Conversation mode: seconds of silence before the conversation (and the mic stream) ends; `0` never |
 | `barge-in` | on | `off` stops the caller interrupting a reply by talking; try it if the agent cuts itself off on loudspeakers |
 | `layout` | `auto` | `auto`: a bottom sheet on phones (≤600px wide), a floating panel elsewhere. `sheet` / `floating` force one. Lift the sheet above a bottom bar with `--talkie-sheet-offset-bottom` |
 | `fonts` | off | `google` loads Space Grotesk + Instrument Sans from Google Fonts |
+
+`heading` and `subtitle` are also attributes (and reflected properties) of `<talkie-widget>`,
+and `heading` of `<talkie-launcher>`, for apps that mount those directly:
+
+```html
+<talkie-widget heading="Travel Guide" subtitle="Ask about destinations, visas, or packing."></talkie-widget>
+```
+
+The eyebrow attribute is `heading`, not `title`: `title` is a global HTML attribute, and the
+browser would show it as a tooltip over the whole panel.
 
 `fonts` is opt-in because the request sends each visitor's IP address to Google; without it the
 widget falls back to the page's sans-serif. Script access: `el.open()`, `el.close()`,
@@ -103,7 +115,7 @@ TALKIE_ALLOWED_ORIGINS="http://localhost:8081,http://localhost:5173" \
 npm run example      # builds, then serves on :5173
 ```
 
-Open `http://localhost:5173/examples/embed.html`.
+Open `http://localhost:5173/examples/embed`.
 
 ## Module import (apps with a bundler)
 

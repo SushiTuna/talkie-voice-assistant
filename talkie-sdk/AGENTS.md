@@ -53,7 +53,7 @@ Breaking any of these is a defect even if every test passes.
 - MUST NOT hard-code a Google Fonts `<link>` into a component. Fonts are optional with system
   fallbacks; `<talkie-assistant fonts="google">` is the only opt-in path.
 - MUST NOT add runtime dependencies without the human's approval. Current: `lit`, `@lion/ui`,
-  `@open-wc/scoped-elements`. Dev: `esbuild`. No test framework — plain `node tests/*.mjs`.
+  `@open-wc/scoped-elements`. Dev: `esbuild`, `marked` (site docs), `hono` + `@hono/node-server` (`server.mjs`). No test framework — plain `node tests/*.mjs`.
 
 **Safety**
 - MUST NOT use `innerHTML` (or `insertAdjacentHTML`, `outerHTML`) with interpolated values —
@@ -92,11 +92,11 @@ Verified on **Node v26.9.0**, macOS, zsh. Run everything from `talkie-sdk/`.
 | Command | What it does | Notes |
 |---|---|---|
 | `npm install` | Install deps | Once. `node_modules/` is gitignored. |
-| `npm test` | All ten suites, sequentially, fail-fast | ~40 s. `mock-backend.mjs` alone takes ~28 s (real timers) — that is not a hang. Exit code is the verdict. |
+| `npm test` | All thirteen suites, sequentially, fail-fast | ~40 s. `mock-backend.mjs` alone takes ~28 s (real timers) — that is not a hang. Exit code is the verdict. |
 | `node tests/<name>.mjs` | One suite | Use while iterating. |
-| `npm run build` | `dist/talkie-embed.js` + `.map` via `build.mjs` | IIFE, minified, `globalName: 'Talkie'`, ~88 KiB. |
-| `npm start` | Demo server on `:8081` | `/` redirects to `/demo/index.html`. |
-| `npm run example` | Build, then serve on `:5173` | Open `/examples/embed.html`. Second origin on purpose (CORS). |
+| `npm run build` | `dist/talkie-embed.js` + `.map` via `build.mjs` | IIFE, minified, `globalName: 'Talkie'`, ~119 KiB. |
+| `npm start` | Dev server on `:8081` (Hono, `server.mjs`) | `/` → the site (`/site/`); the demo is `/demo/`. Clean URLs: `/site/playground`, and `*.html` 301s to them. Serves only `PUBLIC` paths, no dotfiles; binds `127.0.0.1` (`HOST=0.0.0.0` to open it up). |
+| `npm run example` | Build, then serve on `:5173` | Open `/examples/embed`. Second origin on purpose (CORS). |
 
 **`server.mjs` bundles `demo/demo.js` once, at startup.** After editing anything under `src/` or
 `demo/`, restart the demo server or you will be testing stale code. `npm run example` rebuilds the
@@ -113,6 +113,7 @@ checkout is, **ask** — do not guess or scaffold one. What this SDK relies on f
 | `GET /agent/token` | `VoiceAgentBackend` — returns `{ token, expires_in_seconds }` (default 300) |
 | `GET /agent/context[?profile=]` | demo scenarios 8–9, `<talkie-assistant>`, `fetchAgentContext` — `{ profile, description, system_prompt, keyterms, voice, greeting, tools, prompt_source }`; `greeting` is passed only in conversation mode (README explains); `tools` are used only when the page sets none |
 | `GET /agent/profiles` | `listAgentProfiles` (site console and playground) — `{ default, profiles: [{ name, description }] }` |
+| `GET /agent/voices` | `listVoices` (site console and playground Voice fields) — `{ default, voices: [{ id, language, accent }] }`; the vendor has no voices endpoint, so the server keeps the documented list |
 | `PUT /agent/profiles/{name}[?overwrite=true]` | `saveAgentProfile` (site console) — Bearer `TALKIE_PROFILE_ADMIN_TOKEN`; 403 when unset, 401 wrong token, 409 exists without `overwrite` |
 | `POST /chat/session`, `GET /stt/token`, `POST /chat/ask`, `POST /tts`, `POST /chat/session/{id}/end` | `HttpBackend` (README documents shapes) |
 
@@ -141,7 +142,7 @@ talkie-sdk/
   site/                     web UI: index, playground, console, docs pages; sources in site/src/
   package.json              scripts, exports map
   build.mjs                 esbuild → dist/talkie-embed.js (IIFE)
-  server.mjs                zero-dep static server; bundles the demo at startup
+  server.mjs                dev server (Hono): clean URLs, PUBLIC allow-list, no dotfiles; bundles the demo at startup
   demo/index.html, demo.js  review harness: state rail, event log, 9 scenarios (9 = conversation)
   examples/embed.html       a "foreign" host page using only the embed bundle
   src/
@@ -149,7 +150,8 @@ talkie-sdk/
     embed.js                embed entry: registers all elements, exposes window.Talkie
     core/state-machine.js   StateMachine, VALID_STATES, ERROR_REASONS, TRANSITIONS
     core/backend.js         TalkieBackendError, BACKEND_ERROR_REASONS, contract JSDoc
-    core/agent-profiles.js  listAgentProfiles, fetchAgentContext, saveAgentProfile, AgentProfileError
+    core/agent-profiles.js  listAgentProfiles, listVoices, fetchAgentContext, saveAgentProfile, AgentProfileError
+    core/state-colors.js    STATE_COLORS: one colour per state, shared by the widget and launcher
     backends/mock-backend.js        MockBackend, SCRIPT, chunkText
     backends/http-backend.js        HttpBackend
     backends/voice-agent-backend.js VoiceAgentBackend (+ private ReplyTurn class)
@@ -325,7 +327,7 @@ Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release.
   It creates `<talkie-launcher>` and `<talkie-widget>` with `document.createElement`, so it depends
   on them being **globally** registered; `src/define/talkie-assistant.js` imports their define files
   first. Attributes: `api` (default `http://localhost:8000`), `token-url`, `profile`,
-  `system-prompt`, `voice`, `label`, `fonts="google"`. It fetches `/agent/context` on connect,
+  `system-prompt`, `voice`, `label`, `heading`, `subtitle`, `fonts="google"`. It fetches `/agent/context` on connect,
   `mode` (default `conversation`), `idle-timeout` (default 60), `barge-in="off"`. It
   builds a fresh `VoiceAgentBackend` on each open (conversation: `greeting` from the context and
   `bargeIn`; push-to-talk: neither) (in the widget's `talkie-open` handler, so any
@@ -389,7 +391,10 @@ Styles are in `static get styles()` of the component. Use the existing tokens:
 `--talkie-launcher-offset-right`, `--talkie-launcher-offset-bottom`, `--talkie-sheet-offset-bottom`,
 `--talkie-wave-height`,
 `--talkie-wave-color`, `--talkie-wave-bar-count`, `--talkie-wave-bar-width`,
-`--talkie-wave-container-width`, `--talkie-wave-static-height`. Spacing inside a `lion-button`
+`--talkie-wave-container-width`, `--talkie-wave-static-height`. `TalkieWidget` reads each public
+token once, into a private `--_*` token on `:host` (`--_ink`, `--_paper`, `--_state`, …); style
+with those, and derive tints from the ink (`color-mix`) rather than hard-coding a colour, or a
+dark theme breaks. State colours live in `src/core/state-colors.js`. Spacing inside a `lion-button`
 must be a margin on the child, not a `gap` on the button (§11). Add a CSS guard to
 `tests/components.mjs` if the fix is easy to regress (see the existing `layout guard:` checks).
 Visual correctness itself can only be judged in a browser — say so in your report.
@@ -414,18 +419,19 @@ exits non-zero stops the run.
 |---|---|---|
 | `state-machine.mjs` | 41 | legal/illegal transitions, reasons, change events, cancel, reset |
 | `mock-backend.mjs` | 42 | scripted answers, abort (~28 s, real timers) |
-| `components.mjs` | 48 | registration, styles, layout guards, widget flows, conversation mode |
+| `components.mjs` | 61 | registration, styles, layout and theme guards, widget flows, conversation mode |
 | `pcm-worklet.mjs` | 15 | downsampling worklet |
 | `http-backend.mjs` | 50 | HttpBackend against stubs |
 | `pcm-codec.mjs` | 25 | base64, silence, WAV |
 | `pcm-player.mjs` | 30 | scheduling, stalls, position, stop/drain |
-| `voice-agent-backend.mjs` | 209 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
-| `talkie-assistant.mjs` | 64 | embed element wiring, tools properties and server-profile tools, modes |
-| `agent-profiles.mjs` | 24 | list / fetch / save profile client against a fake `fetch`: URLs, auth header, error codes |
+| `voice-agent-backend.mjs` | 212 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
+| `talkie-assistant.mjs` | 68 | embed element wiring, tools properties and server-profile tools, modes |
+| `agent-profiles.mjs` | 29 | list profiles and voices / fetch / save profile client against a fake `fetch`: URLs, auth header, error codes |
 | `embed-bundle.mjs` | 9 | runs `build.mjs`, boots the bundle as a classic script |
-| `site.mjs` | 52 | site pure modules (snippet, profile converters), page markup, `build-site.mjs` output |
+| `server.mjs` | 42 | dev server routes: redirects, clean URLs, MIME types, the allow-list and dotfiles, every site link lands on a page |
+| `site.mjs` | 134 | site pure modules (snippet, profile converters, tool editor model incl. enum), the console's tool list and dialog against a fake DOM, page markup and CSS guards, `build-site.mjs` output |
 
-Total **609**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
+Total **758**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
 
 ### 8.2 Conventions
 - No framework. Each file defines `check(name, condition, detail)` and counts passes/failures.
@@ -462,7 +468,7 @@ live behaviour. Say which of these your change touches, so the human can check t
 | Port | Process | Start |
 |---|---|---|
 | 8000 | voice server (separate project) | §3 |
-| 8081 | demo (`server.mjs`) | `npm start` |
+| 8081 | site + demo (`server.mjs`) | `npm start` |
 | 5173 | example host page (`server.mjs`, `PORT=5173`) | `npm run example` |
 
 Find and stop: `lsof -ti :8081 -sTCP:LISTEN` then `kill <pid>`. Before killing a process on 8000,

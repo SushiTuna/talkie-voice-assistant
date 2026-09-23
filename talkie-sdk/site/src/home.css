@@ -1,12 +1,28 @@
 /* ------------------------------------------------------------------- hero */
 
 #main:focus { outline: none; }
+/* The hero glow reaches past the column; clip it without making #main a scroll box. */
+#main { overflow-x: clip; }
 
 .home-hero {
+  position: relative;
+  isolation: isolate;
   text-align: center;
-  padding: 4.5rem 1rem 3rem;
-  max-width: 680px;
+  padding: 5rem 1rem 3.5rem;
+  max-width: 720px;
   margin: 0 auto;
+}
+
+/* A soft teal glow behind the headline, echoing the launcher. Decorative only. */
+.home-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 -20vw;
+  z-index: -1;
+  background:
+    radial-gradient(40rem 18rem at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    radial-gradient(22rem 12rem at 80% 30%, color-mix(in srgb, #ff8a4c 10%, transparent), transparent 70%);
+  pointer-events: none;
 }
 
 .home-hero .eyebrow {
@@ -21,10 +37,11 @@
 }
 
 .home-hero h1 {
-  font-size: clamp(2rem, 5vw, 3rem);
-  font-weight: 750;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-wrap: balance;
   margin: 0 0 1rem;
   color: var(--ink);
 }
@@ -34,6 +51,7 @@
   color: var(--ink-soft);
   margin: 0 auto 2rem;
   max-width: 34rem;
+  text-wrap: pretty;
 }
 
 .home-hero .btn-row {
@@ -45,9 +63,10 @@
 }
 
 .btn-lg {
-  min-height: 2.75rem;
-  padding: 0.6rem 1.3rem;
+  min-height: 2.9rem;
+  padding: 0.6rem 1.4rem;
   font-size: 1rem;
+  border-radius: 999px;
 }
 
 .home-hero .demo-note {
@@ -66,8 +85,8 @@
 
 .home-section h2 {
   font-size: 1.6rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 750;
+  letter-spacing: -0.02em;
   margin: 0 0 1.25rem;
 }
 
@@ -83,9 +102,10 @@
 .how-it-works-steps > * {
   counter-increment: step;
   min-width: 0;
-  background: var(--surface);
+  background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: 1.25rem;
 }
 
@@ -105,8 +125,8 @@
   line-height: 28px;
   text-align: center;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-ink);
+  background: var(--accent-soft);
+  color: var(--accent);
   font-weight: 700;
   font-size: 0.8rem;
 }
@@ -137,10 +157,21 @@
 }
 
 .feature-card {
-  background: var(--surface);
+  background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   padding: 1.1rem 1.25rem;
+}
+/* A short accent rule above each title, to give the grid a rhythm. */
+.feature-card h3::before {
+  content: "";
+  display: block;
+  width: 1.5rem;
+  height: 3px;
+  margin-bottom: 0.7rem;
+  border-radius: 3px;
+  background: var(--accent);
 }
 
 .feature-card h3 {
@@ -192,24 +223,30 @@
 .good-to-know lion-accordion {
   display: block;
   border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
 }
 
-.good-to-know lion-accordion [slot="invoker"] {
+/* lion-accordion re-slots its children at upgrade and tags them .invoker / .content. */
+.good-to-know lion-accordion > .invoker,
+.good-to-know lion-accordion > [slot="invoker"] {
   margin: 0;
   font-size: 1rem;
   border-top: 1px solid var(--line);
 }
-.good-to-know lion-accordion [slot="invoker"]:first-of-type {
+.good-to-know lion-accordion > .invoker:first-of-type,
+.good-to-know lion-accordion > [slot="invoker"]:first-of-type {
   border-top: 0;
 }
 
-.good-to-know lion-accordion [slot="content"] {
+.good-to-know lion-accordion > .content,
+.good-to-know lion-accordion > [slot="content"] {
   padding: 0 0.9rem 0.9rem;
   color: var(--ink-soft);
   font-size: 0.925rem;
 }
+/* Lion hides collapsed panels itself, but only once upgraded. */
+.good-to-know lion-accordion:not(:defined) > [slot="content"] { display: none; }
 
 /* ------------------------------------------------------------------- footer */
 

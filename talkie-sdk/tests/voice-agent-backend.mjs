@@ -1067,6 +1067,45 @@ async function testConversationToolTurnIsOneReply() {
   });
 }
 
+// The docs don't promise reply.started before tool.call. Without one, the widget used to sit
+// on "Understanding…" forever: the follow-up only continued a turn nobody had announced, and
+// on a later turn the previous answer's settled turn made the call look cancelled.
+async function testConversationToolCallWithoutReplyStarted() {
+  await withBrowser(async () => {
+    const calls = [];
+    const b = makeBackend({ bargeIn: true, onToolCall: (call) => { calls.push(call.name); return { ok: true }; } });
+    const c = await startConversation(b);
+    const { ws } = c;
+    const toolTurn = async (id) => {
+      ws.frame({ type: 'transcript.user', text: 'Nearby hospital, police stations' });
+      ws.frame({ type: 'tool.call', call_id: `c${id}`, name: 'find_places', arguments: {} });
+      ws.frame({ type: 'reply.done', status: 'completed' });
+      await tick(40);
+      ws.frame({ type: 'reply.started', reply_id: `r${id}` });
+      ws.frame({ type: 'transcript.agent', text: 'Here they are.', reply_id: `r${id}` });
+      ws.frame({ type: 'reply.done', status: 'completed' });
+      await tick(40);
+    };
+
+    await toolTurn(1);
+    let t = types(c.events).join(',');
+    check('conversation: a tool call with no reply.started still starts a reply for the widget',
+      t === 'user-transcript,reply-start,reply-word,reply-end' && c.events[2].text === 'Here they are.', t);
+
+    c.events.length = 0;
+    await toolTurn(2);
+    t = types(c.events).join(',');
+    check('conversation: ...on a later turn too, after an answer has finished',
+      t === 'user-transcript,reply-start,reply-word,reply-end', t);
+    check('conversation: ...and that later call is run, not refused as cancelled',
+      calls.length === 2 && ws.sentOf('tool.result').at(-1)?.result === '{"ok":true}',
+      JSON.stringify(ws.sentOf('tool.result').at(-1)));
+    c.ctrl.abort();
+    await c.running;
+    b.dispose();
+  });
+}
+
 async function testConversationQueuesOverlappingReplies() {
   await withBrowser(async ({ contexts }) => {
     const b = makeBackend({ bargeIn: true });
@@ -1770,6 +1809,7 @@ await testConversationInterrupt();
 await testConversationIdleTimeout();
 await testConversationSocketDrop();
 await testConversationToolTurnIsOneReply();
+await testConversationToolCallWithoutReplyStarted();
 await testConversationQueuesOverlappingReplies();
 await testTokenIsCachedThenConsumed();
 await testExpiredTokenIsRefetched();

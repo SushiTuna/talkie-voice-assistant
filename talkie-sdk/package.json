@@ -28,7 +28,7 @@
     "build:site": "node build-site.mjs",
     "example": "node build.mjs && PORT=5173 node server.mjs",
     "site": "node build.mjs && node build-site.mjs && node server.mjs",
-    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs && node tests/pcm-codec.mjs && node tests/pcm-player.mjs && node tests/voice-agent-backend.mjs && node tests/talkie-assistant.mjs && node tests/agent-profiles.mjs && node tests/embed-bundle.mjs && node tests/site.mjs"
+    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs && node tests/pcm-codec.mjs && node tests/pcm-player.mjs && node tests/voice-agent-backend.mjs && node tests/talkie-assistant.mjs && node tests/agent-profiles.mjs && node tests/embed-bundle.mjs && node tests/site.mjs && node tests/server.mjs"
   },
   "dependencies": {
     "@lion/ui": "^0.21.1",
@@ -36,7 +36,9 @@
     "lit": "^3.3.3"
   },
   "devDependencies": {
+    "@hono/node-server": "^2.1.1",
     "esbuild": "^0.28.2",
+    "hono": "^4.13.8",
     "marked": "^18.0.13"
   },
   "license": "ISC"

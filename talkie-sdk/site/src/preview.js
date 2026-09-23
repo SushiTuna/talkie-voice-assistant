@@ -20,6 +20,18 @@ export class TalkiePreview extends TalkieAssistant {
     return this.backendMode === 'mock' ? 'push-to-talk' : super.mode;
   }
 
+  /**
+   * A persona to use in place of the server's `/agent/context` reply, in that reply's shape
+   * (see `toAgentContext`). Set it before the element is connected. Without it the server's
+   * `profile` (or its default one) loads, as it does for `<talkie-assistant>`.
+   * @type {object | null}
+   */
+  context = null;
+
+  _loadContext() {
+    return this.context ?? super._loadContext();
+  }
+
   _createBackend(options) {
     if (this.backendMode === 'live') return super._createBackend(options);
     const backend = new MockBackend();

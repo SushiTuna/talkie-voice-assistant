@@ -12,6 +12,8 @@ export const DEFAULTS = {
   profile: '',
   'system-prompt': '',
   voice: '',
+  heading: '',
+  subtitle: '',
   label: '',
   mode: 'conversation',
   'idle-timeout': '60',

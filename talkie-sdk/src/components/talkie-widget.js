@@ -1,4 +1,4 @@
-import { css, html } from 'lit';
+import { css, html, unsafeCSS } from 'lit';
 import { ScopedElementsMixin } from '@open-wc/scoped-elements';
 import { svg } from 'lit-html';
 import { LionButton } from '@lion/ui/button.js';
@@ -6,6 +6,7 @@ import { LitElement } from 'lit';
 import { TalkieTranscript } from './talkie-transcript.js';
 import { TalkieWaveform } from './talkie-waveform.js';
 import { StateMachine } from '../core/state-machine.js';
+import { STATE_COLORS, NEUTRAL_STATE_COLOR, stateColor } from '../core/state-colors.js';
 
 /** Minimum dwell time so the user actually sees the transcribing state. */
 const MIN_TRANSCRIBE_DWELL_MS = 700;
@@ -54,8 +55,8 @@ const ERROR_MESSAGES = /** @type {Record<string,{title:string;sub:string}>} */ (
 /** Mixin-applied base class for scoped element composition. */
 const ScopedLitElement = ScopedElementsMixin(LitElement);
 
-function iconMic() {
-  return svg`<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+function iconMic(size = 17) {
+  return svg`<svg width=${size} height=${size} aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="9" y="2" width="6" height="11" rx="3"/>
     <path d="M5 10v2a7 7 0 0 0 14 0v-2"/>
     <line x1="12" y1="19" x2="12" y2="22"/>
@@ -63,10 +64,20 @@ function iconMic() {
 }
 
 function iconMinimize() {
-  return svg`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+  return svg`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
     <line x1="6" y1="18" x2="18" y2="18"/>
   </svg>`;
 }
+
+function iconClose() {
+  return svg`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">
+    <path d="M6 6l12 12M18 6L6 18"/>
+  </svg>`;
+}
+
+/** Default copy for the `heading` and `subtitle` attributes. */
+const DEFAULT_HEADING = 'Product Expert';
+const DEFAULT_SUBTITLE = 'Ask about features, pricing, integrations, or compatibility.';
 
 const STATE_LABELS = {
   idle:     'Idle',
@@ -157,6 +168,12 @@ export class TalkieWidget extends ScopedLitElement {
     idleTimeout: { type: Number, attribute: 'idle-timeout' },
     // Conversation mode: live caption of what the caller is saying.
     _partial: { type: String, state: true },
+    // Panel copy: the eyebrow in the top bar, and the line under "Have a question?" on the
+    // Start screen. Not `title`: that is a global attribute, and the browser would show it as
+    // a tooltip over the whole panel. useDefault: the defaults are not written out as
+    // attributes, and removing an attribute brings its default back.
+    heading:  { type: String, reflect: true, useDefault: true },
+    subtitle: { type: String, reflect: true, useDefault: true },
   };
 
   static get scopedElements() {
@@ -171,23 +188,51 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   static get styles() {
+    // One rule per state sets --_state from the shared table; a page's --talkie-state wins.
+    const stateRules = Object.entries(STATE_COLORS)
+      .map(([state, color]) => `:host([state='${state}']) { --_state: var(--talkie-state, ${color}); }`)
+      .join('\n');
     return css`
+      /* Private tokens. Each public --talkie-* token is read once, here; everything below
+         uses these, and the tints derive from the ink so a dark theme gets light lines.
+         The fallbacks follow the host page's color-scheme (light-dark()), so the panel is dark
+         on a page that declares a dark scheme and stays light on one that declares none. */
       :host {
-        display: block;
+        --_ink: var(--talkie-ink, light-dark(#101d20, #eceeef));
+        --_ink-soft: var(--talkie-ink-soft, light-dark(#4a5a58, #a3abad));
+        --_paper: var(--talkie-paper, light-dark(#f7f5ec, #16191b));
+        /* Text on the ink-filled buttons. Falls back to the paper, so a theme that swaps paper
+           and ink (README's dark example) keeps those labels readable. */
+        --_surface: var(--talkie-surface, var(--_paper));
+        --_display: var(--talkie-font-display, 'Space Grotesk', sans-serif);
+        --_body: var(--talkie-font-body, 'Instrument Sans', sans-serif);
+        --_mono: var(--talkie-font-mono, monospace);
+        --_line: color-mix(in srgb, var(--_ink) 12%, transparent);
+        --_tint: color-mix(in srgb, var(--_ink) 6%, transparent);
+        --_state: var(--talkie-state, ${unsafeCSS(NEUTRAL_STATE_COLOR)});
+        --_stop: ${unsafeCSS(STATE_COLORS.error)};
+        --_ease: cubic-bezier(.2, .8, .2, 1);
+      }
+      ${unsafeCSS(stateRules)}
+
+      /* ── Panel ── */
+      :host {
+        display: flex;
+        flex-direction: column;
+        position: relative;
         width: min(430px, 100%);
         min-height: 330px;
-        font-family: var(--talkie-font-body, 'Instrument Sans', sans-serif);
-        background: var(--talkie-paper, #f7f5ec);
-        color: var(--talkie-ink, #101d20);
-        border-radius: 22px;
+        font-family: var(--_body);
+        background: var(--_paper);
+        color: var(--_ink);
+        border-radius: 24px;
         /* padding is on .view-wrapper — an outer-document reset like '* { padding: 0 }' overrides
            :host rules (the host element is matched by '*' in the light DOM), so host padding is
            not reliable in a distributable component. */
-        box-shadow: 0 30px 80px -20px rgba(0,0,0,.6),
-                    0 0 0 1px rgba(255,255,255,.07),
-                    0 0 70px -18px var(--talkie-state, #8aa39e);
-        transition: box-shadow .4s, opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1);
-        position: relative;
+        box-shadow: 0 28px 70px -24px rgba(0, 0, 0, .55),
+                    0 0 0 1px var(--_line),
+                    0 0 64px -22px var(--_state);
+        transition: box-shadow .4s, opacity .35s ease, transform .35s var(--_ease);
       }
       :host(:not([open])),
       :host([minimized]) {
@@ -195,68 +240,84 @@ export class TalkieWidget extends ScopedLitElement {
         transform: translateY(18px) scale(.92);
         pointer-events: none;
         visibility: hidden;
-        transition: box-shadow .4s, opacity .35s ease, transform .35s cubic-bezier(.2,.8,.2,1), visibility 0s .35s;
+        transition: box-shadow .4s, opacity .35s ease, transform .35s var(--_ease), visibility 0s .35s;
       }
       /* Minimizing shrinks toward the launcher in the corner. */
       :host([minimized]) {
         transform-origin: 100% 100%;
         transform: translateY(40px) scale(.2);
       }
-      /* Padding is here, not on :host, so an outer-document reset like '* { padding: 0 }' can't
-         strip it away — the host element itself is matched by '*' in the light DOM. */
-      .view-wrapper {
-        padding: 44px 34px 36px;
+
+      /* ── Top bar: who you are talking to, its state, and the window controls ── */
+      .bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 14px 0 22px;
       }
       .eyebrow {
-        font-family: var(--talkie-font-mono, monospace);
-        font-size: 11px;
-        letter-spacing: 2.5px;
-        text-transform: uppercase;
-        color: var(--talkie-ink-soft, #4a5a58);
         display: flex;
         align-items: center;
         gap: 9px;
+        font-family: var(--_mono);
+        font-size: 11px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: var(--_ink-soft);
       }
-      .eyebrow .dot {
-        width: 9px;
-        height: 9px;
+      .dot {
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        background: var(--talkie-state, #5fd9c6);
+        background: var(--_state);
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--_state) 22%, transparent);
         animation: twk-pulse 1.8s infinite;
       }
-      .big {
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
-        font-weight: 700;
-        font-size: clamp(26px, 3.4vw, 33px);
-        letter-spacing: -.5px;
-        margin: 14px 0 22px;
+      .bar-actions {
+        display: flex;
+        gap: 6px;
       }
-      .sub {
-        font-size: 14px;
-        line-height: 1.6;
-        color: var(--talkie-ink-soft, #4a5a58);
-        max-width: 34ch;
+      .icon-btn {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: var(--_tint);
+        color: var(--_ink-soft);
+        cursor: pointer;
+        transition: background .2s, color .2s, transform .2s var(--_ease);
       }
-      .status-text {
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
-        font-weight: 700;
-        font-size: 27px;
-        letter-spacing: -.4px;
-        margin-bottom: 8px;
+      .icon-btn:hover {
+        background: var(--_ink);
+        color: var(--_surface);
       }
+      .close-btn:hover { transform: rotate(90deg); }
+
+      /* Padding is here, not on :host, so an outer-document reset like '* { padding: 0 }' can't
+         strip it away — the host element itself is matched by '*' in the light DOM. */
+      .view-wrapper {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 22px 32px 18px;
+      }
+
       /* A full sentence, so body type at normal spacing: the tracked monospace that suits
-         the short uppercase eyebrow spread these hints out letter by letter. */
+         the short uppercase eyebrow spread these hints out letter by letter. In the flow, not
+         pinned to the bottom, so a tall view can never run into it. */
       .hintline {
-        font-family: var(--talkie-font-body, 'Instrument Sans', sans-serif);
+        margin: 0;
+        padding: 0 24px 16px;
+        min-height: 1.5em;
+        font-family: var(--_body);
         font-size: 12.5px;
-        color: var(--talkie-ink-soft, #4a5a58);
-      }
-      .hintline-bottom {
-        position: absolute;
-        bottom: 14px;
-        left: 34px;
-        right: 34px;
         text-align: center;
+        color: var(--_ink-soft);
       }
       .tw-sr-only {
         position: absolute;
@@ -270,139 +331,162 @@ export class TalkieWidget extends ScopedLitElement {
         border: 0;
       }
 
-      /* Buttons */
-      .btn-primary {
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        background: var(--talkie-ink, #101d20);
-        color: var(--talkie-surface, #f6f4ec);
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
-        font-weight: 600;
-        font-size: 16px;
-        padding: 16px 30px;
-        border-radius: 999px;
-        margin: 6px 0 20px;
-        transition: transform .15s, box-shadow .25s;
-        touch-action: none;
-        user-select: none;
+      /* ── Type ── */
+      .big {
+        margin: 2px 0 4px;
+        font-family: var(--_display);
+        font-weight: 700;
+        font-size: clamp(24px, 3.2vw, 30px);
+        letter-spacing: -.02em;
+        line-height: 1.15;
+        text-wrap: balance;
       }
-      /* Icon spacing is a margin, not a gap on the button: LionButton slots its children
-         into its own shadow flex box, which a gap on the host never reaches. */
-      .btn-primary svg {
-        flex-shrink: 0;
-        margin-right: 10px;
+      .sub {
+        margin: 0;
+        max-width: 34ch;
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--_ink-soft);
       }
-      .btn-primary:hover { transform: translateY(-2px); }
-      .btn-primary:active { transform: scale(.96); }
-      .btn-stop {
-        display: inline-flex;
-        align-items: center;
-        background: var(--talkie-ink, #101d20);
-        color: var(--talkie-surface, #f6f4ec);
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
-        font-weight: 600;
-        font-size: 14.5px;
-        padding: 13px 28px;
-        border-radius: 999px;
-        border: none;
-        cursor: pointer;
-        transition: transform .15s, box-shadow .25s;
+      .status-text {
+        margin: 0;
+        font-family: var(--_display);
+        font-weight: 700;
+        font-size: 25px;
+        letter-spacing: -.02em;
       }
       .rec-clock {
         display: inline-block;
         margin-left: 10px;
-        font-variant-numeric: tabular-nums;
-        font-size: 20px;
-        font-weight: 600;
-        opacity: .55;
-      }
-      .link-btn {
-        /* No margin: .center-layout's gap already spaces it, and any extra pushes
-           the column into the absolutely positioned hint line at the bottom. */
-        background: none;
-        border: 1.5px solid rgba(16, 29, 32, .28);
+        padding: 3px 9px;
         border-radius: 999px;
-        padding: 7px 18px;
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
+        background: var(--_tint);
+        color: var(--_ink-soft);
+        font-family: var(--_mono);
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0;
+        vertical-align: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* ── Buttons ──
+         lion-button and button share one base; the classes after it only change colour and
+         size. Icon spacing is a margin, not a gap on the button: LionButton slots its children
+         into its own shadow flex box, which a gap on the host never reaches. */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        border-radius: 999px;
+        font-family: var(--_display);
         font-weight: 600;
-        font-size: 14px;
-        color: var(--talkie-ink, #101d20);
         cursor: pointer;
-        transition: border-color .15s, background .15s;
+        touch-action: manipulation;
+        user-select: none;
+        transition: transform .15s var(--_ease), box-shadow .25s, background .2s, color .2s;
       }
-      .link-btn:hover {
-        border-color: var(--talkie-ink, #101d20);
-        background: rgba(16, 29, 32, .05);
+      .btn:active { transform: scale(.97); }
+      .btn-primary,
+      .btn-stop {
+        background: var(--_ink);
+        color: var(--_surface);
       }
-      .link-btn:focus-visible {
-        outline: 2px solid var(--talkie-ink, #101d20);
-        outline-offset: 2px;
+      .btn-primary {
+        padding: 15px 28px;
+        font-size: 16px;
+        box-shadow: 0 10px 26px -12px var(--_state);
+      }
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px -10px var(--_state),
+                    0 0 0 4px color-mix(in srgb, var(--_state) 28%, transparent);
+      }
+      .btn-primary svg {
+        flex-shrink: 0;
+        margin-right: 10px;
+      }
+      .btn-stop {
+        padding: 13px 26px;
+        font-size: 14.5px;
       }
       .btn-stop .sq {
         flex-shrink: 0;
         margin-right: 10px;
         width: 9px;
         height: 9px;
-        background: #ff6b6b;
         border-radius: 2px;
+        background: var(--_stop);
       }
-      .ghost {
-        background: transparent !important;
-        color: var(--talkie-ink, #101d20) !important;
-        border: 2px solid var(--talkie-ink, #101d20) !important;
-        font-size: 14px !important;
-        padding: 12px 26px !important;
-        margin: 6px 0 0 !important;
+      .btn-secondary {
+        padding: 12px 24px;
+        font-size: 14px;
+        background: transparent;
+        color: var(--_ink);
+        box-shadow: inset 0 0 0 1.5px var(--_ink);
       }
-      .ghost:hover {
-        background: var(--talkie-ink, #101d20) !important;
-        color: var(--talkie-surface, #f6f4ec) !important;
-        box-shadow: none !important;
+      .btn-secondary:hover {
+        background: var(--_ink);
+        color: var(--_surface);
       }
-      .close-btn {
-        position: absolute;
-        top: 13px;
-        right: 13px;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        border: none;
-        background: rgba(16,29,32,.07);
-        color: var(--talkie-ink-soft, #4a5a58);
-        font-size: 15px;
+      .link-btn {
+        /* No margin: the layout's gap already spaces it. */
+        padding: 7px 18px;
+        border: 1.5px solid color-mix(in srgb, var(--_ink) 28%, transparent);
+        border-radius: 999px;
+        background: none;
+        font-family: var(--_display);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--_ink);
         cursor: pointer;
-        display: grid;
-        place-items: center;
-        transition: background .2s, color .2s, transform .2s;
+        transition: border-color .15s, background .15s;
       }
-      .min-btn {
-        position: absolute;
-        top: 13px;
-        right: 51px;
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        border: none;
-        background: rgba(16,29,32,.07);
-        color: var(--talkie-ink-soft, #4a5a58);
+      .link-btn:hover {
+        border-color: var(--_ink);
+        background: var(--_tint);
+      }
+      /* Leaving a hands-free call: the coral stop mark says "this ends it" before the words do. */
+      .end-btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 18px 6px 6px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--_tint);
+        font-family: var(--_display);
+        font-weight: 600;
+        font-size: 14px;
+        color: var(--_ink);
         cursor: pointer;
-        display: grid;
-        place-items: center;
-        transition: background .2s, color .2s;
+        transition: background .15s;
       }
-      .min-btn:hover {
-        background: var(--talkie-ink, #101d20);
-        color: var(--talkie-surface, #f6f4ec);
+      .end-btn svg {
+        flex-shrink: 0;
+        box-sizing: border-box;
+        width: 28px;
+        height: 28px;
+        margin-right: 10px;
+        padding: 7px;
+        border-radius: 50%;
+        background: var(--_stop);
+        /* Dark on the coral, as on .err-icon: white on it is under 3:1. */
+        color: #2a0b0b;
       }
-      .grabber { display: none; }
-      .close-btn:hover {
-        background: var(--talkie-ink, #101d20);
-        color: var(--talkie-surface, #f6f4ec);
-        transform: rotate(90deg);
+      .end-btn:hover {
+        background: color-mix(in srgb, var(--_ink) 12%, transparent);
+      }
+      lion-button:focus-visible,
+      button:focus-visible {
+        outline: 2px solid var(--_ink);
+        outline-offset: 3px;
       }
 
-      /* Layout */
+      /* ── Views ── */
+      .view {
+        animation: twk-rise .34s var(--_ease) both;
+      }
       .center-layout {
         display: flex;
         flex-direction: column;
@@ -410,133 +494,170 @@ export class TalkieWidget extends ScopedLitElement {
         text-align: center;
         gap: 14px;
       }
-      .view {
-        animation: twk-rise .34s cubic-bezier(.2,.7,.2,1) both;
+      /* The speaking view reads like a chat: the caller's words on the right, the answer below. */
+      .answer-layout {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
       }
-      .arc {
-        width: 36px;
-        height: 36px;
+      .answer-layout talkie-transcript { align-self: flex-end; }
+      .answer-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px;
+      }
+
+      /* One mark for the whole turn: the state colour as a lit orb. Idle holds the mic;
+         transcribing sweeps a ring around it; thinking breathes. Same size and place in every
+         view, so a turn reads as one object changing colour, not a new icon per state. */
+      .orb {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
-        border: 3px solid rgba(16,29,32,.14);
-        border-top-color: var(--talkie-state, #ffc96b);
+        color: #06231f;
+        background: radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--_state) 45%, #fff), var(--_state) 70%);
+        box-shadow: 0 0 0 8px color-mix(in srgb, var(--_state) 16%, transparent),
+                    0 14px 30px -10px var(--_state);
+      }
+      .orb-busy::after {
+        content: '';
+        position: absolute;
+        inset: -9px;
+        border-radius: 50%;
+        background: conic-gradient(from 0deg, transparent 0 62%, var(--_state));
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
         animation: twk-spin 1s linear infinite;
       }
-      .dots3 span {
-        display: inline-block;
-        width: 7px;
-        height: 7px;
-        margin: 0 3px;
-        border-radius: 50%;
-        background: var(--talkie-state, #7fb5ff);
-        animation: twk-blink 1.2s infinite;
+      .orb-think {
+        animation: twk-breathe 1.6s ease-in-out infinite;
       }
-      .dots3 span:nth-child(2) { animation-delay: .2s; }
-      .dots3 span:nth-child(3) { animation-delay: .4s; }
       .eq {
         display: inline-flex;
         gap: 3px;
         align-items: flex-end;
-        height: 13px;
-        margin-left: 6px;
+        height: 12px;
+        margin-left: 2px;
       }
       .eq i {
         width: 3px;
         height: 100%;
         border-radius: 2px;
-        background: var(--talkie-state, #8be28b);
+        background: var(--_state);
         transform-origin: bottom;
         animation: twk-eq .9s ease-in-out infinite;
       }
-      .eq i:nth-child(1) { animation-delay: 0s; }
       .eq i:nth-child(2) { animation-delay: .15s; }
       .eq i:nth-child(3) { animation-delay: .3s; }
       .eq i:nth-child(4) { animation-delay: .45s; }
       .eq i:nth-child(5) { animation-delay: .6s; }
       .err-icon {
+        display: grid;
+        place-items: center;
         width: 46px;
         height: 46px;
         border-radius: 50%;
-        background: #ff6b6b;
-        color: #fff;
-        display: grid;
-        place-items: center;
-        font-family: var(--talkie-font-display, 'Space Grotesk', sans-serif);
+        background: var(--_stop);
+        /* Dark on the coral: white on it is under 3:1. */
+        color: #2a0b0b;
+        font-family: var(--_display);
         font-weight: 700;
         font-size: 24px;
-        box-shadow: 0 0 0 8px rgba(255,107,107,.18);
+        box-shadow: 0 0 0 8px color-mix(in srgb, var(--_stop) 20%, transparent);
       }
       /* Capped, and scrolled to the newest words as they stream (updated()), so a long reply
          can't push the panel past the top of the viewport. */
       .resp-area {
-        font-size: 17px;
-        line-height: 1.65;
-        margin: 16px 0 24px;
-        min-height: 110px;
+        align-self: stretch;
+        margin: 0;
+        min-height: 96px;
         max-height: min(38vh, 320px);
         overflow-y: auto;
         overscroll-behavior: contain;
-        color: #1c2b2e;
+        scrollbar-width: thin;
+        font-size: 19px;
+        line-height: 1.55;
+        letter-spacing: -.005em;
+        color: var(--_ink);
       }
-      .waveform-host {
-        width: 100%;
-        height: 72px;
-        margin: 4px 0;
+      /* Once older words scroll off the top, fade that edge rather than cutting a line in half. */
+      .resp-area.scrolled {
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 2.4em);
+        mask-image: linear-gradient(to bottom, transparent, #000 2.4em);
       }
+      talkie-waveform { width: 100%; }
       .cursor-cursor {
         display: inline-block;
         width: 2px;
         height: 1em;
-        background: var(--talkie-ink, #101d20);
-        vertical-align: -2px;
         margin-left: 2px;
+        vertical-align: -2px;
+        background: var(--_state);
         animation: twk-blinkC 1s steps(1) infinite;
       }
 
-      /* Animations */
+      /* ── Animations ── */
       @keyframes twk-pulse {
         0%, 100% { opacity: 1; }
-        50% { opacity: .35; }
+        50% { opacity: .4; }
       }
       @keyframes twk-rise {
-        from { opacity: 0; transform: translateY(12px); }
+        from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: none; }
       }
       @keyframes twk-spin { to { transform: rotate(360deg); } }
-      @keyframes twk-blink {
-        0%, 100% { opacity: .25; transform: translateY(0); }
-        50%      { opacity: 1;       transform: translateY(-4px); }
+      @keyframes twk-breathe {
+        0%, 100% { transform: scale(1); }
+        50% {
+          transform: scale(1.08);
+          box-shadow: 0 0 0 14px color-mix(in srgb, var(--_state) 10%, transparent),
+                      0 14px 34px -8px var(--_state);
+        }
       }
       @keyframes twk-eq {
         0%, 100% { transform: scaleY(.25); }
-        50%      { transform: scaleY(1);   }
+        50%      { transform: scaleY(1); }
       }
       @keyframes twk-blinkC { 50% { opacity: 0; } }
 
-      /* Bottom sheet (layout="sheet", phones): full width along the bottom edge, the page
-         still visible above it; slides down out of the way when minimized or closed. */
+      /* The waveform draws a static field on its own; this stills everything else. The state
+         still shows: the colour changes, and the spinner and dots stay as marks. */
+      @media (prefers-reduced-motion: reduce) {
+        :host, :host(:not([open])), :host([minimized]) { transition-duration: 0s !important; }
+        .view, .dot, .orb-busy::after, .orb-think, .eq i, .cursor-cursor { animation: none; }
+        .btn, .icon-btn { transition: none; }
+        .btn:active, .btn-primary:hover, .close-btn:hover { transform: none; }
+      }
+
+      /* ── Bottom sheet (layout="sheet", phones) ──
+         Full width along the bottom edge, the page still visible above it; slides down out of
+         the way when minimized or closed. */
       :host([layout='sheet']) {
         width: 100%;
         min-height: 0;
         max-height: min(62dvh, 520px);
         overflow-y: auto;
         overscroll-behavior: contain;
-        border-radius: 22px 22px 0 0;
-        box-shadow: 0 -18px 50px -18px rgba(0,0,0,.55),
-                    0 0 0 1px rgba(255,255,255,.07),
-                    0 -8px 50px -22px var(--talkie-state, #8aa39e);
+        border-radius: 24px 24px 0 0;
+        box-shadow: 0 -18px 50px -18px rgba(0, 0, 0, .5),
+                    0 0 0 1px var(--_line),
+                    0 -8px 50px -22px var(--_state);
       }
       :host([layout='sheet']:not([open])),
       :host([layout='sheet'][minimized]) {
         opacity: 1;
         transform: translateY(calc(100% + 24px));
-        transition: transform .32s cubic-bezier(.4,0,.2,1), visibility 0s .32s;
+        transition: transform .32s cubic-bezier(.4, 0, .2, 1), visibility 0s .32s;
       }
-      :host([layout='sheet']) .view-wrapper {
-        padding: 30px 20px calc(34px + env(safe-area-inset-bottom));
-      }
-      :host([layout='sheet']) .hintline-bottom {
-        bottom: calc(10px + env(safe-area-inset-bottom));
-      }
+      :host([layout='sheet']) .bar { padding: 18px 12px 0 20px; }
+      :host([layout='sheet']) .view-wrapper { padding: 16px 20px 14px; }
+      :host([layout='sheet']) .hintline { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+      .grabber { display: none; }
       :host([layout='sheet']) .grabber {
         display: block;
         position: absolute;
@@ -558,25 +679,22 @@ export class TalkieWidget extends ScopedLitElement {
         right: 26px;
         height: 5px;
         border-radius: 3px;
-        background: rgba(16,29,32,.22);
+        background: color-mix(in srgb, var(--_ink) 22%, transparent);
       }
-      :host([layout='sheet']) .min-btn { top: 10px; right: 48px; }
-      :host([layout='sheet']) .close-btn { top: 10px; right: 10px; }
 
       /* Phones: a compact panel. The desktop spacing and type fill most of a small screen. */
       @media (max-width: 600px) {
-        :host { min-height: 0; border-radius: 18px; }
-        .view-wrapper { padding: 34px 20px 32px; }
-        .close-btn { top: 8px; right: 8px; }
-        .min-btn { top: 8px; right: 44px; }
-        .big { font-size: 24px; margin: 6px 0 12px; }
+        :host { min-height: 0; border-radius: 20px; }
+        .bar { padding: 10px 10px 0 18px; }
+        .view-wrapper { padding: 16px 20px 14px; }
+        .big { font-size: 23px; }
         .sub { font-size: 13px; }
-        .status-text { font-size: 21px; margin-bottom: 4px; }
-        .center-layout { gap: 10px; }
-        .waveform-host { height: 48px; }
-        .resp-area { font-size: 15.5px; line-height: 1.55; margin: 10px 0 14px; min-height: 0; max-height: 26vh; }
-        talkie-transcript { font-size: 13.5px; max-height: 4.6em; overflow-y: auto; margin: 4px 0; }
-        .hintline-bottom { bottom: 10px; left: 20px; right: 20px; }
+        .status-text { font-size: 21px; }
+        .center-layout, .answer-layout { gap: 10px; }
+        .orb { width: 48px; height: 48px; }
+        .resp-area { font-size: 17px; line-height: 1.5; min-height: 0; max-height: 26vh; }
+        talkie-transcript { font-size: 13.5px; max-height: 4.6em; overflow-y: auto; }
+        .hintline { padding: 0 20px 12px; }
       }
     `;
   }
@@ -592,6 +710,8 @@ export class TalkieWidget extends ScopedLitElement {
     this.mode = 'push-to-talk';
     this.idleTimeout = 60;
     this._partial = '';
+    this.heading = DEFAULT_HEADING;
+    this.subtitle = DEFAULT_SUBTITLE;
 
     this.#sm = new StateMachine();
 
@@ -645,8 +765,16 @@ export class TalkieWidget extends ScopedLitElement {
     }
     if (changed.has('_shown')) {
       const resp = this.renderRoot.querySelector('.resp-area');
-      if (resp) resp.scrollTop = resp.scrollHeight;
+      if (resp) {
+        resp.scrollTop = resp.scrollHeight;
+        resp.classList.toggle('scrolled', resp.scrollTop > 0);
+      }
     }
+  }
+
+  /** Fade the reply's top edge only while some of it is scrolled out of view. */
+  _onRespScroll(e) {
+    e.currentTarget.classList.toggle('scrolled', e.currentTarget.scrollTop > 0);
   }
 
   /* ── Public API ─────────────────────────────── */
@@ -1365,13 +1493,22 @@ export class TalkieWidget extends ScopedLitElement {
       ${this.layout === 'sheet'
         ? html`<button type="button" class="grabber" @click=${this._onMinimizeClick} aria-label="Minimize, keep talking"></button>`
         : ''}
-      <lion-button class="min-btn" @click=${this._onMinimizeClick}
-          aria-label="Minimize, keep talking" title="Minimize — the conversation keeps going">${iconMinimize()}</lion-button>
-      <lion-button class="close-btn" @click=${this._onCloseClick} aria-label="End and close" title="End and close">✕</lion-button>
+      <div class="bar">
+        <div class="eyebrow">
+          <span class="dot" aria-hidden="true"></span>${this.heading}
+          ${s === 'speaking' ? html`<span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>` : ''}
+        </div>
+        <div class="bar-actions">
+          <lion-button class="icon-btn min-btn" @click=${this._onMinimizeClick}
+              aria-label="Minimize, keep talking" title="Minimize — the conversation keeps going">${iconMinimize()}</lion-button>
+          <lion-button class="icon-btn close-btn" @click=${this._onCloseClick}
+              aria-label="End and close" title="End and close">${iconClose()}</lion-button>
+        </div>
+      </div>
       <div class="view-wrapper">
         ${this._renderView(s)}
       </div>
-      <div class="hintline hintline-bottom">${this._hint}</div>
+      <p class="hintline">${this._hint}</p>
       <div role="status" aria-live="polite" class="tw-sr-only">${this._label}</div>
     `;
   }
@@ -1396,68 +1533,52 @@ export class TalkieWidget extends ScopedLitElement {
   }
 
   _renderIdle() {
-    if (this._conversational) {
-      return html`
-      <div class="view center-layout">
-        <div class="eyebrow"><span class="dot"></span>Product Expert</div>
-        <h2 class="big" aria-hidden="true">Have a&nbsp;question?</h2>
-        <lion-button class="btn-primary" id="startBtn" data-action="start"
-            @click=${this._onStartActivate}
-            style="--talkie-state:${this._getStateColor()}">
-          ${iconMic()} Start&nbsp;conversation
-        </lion-button>
-        <p class="sub">${this.#endedForSilence
-          ? `Ended after ${this.idleTimeout} seconds of silence. Start again any time.`
-          : 'Just talk. Ask about features, pricing, integrations, or compatibility.'}</p>
-      </div>`;
-    }
+    const conversation = this._conversational;
+    const sub = !conversation
+      ? this.subtitle
+      : this.#endedForSilence
+        ? `Ended after ${this.idleTimeout} seconds of silence. Start again any time.`
+        : `Just talk. ${this.subtitle}`;
     return html`
       <div class="view center-layout">
-        <div class="eyebrow"><span class="dot"></span>Product Expert</div>
+        <div class="orb" aria-hidden="true">${iconMic(26)}</div>
         <h2 class="big" aria-hidden="true">Have a&nbsp;question?</h2>
-        <lion-button class="btn-primary" id="startBtn" data-action="start"
-            @click=${this._onStartActivate}
-            style="--talkie-state:${this._getStateColor()}">
-          ${iconMic()} Start&nbsp;Recording
+        <p class="sub">${sub}</p>
+        <lion-button class="btn btn-primary" id="startBtn" data-action="start" @click=${this._onStartActivate}>
+          ${iconMic()} ${conversation ? 'Start\u00a0conversation' : 'Start\u00a0Recording'}
         </lion-button>
-        <p class="sub">Ask about features, pricing, integrations, or compatibility.</p>
       </div>`;
   }
 
   /** Conversation mode: the End control every in-conversation view offers. */
   _renderEndLink() {
-    return html`<button type="button" class="link-btn" id="endBtn" @click=${this._onEndClick}>End conversation</button>`;
+    return html`<button type="button" class="end-btn" id="endBtn" @click=${this._onEndClick}>${iconClose()}End conversation</button>`;
   }
 
   _renderListening() {
-    if (this._conversational) {
-      return html`
-      <div class="center-layout">
-        <h2 class="status-text" aria-hidden="true">
-          Listening<span class="rec-clock">${formatElapsed(this._elapsed)}</span>
-        </h2>
-        <talkie-waveform .enabled=${true} .color="${this._getStateColor()}"></talkie-waveform>
-        ${this._partial ? html`<talkie-transcript .text=${this._partial}></talkie-transcript>` : ''}
-        ${this._renderEndLink()}
-      </div>`;
-    }
+    const title = this._conversational ? 'Listening' : 'Recording';
     return html`
-      <div class="center-layout">
+      <div class="view center-layout">
         <h2 class="status-text" aria-hidden="true">
-          Recording<span class="rec-clock">${formatElapsed(this._elapsed)}</span>
+          ${title}<span class="rec-clock">${formatElapsed(this._elapsed)}</span>
         </h2>
-        <talkie-waveform .enabled=${true} .color="${this._getStateColor()}"></talkie-waveform>
-        <lion-button class="btn-stop" id="stopSendBtn" data-action="stop-send" @click=${this._onStopSendClick}>
-          <span class="sq"></span>Stop &amp; Send
-        </lion-button>
-        <button type="button" class="link-btn" @click=${this._onCancelRecordingClick}>Discard</button>
+        <talkie-waveform .enabled=${true} .color=${this._getStateColor()}></talkie-waveform>
+        ${this._conversational
+          ? html`
+            ${this._partial ? html`<talkie-transcript .text=${this._partial}></talkie-transcript>` : ''}
+            ${this._renderEndLink()}`
+          : html`
+            <lion-button class="btn btn-stop" id="stopSendBtn" data-action="stop-send" @click=${this._onStopSendClick}>
+              <span class="sq"></span>Stop &amp; Send
+            </lion-button>
+            <button type="button" class="link-btn" @click=${this._onCancelRecordingClick}>Discard</button>`}
       </div>`;
   }
 
   _renderTranscribing() {
     return html`
-      <div class="center-layout">
-        <div class="arc" aria-hidden="true"></div>
+      <div class="view center-layout">
+        <div class="orb orb-busy" aria-hidden="true"></div>
         <h2 class="status-text" aria-hidden="true">Understanding…</h2>
         ${this._tx ? html`<talkie-transcript .text=${this._tx}></talkie-transcript>` : ''}
         ${this._conversational ? this._renderEndLink() : ''}
@@ -1466,10 +1587,10 @@ export class TalkieWidget extends ScopedLitElement {
 
   _renderThinking() {
     return html`
-      <div class="center-layout">
+      <div class="view center-layout">
+        <div class="orb orb-think" aria-hidden="true"></div>
         <h2 class="status-text" aria-hidden="true">Finding the right answer…</h2>
         ${this._tx ? html`<talkie-transcript .text=${this._tx}></talkie-transcript>` : ''}
-        <div class="dots3" aria-hidden="true"><span></span><span></span><span></span></div>
         ${this._conversational ? this._renderEndLink() : ''}
       </div>`;
   }
@@ -1480,53 +1601,43 @@ export class TalkieWidget extends ScopedLitElement {
     const displayText = words.slice(0, this._shown).join(' ');
     // Cursor is visible while streaming; it fades once the generator finishes.
     const complete = this.#streamDone;
+    const stop = (onClick) => html`
+      <lion-button class="btn btn-stop" id="stopBtn" data-action="stop" @click=${onClick}>
+        <span class="sq"></span>Stop
+      </lion-button>`;
 
     return html`
-      <div class="view">
-        <div class="eyebrow">
-          <span class="dot"></span>Product Expert
-          <span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-        </div>
+      <div class="view answer-layout">
         ${this._tx ? html`<talkie-transcript .text=${this._tx}></talkie-transcript>` : ''}
-        <p class="resp-area">
+        <p class="resp-area" @scroll=${this._onRespScroll}>
           ${displayText}${complete ? '' : html`<span class="cursor-cursor"></span>`}
         </p>
-        ${this._conversational
-          ? html`<lion-button class="btn-stop" id="stopBtn" data-action="stop" @click=${this._onInterruptClick}>
-              <span class="sq"></span>Stop
-            </lion-button>
-            ${this._renderEndLink()}`
-          : complete
-          ? html`<lion-button class="btn-primary ghost" id="askAnotherBtn" data-action="ask-another" @click=${this._onAskAnotherClick}>Ask another</lion-button>`
-          : html`<lion-button class="btn-stop" id="stopBtn" data-action="stop" @click=${this._onStopClick}>
-              <span class="sq"></span>Stop
-            </lion-button>`}
+        <div class="answer-actions">
+          ${this._conversational
+            ? html`${stop(this._onInterruptClick)}${this._renderEndLink()}`
+            : complete
+            ? html`<lion-button class="btn btn-secondary" id="askAnotherBtn" data-action="ask-another" @click=${this._onAskAnotherClick}>Ask another</lion-button>`
+            : stop(this._onStopClick)}
+        </div>
       </div>`;
   }
 
   _renderError() {
     const msg = ERROR_MESSAGES[this.#sm.errorReason] ?? ERROR_MESSAGES.unknown;
     return html`
-      <div class="center-layout">
+      <div class="view center-layout">
         <div class="err-icon" aria-hidden="true">!</div>
         <h2 class="status-text">${msg.title}</h2>
         <p class="sub">${msg.sub}</p>
-        <lion-button class="btn-primary ghost" id="retryBtn" data-action="retry"
+        <lion-button class="btn btn-secondary" id="retryBtn" data-action="retry"
             @click=${this._onRetryClick}>Try again</lion-button>
       </div>`;
   }
 
   /* ── Utility ────────────────────────────────── */
 
+  /** The current state's colour, for the canvas waveform (CSS reads --_state instead). */
   _getStateColor() {
-    const map = {
-      idle:         '#5fd9c6',
-      listening:    '#ff8a4c',
-      transcribing: '#ffc96b',
-      thinking:     '#7fb5ff',
-      speaking:     '#8be28b',
-      error:        '#ff6b6b',
-    };
-    return map[this.#sm.state] ?? '#8aa39e';
+    return stateColor(this.#sm.state);
   }
 }

@@ -80,7 +80,7 @@ export function mountShell(currentActive) {
 
   // Brand
   const brand = document.createElement('a');
-  brand.href = '/site/index.html';
+  brand.href = '/site/';
   brand.textContent = 'Talkie';
   brand.classList.add('site-brand');
   header.appendChild(brand);
@@ -91,10 +91,10 @@ export function mountShell(currentActive) {
   nav.setAttribute('aria-label', 'Site');
 
   const pages = [
-    { label: 'Overview', href: '/site/index.html', active: currentActive === 'index' },
-    { label: 'Playground', href: '/site/playground.html', active: currentActive === 'playground' },
-    { label: 'Persona console', href: '/site/console.html', active: currentActive === 'console' },
-    { label: 'Docs', href: '/site/docs.html', active: currentActive === 'docs' },
+    { label: 'Overview', href: '/site/', active: currentActive === 'index' },
+    { label: 'Playground', href: '/site/playground', active: currentActive === 'playground' },
+    { label: 'Persona console', href: '/site/console', active: currentActive === 'console' },
+    { label: 'Docs', href: '/site/docs', active: currentActive === 'docs' },
   ];
 
   for (const pg of pages) {
