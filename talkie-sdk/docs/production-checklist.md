@@ -71,7 +71,7 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
       another origin.
 - [x] **Update the size in `docs/integration.md`.** It says ~119 KiB, measured 2026-09-23.
 - [ ] **npm publishing**, if wanted. There is no `files` field yet, so the package would ship
-      demo files, tests and the mockup `Qwen_html_20260920_2zzvkipj6.html`. The name and version
+      demo files, tests and the mockup `docs/design/voice-ui-mockup.html`. The name and version
       are an open decision (AGENTS.md §16; README → *Not on npm yet*).
 - [ ] **Deploy the voice server** (a separate project; README → *Trying it live*) behind TLS,
       with health checks, and with `ASSEMBLYAI_API_KEY` held in a secret store, not in the repo

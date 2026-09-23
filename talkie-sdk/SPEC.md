@@ -1,6 +1,6 @@
 # Talkie Voice UI SDK — build spec
 
-Extract the six voice states from `Qwen_html_20260920_2zzvkipj6.html` (in this folder) into a
+Extract the six voice states from `docs/design/voice-ui-mockup.html` into a
 reusable, framework-agnostic web-component package built on Lion + Lit.
 
 Reference implementation for look/feel/copy/timing: that HTML file. Read it first. It is a

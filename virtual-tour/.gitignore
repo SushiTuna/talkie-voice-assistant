@@ -5,3 +5,4 @@ data/
 # regenerable test screenshots (npm run test:anchors, tests/qa/qa.mjs)
 tests/shots/
 tests/qa/*.png
+.playwright-cli/

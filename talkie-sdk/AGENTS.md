@@ -19,7 +19,7 @@ code wins**: fix this file in the same change.
 4. **`docs/integration.md`** — framework snippets, embed attributes, CORS/CSP/HTTPS notes.
 5. **`SPEC.md`** — the original build spec. Its hard rules still bind, **except** where §14 below
    records that a later, deliberate change superseded them.
-6. `Qwen_html_20260920_2zzvkipj6.html` — the visual mockup the widget was extracted from. Useful
+6. `docs/design/voice-ui-mockup.html` — the visual mockup the widget was extracted from. Useful
    for look and copy only; its behaviour is simulated and has known bugs (SPEC.md lists them).
 
 ---
@@ -419,19 +419,19 @@ exits non-zero stops the run.
 |---|---|---|
 | `state-machine.mjs` | 41 | legal/illegal transitions, reasons, change events, cancel, reset |
 | `mock-backend.mjs` | 42 | scripted answers, abort (~28 s, real timers) |
-| `components.mjs` | 61 | registration, styles, layout and theme guards, widget flows, conversation mode |
+| `components.mjs` | 78 | registration, styles, layout and theme guards, widget flows, conversation mode |
 | `pcm-worklet.mjs` | 15 | downsampling worklet |
 | `http-backend.mjs` | 50 | HttpBackend against stubs |
 | `pcm-codec.mjs` | 25 | base64, silence, WAV |
 | `pcm-player.mjs` | 30 | scheduling, stalls, position, stop/drain |
 | `voice-agent-backend.mjs` | 212 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
-| `talkie-assistant.mjs` | 68 | embed element wiring, tools properties and server-profile tools, modes |
+| `talkie-assistant.mjs` | 73 | embed element wiring, tools properties and server-profile tools, modes |
 | `agent-profiles.mjs` | 29 | list profiles and voices / fetch / save profile client against a fake `fetch`: URLs, auth header, error codes |
 | `embed-bundle.mjs` | 9 | runs `build.mjs`, boots the bundle as a classic script |
 | `server.mjs` | 42 | dev server routes: redirects, clean URLs, MIME types, the allow-list and dotfiles, every site link lands on a page |
-| `site.mjs` | 134 | site pure modules (snippet, profile converters, tool editor model incl. enum), the console's tool list and dialog against a fake DOM, page markup and CSS guards, `build-site.mjs` output |
+| `site.mjs` | 138 | site pure modules (snippet, profile converters, tool editor model incl. enum), the console's tool list and dialog against a fake DOM, page markup and CSS guards, `build-site.mjs` output |
 
-Total **758**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
+Total **784**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
 
 ### 8.2 Conventions
 - No framework. Each file defines `check(name, condition, detail)` and counts passes/failures.

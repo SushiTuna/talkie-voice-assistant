@@ -560,7 +560,7 @@ These are intentionally out of scope for the current release. See linked issues 
 ## Testing
 
 ```bash
-npm test          # 758 assertions across thirteen suites — state machine, backends, audio, widget, embed, the built bundle, the site and its dev server
+npm test          # 784 assertions across thirteen suites — state machine, backends, audio, widget, embed, the built bundle, the site and its dev server
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.
