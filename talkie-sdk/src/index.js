@@ -8,6 +8,7 @@
 
 export { StateMachine, VALID_STATES, ERROR_REASONS, TRANSITIONS, TRANSITION_LABELS } from './core/state-machine.js';
 export { TalkieBackendError } from './core/backend.js';
+export { AccessTicket } from './core/access-ticket.js';
 export { listAgentProfiles, fetchAgentContext, saveAgentProfile, AgentProfileError } from './core/agent-profiles.js';
 export { MockBackend } from './backends/mock-backend.js';
 export { HttpBackend } from './backends/http-backend.js';

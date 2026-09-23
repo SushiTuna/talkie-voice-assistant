@@ -47,6 +47,7 @@
  */
 
 import { TalkieBackendError } from '../core/backend.js';
+import { AccessTicket } from '../core/access-ticket.js';
 import { MicCapture } from '../audio/mic-capture.js';
 import { encodeBase64, decodeBase64, silenceFrame, pcmToWavBlob } from '../audio/pcm-codec.js';
 import { PcmStreamPlayer } from '../audio/pcm-player.js';
@@ -121,6 +122,7 @@ const OFFLINE_ERROR_CODES = new Set(['server_error', 'INTERNAL_ERROR']);
 export class VoiceAgentBackend {
   /** @type {string} */ #tokenUrl;
   /** @type {(() => Promise<object>) | null} */ #fetchTokenFn;
+  /** @type {AccessTicket} */ #access;
   /** @type {string} */ #wsUrl;
   /** @type {object} */ #sessionConfig;
   /** @type {number} */ #padMs;
@@ -201,6 +203,12 @@ export class VoiceAgentBackend {
    *   Defaults to `${baseUrl}/agent/token`.
    * @param {() => Promise<{ token: string, expires_in_seconds?: number }>} [options.fetchToken]
    *   Supply the credential yourself; overrides `tokenUrl` entirely.
+   * @param {string} [options.sessionUrl] - The server's visitor-ticket route, used only when the
+   *   token route asks for a ticket. Defaults to `${baseUrl}/agent/session`.
+   * @param {(challenge: { provider: string, siteKey: string | null }) => Promise<string> | string}
+   *   [options.verify] - Runs the bot check (e.g. Turnstile) the session route asks for.
+   * @param {AccessTicket} [options.access] - A ticket holder to share across backends, so a
+   *   visitor gets one ticket per page rather than one per conversation. Overrides the two above.
    * @param {string} [options.wsUrl] - Override the vendor socket endpoint.
    * @param {string} [options.agentId] - Use a stored agent. Mutually exclusive with the
    *   inline fields below, as the API rejects a `session.update` carrying both.
@@ -229,6 +237,9 @@ export class VoiceAgentBackend {
     baseUrl = 'http://localhost:8000',
     tokenUrl = null,
     fetchToken = null,
+    sessionUrl = null,
+    verify = null,
+    access = null,
     wsUrl = DEFAULT_WS_URL,
     agentId = null,
     systemPrompt = null,
@@ -248,6 +259,7 @@ export class VoiceAgentBackend {
     const origin = baseUrl.replace(/\/+$/, '');
     this.#tokenUrl = tokenUrl ?? `${origin}/agent/token`;
     this.#fetchTokenFn = fetchToken;
+    this.#access = access ?? new AccessTicket({ sessionUrl: sessionUrl ?? `${origin}/agent/session`, verify });
     this.#wsUrl = wsUrl;
     this.#keepMicWarm = keepMicWarm;
     this.#onToolCall = onToolCall;
@@ -1050,8 +1062,9 @@ export class VoiceAgentBackend {
     } else {
       let res;
       try {
-        res = await fetch(this.#tokenUrl);
+        res = await this.#access.fetch(this.#tokenUrl);
       } catch (err) {
+        if (err instanceof TalkieBackendError) throw err;
         throw new TalkieBackendError('offline', err?.message || String(err));
       }
       if (!res.ok) {

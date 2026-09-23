@@ -12,6 +12,8 @@
  * Attributes (all optional):
  *   api            Origin of the voice server. Default `http://localhost:8000`.
  *   token-url      Token route, if not `${api}/agent/token`.
+ *   session-url    Visitor-ticket route, if not `${api}/agent/session`. Used only when the
+ *                  token route asks for a ticket (the server's `TALKIE_TICKET_SECRET`).
  *   profile        Server agent profile, passed to `${api}/agent/context?profile=`.
  *   system-prompt  Used only when the server has no context route or it fails.
  *   voice          Output voice, when the server context does not name one.
@@ -41,7 +43,11 @@
  *                  page still runs every call, so it needs `onToolCall` either way.
  *   onToolCall     `({ name, arguments, call_id }) => result`, run for each tool call; its
  *                  (awaited) value goes back to the agent. Throw to report a failure.
- * Both are read on each open, and may be set before this element is defined:
+ *   verify         `({ provider, siteKey }) => token`: runs the bot check the voice server
+ *                  asks for before it issues a visitor ticket (e.g. Cloudflare Turnstile),
+ *                  and resolves to its token. Only needed when the server sets
+ *                  `TURNSTILE_SECRET_KEY`.
+ * All are read when used, and may be set before this element is defined:
  *
  *   const el = document.querySelector('talkie-assistant');
  *   el.tools = [{ type: 'function', name: 'go_to_room', description: '…', parameters: {…} }];
@@ -52,6 +58,7 @@
  */
 
 import { VoiceAgentBackend } from '../backends/voice-agent-backend.js';
+import { AccessTicket } from '../core/access-ticket.js';
 
 const DEFAULT_API = 'http://localhost:8000';
 const FALLBACK_PROMPT = 'You are a concise voice assistant. Answer in one or two sentences.';
@@ -86,6 +93,8 @@ export class TalkieAssistant extends HTMLElement {
   /** @type {boolean} Guards against a double-click opening two sessions. */ #opening = false;
   /** @type {Array<object> | null} */ #tools = null;
   /** @type {((call: object) => any) | null} */ #onToolCall = null;
+  /** @type {((challenge: object) => any) | null} */ #verify = null;
+  /** @type {{ url: string, ticket: AccessTicket } | null} Kept across opens: one visitor, one ticket. */ #access = null;
   /** @type {MediaQueryList | null} */ #sheetQuery = null;
 
   constructor() {
@@ -108,6 +117,10 @@ export class TalkieAssistant extends HTMLElement {
 
   get tokenUrl() {
     return this.getAttribute('token-url') || `${this.api}/agent/token`;
+  }
+
+  get sessionUrl() {
+    return this.getAttribute('session-url') || `${this.api}/agent/session`;
   }
 
   /** @returns {'conversation' | 'push-to-talk'} */
@@ -155,13 +168,31 @@ export class TalkieAssistant extends HTMLElement {
     this.#onToolCall = typeof fn === 'function' ? fn : null;
   }
 
+  /** Runs the voice server's bot check and resolves to its token (see `verify` above). */
+  get verify() {
+    return this.#verify;
+  }
+
+  set verify(fn) {
+    this.#verify = typeof fn === 'function' ? fn : null;
+  }
+
+  /** The visitor's ticket holder, reused across opens while the session route is unchanged. */
+  #accessTicket() {
+    const url = this.sessionUrl;
+    if (this.#access?.url !== url) {
+      this.#access = { url, ticket: new AccessTicket({ sessionUrl: url, getVerify: () => this.#verify }) };
+    }
+    return this.#access.ticket;
+  }
+
   // ── lifecycle ──
 
   connectedCallback() {
     // A page script may set these before the embed bundle defines this element; that makes
     // own properties on the plain element that hide the accessors. Re-apply them. Here rather
     // than in the constructor: an upgrade runs both, and this is also reachable from a test.
-    for (const prop of ['tools', 'onToolCall']) {
+    for (const prop of ['tools', 'onToolCall', 'verify']) {
       if (Object.prototype.hasOwnProperty.call(this, prop)) {
         const value = this[prop];
         delete this[prop];
@@ -345,6 +376,7 @@ export class TalkieAssistant extends HTMLElement {
       greeting: conversation ? (context?.greeting || undefined) : undefined,
       bargeIn: conversation && this.getAttribute('barge-in') !== 'off',
       tokenUrl: this.tokenUrl,
+      access: this.#accessTicket(),
       systemPrompt: context?.system_prompt ?? this.getAttribute('system-prompt') ?? FALLBACK_PROMPT,
       keyterms: context?.keyterms ?? undefined,
       voice: context?.voice ?? this.getAttribute('voice') ?? undefined,

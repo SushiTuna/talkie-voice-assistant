@@ -92,7 +92,7 @@ Verified on **Node v26.9.0**, macOS, zsh. Run everything from `talkie-sdk/`.
 | Command | What it does | Notes |
 |---|---|---|
 | `npm install` | Install deps | Once. `node_modules/` is gitignored. |
-| `npm test` | All thirteen suites, sequentially, fail-fast | ~40 s. `mock-backend.mjs` alone takes ~28 s (real timers) — that is not a hang. Exit code is the verdict. |
+| `npm test` | All fourteen suites, sequentially, fail-fast | ~40 s. `mock-backend.mjs` alone takes ~28 s (real timers) — that is not a hang. Exit code is the verdict. |
 | `node tests/<name>.mjs` | One suite | Use while iterating. |
 | `npm run build` | `dist/talkie-embed.js` + `.map` via `build.mjs` | IIFE, minified, `globalName: 'Talkie'`, ~119 KiB. |
 | `npm start` | Dev server on `:8081` (Hono, `server.mjs`) | `/` → the site (`/site/`); the demo is `/demo/`. Clean URLs: `/site/playground`, and `*.html` 301s to them. Serves only `PUBLIC` paths, no dotfiles; binds `127.0.0.1` (`HOST=0.0.0.0` to open it up). |
@@ -110,12 +110,13 @@ checkout is, **ask** — do not guess or scaffold one. What this SDK relies on f
 | Route | Used by |
 |---|---|
 | `GET /health` | liveness |
-| `GET /agent/token` | `VoiceAgentBackend` — returns `{ token, expires_in_seconds }` (default 300) |
+| `GET /agent/token` | `VoiceAgentBackend` — returns `{ token, expires_in_seconds }` (default 300); session capped by `TALKIE_MAX_SESSION_SECONDS`; with `TALKIE_TICKET_SECRET` set, 401 `ticket_required` / `ticket_invalid` without a valid Bearer ticket |
+| `POST /agent/session` | `AccessTicket` (`core/access-ticket.js`) — `{ verification? }` → `{ ticket, expires_in_seconds }`; 404 `tickets_disabled` when tickets are off; 401 `verification_required` `{ provider, site_key }` when Turnstile is on; 403 `verification_failed` |
 | `GET /agent/context[?profile=]` | demo scenarios 8–9, `<talkie-assistant>`, `fetchAgentContext` — `{ profile, description, system_prompt, keyterms, voice, greeting, tools, prompt_source }`; `greeting` is passed only in conversation mode (README explains); `tools` are used only when the page sets none |
 | `GET /agent/profiles` | `listAgentProfiles` (site console and playground) — `{ default, profiles: [{ name, description }] }` |
 | `GET /agent/voices` | `listVoices` (site console and playground Voice fields) — `{ default, voices: [{ id, language, accent }] }`; the vendor has no voices endpoint, so the server keeps the documented list |
 | `PUT /agent/profiles/{name}[?overwrite=true]` | `saveAgentProfile` (site console) — Bearer `TALKIE_PROFILE_ADMIN_TOKEN`; 403 when unset, 401 wrong token, 409 exists without `overwrite` |
-| `POST /chat/session`, `GET /stt/token`, `POST /chat/ask`, `POST /tts`, `POST /chat/session/{id}/end` | `HttpBackend` (README documents shapes) |
+| `POST /chat/session`, `GET /stt/token`, `POST /chat/ask`, `POST /tts`, `POST /chat/session/{id}/end` | `HttpBackend` (README documents shapes); `/stt/token` has the same guard as `/agent/token` |
 
 Its environment: `ASSEMBLYAI_API_KEY` (required for the agent), `TALKIE_ALLOWED_ORIGINS`
 (comma-separated CORS allow-list; unset means only `http://localhost:8081` and
@@ -152,6 +153,7 @@ talkie-sdk/
     core/backend.js         TalkieBackendError, BACKEND_ERROR_REASONS, contract JSDoc
     core/agent-profiles.js  listAgentProfiles, listVoices, fetchAgentContext, saveAgentProfile, AgentProfileError
     core/state-colors.js    STATE_COLORS: one colour per state, shared by the widget and launcher
+    core/access-ticket.js   AccessTicket: visitor ticket + bot-check hook for the token routes
     backends/mock-backend.js        MockBackend, SCRIPT, chunkText
     backends/http-backend.js        HttpBackend
     backends/voice-agent-backend.js VoiceAgentBackend (+ private ReplyTurn class)
@@ -326,7 +328,7 @@ Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release.
 - `src/components/talkie-assistant.js` — `<talkie-assistant>`, a plain `HTMLElement` in light DOM.
   It creates `<talkie-launcher>` and `<talkie-widget>` with `document.createElement`, so it depends
   on them being **globally** registered; `src/define/talkie-assistant.js` imports their define files
-  first. Attributes: `api` (default `http://localhost:8000`), `token-url`, `profile`,
+  first. Attributes: `api` (default `http://localhost:8000`), `token-url`, `session-url`, `profile`,
   `system-prompt`, `voice`, `label`, `heading`, `subtitle`, `fonts="google"`. It fetches `/agent/context` on connect,
   `mode` (default `conversation`), `idle-timeout` (default 60), `barge-in="off"`. It
   builds a fresh `VoiceAgentBackend` on each open (conversation: `greeting` from the context and
@@ -335,7 +337,9 @@ Diagnostics: pass `onTiming(mark, { at, ...detail })`; `at` is ms since release.
   and `pagehide`. Properties `tools` and `onToolCall` (functions cannot be attributes) are read
   on each open; values a page sets before the element is defined are re-applied in
   `connectedCallback`. With `tools` unset, the context's `tools` are sent instead
-  (`#sessionTools`), with a `console.warn` when there is no `onToolCall` to run them. `_createBackend(options)` is a test seam, not public API.
+  (`#sessionTools`), with a `console.warn` when there is no `onToolCall` to run them. The `verify`
+  property (the bot-check hook) is re-applied the same way. One `AccessTicket` is kept across opens
+  and passed to each backend as `access`, so a visitor is one ticket. `_createBackend(options)` is a test seam, not public API.
 - `src/embed.js` → `build.mjs` → `dist/talkie-embed.js`. Exposes `window.Talkie` with
   `TalkieAssistant`, `TalkieWidget`, `TalkieLauncher`, `VoiceAgentBackend`, `HttpBackend`,
   `MockBackend`, `TalkieBackendError`.
@@ -424,14 +428,15 @@ exits non-zero stops the run.
 | `http-backend.mjs` | 50 | HttpBackend against stubs |
 | `pcm-codec.mjs` | 25 | base64, silence, WAV |
 | `pcm-player.mjs` | 30 | scheduling, stalls, position, stop/drain |
-| `voice-agent-backend.mjs` | 212 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
-| `talkie-assistant.mjs` | 73 | embed element wiring, tools properties and server-profile tools, modes |
+| `voice-agent-backend.mjs` | 213 | wire format, turns, streaming, words, discard, timeouts, tool turns, conversations |
+| `talkie-assistant.mjs` | 78 | embed element wiring, tools properties and server-profile tools, modes |
+| `access-ticket.mjs` | 22 | visitor tickets against a fake voice server: retry on `ticket_required`/`ticket_invalid`, one session for concurrent requests, expiry margin, the `verify` hook and its failures, both backends |
 | `agent-profiles.mjs` | 29 | list profiles and voices / fetch / save profile client against a fake `fetch`: URLs, auth header, error codes |
 | `embed-bundle.mjs` | 9 | runs `build.mjs`, boots the bundle as a classic script |
 | `server.mjs` | 42 | dev server routes: redirects, clean URLs, MIME types, the allow-list and dotfiles, every site link lands on a page |
 | `site.mjs` | 138 | site pure modules (snippet, profile converters, tool editor model incl. enum), the console's tool list and dialog against a fake DOM, page markup and CSS guards, `build-site.mjs` output |
 
-Total **784**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
+Total **812**. Suites print either `N/N tests passed` or `N passed, M failed`; rely on the exit code.
 
 ### 8.2 Conventions
 - No framework. Each file defines `check(name, condition, detail)` and counts passes/failures.
@@ -605,7 +610,9 @@ Report format — keep it short and factual:
 ## 16. Open decisions (do not settle these unilaterally)
 
 - Whether to commit `dist/talkie-embed.js`.
-- Access control on the voice server's `/agent/token` (CORS does not stop scripts).
+- Token-route access control is built (voice server `token_guard.py`, `core/access-ticket.js`),
+  but tickets and Turnstile are off until their env vars are set. Which to require in production,
+  and the cap sizes, are deployment decisions. A token holder can still set their own prompt.
 - Whether to shorten or remove `MIN_TRANSCRIBE_DWELL_MS` (~0.7 s of the wait before speech).
 - npm publishing (name, version, `files`).
 - **`HttpBackend` chunk spacing.** It yields the voice server's raw LLM token deltas

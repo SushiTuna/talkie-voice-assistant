@@ -21,6 +21,7 @@
  */
 
 import { TalkieBackendError } from '../core/backend.js';
+import { AccessTicket } from '../core/access-ticket.js';
 import { MicCapture } from '../audio/mic-capture.js';
 
 /** How long to wait after Terminate for the vendor's last Turn message. */
@@ -38,6 +39,7 @@ export class HttpBackend {
   /** @type {Promise<void> | null} */ #wsClosed = null;
   /** @type {{ cred: object, at: number } | null} */ #tokenCache = null;
   /** @type {boolean} */ #keepMicWarm = false;
+  /** @type {AccessTicket} */ #access;
 
   /**
    * @param {object} options
@@ -50,6 +52,10 @@ export class HttpBackend {
    * @param {boolean} [options.keepMicWarm=false] - Hold the mic open between turns.
    *   Removes the per-turn permission round-trip, at the cost of the browser showing
    *   its recording indicator for the whole conversation.
+   * @param {(challenge: { provider: string, siteKey: string | null }) => Promise<string> | string}
+   *   [options.verify] - Runs the bot check the server's `/agent/session` asks for, when its
+   *   `/stt/token` needs a visitor ticket (see `core/access-ticket.js`).
+   * @param {AccessTicket} [options.access] - A ticket holder to share; overrides `verify`.
    */
   constructor({
     baseUrl = 'http://localhost:8000',
@@ -59,8 +65,11 @@ export class HttpBackend {
     prompts = null,
     speakEnabled = true,
     keepMicWarm = false,
+    verify = null,
+    access = null,
   } = {}) {
     this.#baseUrl = baseUrl.replace(/\/+$/, '');
+    this.#access = access ?? new AccessTicket({ sessionUrl: `${this.#baseUrl}/agent/session`, verify });
     this.#sessionId = sessionId;
     this.caller = caller;
     this.productFocus = productFocus;
@@ -148,7 +157,8 @@ export class HttpBackend {
       const budgetMs = Math.max(0, (cached.cred.expires_in_seconds ?? 60) * 1000 - 15000);
       if (ageMs < budgetMs) return cached.cred;
     }
-    const cred = await this.#json('GET', '/stt/token');
+    // The one route that spends the vendor account, so the one that may need a ticket.
+    const cred = await this.#json('GET', '/stt/token', undefined, { ticketed: true });
     this.#tokenCache = { cred, at: Date.now() };
     return cred;
   }
@@ -499,15 +509,17 @@ export class HttpBackend {
    * @param {object} [body]
    * @returns {Promise<any>}
    */
-  async #json(method, path, body) {
+  async #json(method, path, body, { ticketed = false } = {}) {
     let res;
     try {
-      res = await fetch(`${this.#baseUrl}${path}`, {
+      const doFetch = ticketed ? (url, init) => this.#access.fetch(url, init) : fetch;
+      res = await doFetch(`${this.#baseUrl}${path}`, {
         method,
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined,
       });
     } catch (err) {
+      if (err instanceof TalkieBackendError) throw err;
       throw new TalkieBackendError('offline', err?.message || String(err));
     }
     if (!res.ok) {

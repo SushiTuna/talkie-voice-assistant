@@ -154,6 +154,46 @@ async function testToolsSetBeforeUpgradeSurvive() {
   el.close();
 }
 
+async function testOneTicketPerVisitor() {
+  stubFetch({});
+  const hook = () => 'human';
+  const { el } = mount({}, (node) => {
+    Object.defineProperty(node, 'verify', { value: hook, writable: true, configurable: true, enumerable: true });
+  });
+  check('verify set before the element was defined is taken over on connect',
+    !Object.prototype.hasOwnProperty.call(el, 'verify') && el.verify === hook);
+  check('session url derives from api', el.sessionUrl === 'http://localhost:8000/agent/session');
+  const first = await openCapturing(el);
+  el.close();
+  const second = await openCapturing(el);
+  check('each open reuses one ticket holder, so the server counts one visitor',
+    first.access && first.access === second.access);
+
+  // The holder asks the element for its hook when the server wants a bot check.
+  const posts = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const u = String(url);
+    const reply = (status, body) => new Response(JSON.stringify(body), { status });
+    if (u.endsWith('/agent/session')) {
+      const body = JSON.parse(init.body);
+      posts.push(body);
+      return body.verification
+        ? reply(200, { ticket: 't1', expires_in_seconds: 1800 })
+        : reply(401, { detail: { code: 'verification_required', provider: 'turnstile', site_key: 'k' } });
+    }
+    const auth = new Headers(init.headers).get('Authorization');
+    return auth ? reply(200, { token: 'x' }) : reply(401, { detail: { code: 'ticket_required' } });
+  };
+  const res = await second.access.fetch(el.tokenUrl);
+  check('the element\'s verify hook answers the server\'s bot check', res.ok && posts.at(-1)?.verification === 'human');
+  el.close();
+
+  stubFetch({});
+  const { el: custom } = mount({ 'session-url': 'https://gate.example.com/s' });
+  check('session-url overrides the derived route', custom.sessionUrl === 'https://gate.example.com/s');
+  custom.close();
+}
+
 async function testServerToolsFromContext() {
   const served = [{ type: 'function', name: 'open_door', description: 'Open it.', parameters: { type: 'object', properties: {} } }];
   stubFetch({ 'http://localhost:8000/agent/context': { system_prompt: 'x', greeting: 'Hi', tools: served } });
@@ -509,6 +549,7 @@ await testCopyIsForwarded();
 await testMinimizeKeepsTheConversation();
 await testSheetLayoutOnPhones();
 await testPreviewUsesTheConsolePersona();
+await testOneTicketPerVisitor();
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

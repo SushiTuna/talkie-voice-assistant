@@ -294,13 +294,16 @@ turn precisely to avoid idle time.
 **The token route.** The vendor API key must never reach the browser, so `tokenUrl` points at a
 route of yours that proxies
 [`GET https://agents.assemblyai.com/v1/token`](https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/generate-voice-agent-token)
-and returns its `{ token, expires_in_seconds }` verbatim. Tokens are **single-use** and last at
-most 600 seconds, so mint a fresh one per connection:
+and returns its `{ token, expires_in_seconds }` verbatim. Tokens are **single-use**, so mint a
+fresh one per connection. Two limits, easily confused: `expires_in_seconds` (1–600) is only the
+window to *open* the socket, and does not cap the session; `max_session_duration_seconds`
+(60–10,800) does, and **defaults to 10,800 s (3 h)**. Always set it:
 
 ```js
-// Express, for illustration. Keep ASSEMBLYAI_API_KEY server-side.
+// Express, for illustration. Keep ASSEMBLYAI_API_KEY server-side, and gate this route
+// (see "Visitor tickets" below): anyone who can call it spends your account.
 app.get('/agent/token', async (_req, res) => {
-  const upstream = await fetch('https://agents.assemblyai.com/v1/token?expires_in_seconds=300', {
+  const upstream = await fetch('https://agents.assemblyai.com/v1/token?expires_in_seconds=300&max_session_duration_seconds=900', {
     headers: { Authorization: `Bearer ${process.env.ASSEMBLYAI_API_KEY}` },
   });
   res.status(upstream.status).json(await upstream.json());
@@ -310,6 +313,17 @@ app.get('/agent/token', async (_req, res) => {
 Pass `fetchToken: async () => ({ token, expires_in_seconds })` instead if the credential comes
 from somewhere other than a GET, and `tokenUrl` is ignored. With neither option the default is
 `${baseUrl}/agent/token`.
+
+**Visitor tickets.** The voice server can require a ticket on its token routes
+(`TALKIE_TICKET_SECRET`; its README lists the settings). A token route then answers
+`401 { detail: { code: 'ticket_required' } }`, and both backends react by themselves: they
+`POST ${baseUrl}/agent/session` (or `sessionUrl`), keep the short-lived ticket it returns, and
+retry with `Authorization: Bearer <ticket>`. If the session route first wants a bot check
+(`verification_required`, with a `provider` and `site_key`), the backend calls your
+`verify({ provider, siteKey })` hook and sends back the token it resolves to. Against a server
+without tickets nothing changes: no session request is made. `src/core/access-ticket.js` holds
+the logic; pass one `AccessTicket` as `access` to several backends so a visitor counts once.
+`<talkie-assistant>` does that across opens, and takes the hook as its `verify` property.
 
 **Why the silence padding.** The agent decides end-of-turn itself, and its client event list has
 no "commit turn" event. Releasing the button stops audio altogether, which is not the same as
@@ -553,14 +567,16 @@ These are intentionally out of scope for the current release. See linked issues 
   input element yet. This would need a `<talkie-text-input>` component or a prop injection.
 - **Not on npm yet.** Use `dist/talkie-embed.js`, or install from a local checkout with
   `npm install ../talkie-sdk`.
-- **Token route is not access-controlled.** CORS stops other *browsers* from using the token
-  server, but not scripts; `/agent/token` has a per-IP rate limit and no authentication. Add a
-  real gate before exposing it publicly.
+- **A token holder chooses the prompt.** The browser sends `system_prompt` and `tools` in
+  `session.update`, so anyone who gets a token can run their own instructions on your account.
+  Visitor tickets, the bot check and the voice server's quotas limit *who* gets tokens and how
+  many; they do not lock the agent to your persona. Without `TALKIE_TICKET_SECRET` on the voice
+  server, only its per-IP and global caps stand in front of `/agent/token`.
 
 ## Testing
 
 ```bash
-npm test          # 784 assertions across thirteen suites — state machine, backends, audio, widget, embed, the built bundle, the site and its dev server
+npm test          # 812 assertions across fourteen suites — state machine, backends, visitor tickets, audio, widget, embed, the built bundle, the site and its dev server
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.

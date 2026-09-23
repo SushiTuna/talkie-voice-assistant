@@ -10,11 +10,24 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
 
 ## 1. Blockers — do not launch without these
 
-- [ ] **Gate the token route.** `/agent/token` mints AssemblyAI session tokens with your API key.
-      It has a per-IP rate limit but no authentication, and CORS stops other *browsers*, not
-      scripts (README → *Known gaps*; AGENTS.md §16). Anyone who finds the URL can spend your
-      AssemblyAI quota. Add a real gate: a signed page session, a short-lived nonce, bot
-      protection, or a per-origin/per-user quota.
+- [ ] **Turn on the token route's gate.** `/agent/token` and `/stt/token` mint AssemblyAI
+      tokens with your API key, and CORS stops other *browsers*, not scripts. The voice server's
+      `token_guard.py` has the gate, but its strongest layers are off until you configure them
+      (voice server README → *Token access control*):
+  - [x] Each token caps its session (`TALKIE_MAX_SESSION_SECONDS`, default 900 s). Without it
+        AssemblyAI allows 10,800 s.
+  - [x] Global caps per minute and per day, across all callers.
+  - [x] A per-IP limit that sees real visitors behind a proxy: the tour's proxy sends
+        `X-Forwarded-For`, and uvicorn trusts it only from `--forwarded-allow-ips`.
+  - [ ] Set `TALKIE_TICKET_SECRET` (32+ characters): token routes then need a signed visitor
+        ticket from `POST /agent/session`, with a quota per visitor.
+  - [ ] Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY`, and give the page a `verify` hook
+        (`docs/integration.md` → *Visitor tickets and the bot check*). Without it, anyone can get a
+        ticket, and the per-visitor quota does not stop a script.
+  - [ ] Size the caps (`TALKIE_TOKENS_*`) to expected traffic.
+  - [ ] Counters are in one process's memory. Run one worker, or move them to a shared store.
+  - Still open by design: a token holder can send their own `system_prompt` (README →
+    *Known gaps*).
 - [ ] **Keep profile writes off, or behind a real gate.** `PUT /agent/profiles/{name}` rewrites
       what the agent says and which tools it is offered. It is disabled unless
       `TALKIE_PROFILE_ADMIN_TOKEN` is set on the voice server (`server.py` `put_agent_profile`). Leave
@@ -39,7 +52,8 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
 ## 2. Security
 
 - [x] The AssemblyAI API key stays on the server. The browser only gets single-use tokens that
-      last at most 600 s (README → *The token route*).
+      must be redeemed within 300 s, for a session capped at `TALKIE_MAX_SESSION_SECONDS`
+      (README → *The token route*).
 - [x] Each open gets a fresh session. Closing the panel, removing the element or `pagehide` sends
       `session.end` (README method table, `dispose()`; `talkie-assistant.js` `#endSession`).
 - [x] The persona (`system_prompt`) is fetched from the server's `/agent/context`, not baked
@@ -155,7 +169,7 @@ Status as of 2026-09-21, package version `0.1.0` (`package.json`).
 - [ ] Bluetooth headset, wired headset, laptop speakers (echo), phone speaker.
 - [ ] iOS: audio after the phone is locked or the app is backgrounded, and the silent switch.
 - [ ] Slow network (throttled 3G) and offline mid-conversation → `offline` error view.
-- [ ] Long session near the token's lifetime (≤600 s, set by your token route) and near
+- [ ] Long session near the session cap (`TALKIE_MAX_SESSION_SECONDS`, default 900 s) and near
       `idle-timeout`.
 
 ## 10. Release gate

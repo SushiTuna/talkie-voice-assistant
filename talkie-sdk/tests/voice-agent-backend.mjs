@@ -502,6 +502,16 @@ async function testRejectedTokenIsMapped() {
       check('an unreachable token route is offline', caught?.reason === 'offline', caught?.reason);
     });
 
+    // The token route wants a visitor ticket, and the session route wants a bot check the
+    // page has no hook for: a configuration problem, so backend-failure, not offline.
+    const refusal = (code) => new Response(JSON.stringify({ detail: { code, provider: 'turnstile', site_key: 'k' } }), { status: 401 });
+    await withFetch(async (url) => refusal(String(url).endsWith('/agent/session') ? 'verification_required' : 'ticket_required'), async () => {
+      let caught = null;
+      try { await b.startCapture(); } catch (err) { caught = err; }
+      check('a ticket the page cannot get is a backend-failure, not offline',
+        caught?.reason === 'backend-failure' && caught.message.includes('verify hook'), `${caught?.reason}: ${caught?.message}`);
+    });
+
     await withFetch(async () => ({ ok: true, status: 200, json: async () => ({}) }), async () => {
       let caught = null;
       try { await b.startCapture(); } catch (err) { caught = err; }

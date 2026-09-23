@@ -27,6 +27,7 @@ Closing the panel, removing the element or leaving the page ends the agent sessi
 |---|---|---|
 | `api` | `http://localhost:8000` | Origin of the voice server |
 | `token-url` | `${api}/agent/token` | Token route, if it lives elsewhere |
+| `session-url` | `${api}/agent/session` | Visitor-ticket route, used only when the token route asks for a ticket |
 | `profile` | server default | Agent profile, sent as `?profile=` to `/agent/context` |
 | `system-prompt` | a short generic prompt | Used only when `/agent/context` is missing or fails |
 | `voice` | server's, else `anna` | Output voice |
@@ -92,6 +93,25 @@ definitions live in the voice server's `property` profile, and the page supplies
 
 A worked example lives at [`../examples/embed.html`](../examples/embed.html) — see
 [Running the example](#running-the-example).
+
+### Visitor tickets and the bot check
+
+When the voice server sets `TALKIE_TICKET_SECRET`, its token routes need a short-lived visitor
+ticket, which the element fetches from `session-url` by itself and reuses across opens. If the
+server also sets `TURNSTILE_SECRET_KEY`, it issues a ticket only after a Cloudflare Turnstile
+check, and the page runs that check through the `verify` property:
+
+```js
+const el = document.querySelector('talkie-assistant');
+el.verify = async ({ provider, siteKey }) => {
+  // Render Turnstile with siteKey and resolve to its token.
+  // virtual-tour/talkie-verify.js is a complete version.
+};
+```
+
+Without `verify`, a server that asks for the check makes Start show the backend-failure error.
+A page using Turnstile needs `https://challenges.cloudflare.com` in its CSP's `script-src` and
+`frame-src`.
 
 ### What the host page's server needs
 
