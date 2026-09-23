@@ -779,6 +779,15 @@ html[data-theme="dark"] .nbhd-tiles { filter: invert(1) hue-rotate(180deg) grays
   body { padding-bottom: 76px; }
 }
 
+/* The voice server's bot check (talkie-verify.js). Takes no space unless Turnstile needs the
+   visitor to interact; then it sits above the launcher, over the assistant's own layer. */
+.talkie-verify {
+  position: fixed;
+  right: 16px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 2147483001;
+}
+
 /* ---------- Talkie assistant (index.html <talkie-assistant>) ---------- */
 /* Public hooks only: --talkie-* tokens, and the element's light-DOM children. The page already
    loads Hanken Grotesk, so the widget uses it instead of fetching its own Google Fonts. */

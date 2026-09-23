@@ -149,30 +149,70 @@ async function startTalkieBundler() {
 /* ------------------------------------------------------------------ voice server proxy (/voice/*) */
 
 // The assistant reaches the voice server through this origin, so the page works wherever it is
-// served (a tunnel, another device) and needs no CORS allow-list. Only the two GET routes
+// served (a tunnel, another device) and needs no CORS allow-list. Only the routes
 // <talkie-assistant> uses are forwarded; the agent's audio goes browser → AssemblyAI directly.
 const VOICE_API = (process.env.VOICE_API || "http://127.0.0.1:8000").replace(/\/+$/, "");
-const VOICE_ROUTES = new Set(["/voice/agent/context", "/voice/agent/token"]);
+const VOICE_ROUTES = new Map([
+  ["/voice/agent/context", "GET"],
+  ["/voice/agent/token", "GET"],
+  ["/voice/agent/session", "POST"], // visitor tickets, when the voice server sets TALKIE_TICKET_SECRET
+]);
+// TRUST_PROXY=1: only with exactly one reverse proxy (a load balancer) in front of this server:
+// its peer is then that proxy, and the visitor is the last X-Forwarded-For entry it appended.
+// Anything to the left of that entry came from the visitor and may be forged.
+// TRUST_PROXY=cloudflare: only when nothing but Cloudflare can reach this server (a Cloudflare
+// Tunnel, or its proxy with the firewall open to Cloudflare alone). The visitor is then
+// CF-Connecting-IP, which Cloudflare sets itself.
+// https://developers.cloudflare.com/fundamentals/reference/http-headers/
+const TRUST_PROXY = process.env.TRUST_PROXY || "";
 
-async function proxyVoice(req, res, url) {
-  if (req.method !== "GET") {
-    res.writeHead(405, { "Content-Type": "application/json", Allow: "GET" });
+/** The visitor's address, as this server can vouch for it. */
+function clientAddress(req) {
+  if (TRUST_PROXY === "cloudflare") {
+    const ip = String(req.headers["cf-connecting-ip"] || "").trim();
+    if (ip) return ip;
+  } else if (TRUST_PROXY === "1") {
+    const last = String(req.headers["x-forwarded-for"] || "").split(",").pop().trim();
+    if (last) return last;
+  }
+  return req.socket.remoteAddress || "";
+}
+
+async function proxyVoice(req, res, url, method) {
+  if (req.method !== method) {
+    res.writeHead(405, { "Content-Type": "application/json", Allow: method });
     return res.end(JSON.stringify({ detail: "Method not allowed" }));
+  }
+  // The voice server limits tokens per address. Without this header every visitor would reach
+  // it as this server's own address and share one allowance. It trusts the header only from
+  // proxies in uvicorn's --forwarded-allow-ips (default 127.0.0.1, i.e. this server running
+  // beside it); replace, never append, so a visitor cannot plant an address of their own.
+  const headers = { "X-Forwarded-For": clientAddress(req) };
+  if (req.headers.authorization) headers.Authorization = req.headers.authorization; // visitor ticket
+  let body;
+  if (method === "POST") {
+    try {
+      body = await readJsonBody(req);
+    } catch (err) {
+      res.writeHead(err.statusCode === 413 ? 413 : 400, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ detail: "Could not read body." }));
+    }
+    headers["Content-Type"] = "application/json";
   }
   let upstream;
   try {
-    upstream = await fetch(VOICE_API + url.pathname.slice("/voice".length) + url.search);
+    upstream = await fetch(VOICE_API + url.pathname.slice("/voice".length) + url.search, { method, headers, body });
   } catch {
     res.writeHead(502, { "Content-Type": "application/json", "Cache-Control": "no-store" });
     return res.end(JSON.stringify({ detail: `Voice server unreachable at ${VOICE_API}` }));
   }
-  const body = Buffer.from(await upstream.arrayBuffer());
+  const data = Buffer.from(await upstream.arrayBuffer());
   res.writeHead(upstream.status, {
     "Content-Type": upstream.headers.get("content-type") || "application/json",
-    "Cache-Control": "no-store", // tokens are single-use
-    "Content-Length": String(body.length),
+    "Cache-Control": "no-store", // tokens and tickets are per visitor
+    "Content-Length": String(data.length),
   });
-  res.end(body);
+  res.end(data);
 }
 
 /* ------------------------------------------------------------------ compression + caching */
@@ -358,7 +398,7 @@ const server = createServer(async (req, res) => {
     }
 
     if (VOICE_ROUTES.has(pathname)) {
-      return await proxyVoice(req, res, url);
+      return await proxyVoice(req, res, url, VOICE_ROUTES.get(pathname));
     }
 
     if (pathname === "/api/models") {

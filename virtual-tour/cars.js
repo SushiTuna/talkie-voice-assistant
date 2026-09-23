@@ -1,8 +1,8 @@
 // The two cars parked under the house. The model's own cars were cut out of the GLB; these replace
 // them at the same spots. Both files are prepared offline (meshes merged by material, real-world
 // length, wheels on y = 0, centred, front towards +z, quantized):
-//   garage_ferrari_sf90.glb  ← props/2021_ferrari_sf90_spider.glb   (4.704 m long)
-//   garage_porsche_911_gt3.glb ← props/porsche_911_gt3.glb        (4.573 m)
+//   garage_ferrari_sf90.glb    ← Sketchfab "2021 Ferrari SF90 Spider" (4.704 m long)
+//   garage_porsche_911_gt3.glb ← Sketchfab "Porsche 911 GT3"          (4.573 m)
 import { Vector3 } from "@babylonjs/core/Maths/math.vector.js";
 import { TransformNode } from "@babylonjs/core/Meshes/transformNode.js";
 import { CreateBox } from "@babylonjs/core/Meshes/Builders/boxBuilder.js";

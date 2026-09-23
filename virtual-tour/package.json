@@ -10,7 +10,7 @@
     "test:anchors": "node tests/anchor-shots.mjs",
     "test:indoor": "node tests/indoor-shadow-shots.mjs",
     "optimize": "node tools/optimize-models.mjs",
-    "test:talkie": "node tests/talkie-tools.mjs"
+    "test:talkie": "node tests/talkie-tools.mjs && node tests/talkie-verify.mjs"
   },
   "keywords": [],
   "author": "",

@@ -79,14 +79,26 @@ The page embeds the Talkie voice assistant from the sibling `talkie-sdk/` the do
 - **Persona:** `profile="property"` is the voice server's `agents/property.json`, written for this
   listing. Edit the agent's knowledge there, not here.
 - **Voice server:** separate repo (`~/Develop/voice`), started as usual on :8000. The page reaches
-  it through this server: `/voice/agent/context` and `/voice/agent/token` (GET only, nothing else)
-  are forwarded to `VOICE_API` (default `http://127.0.0.1:8000`). Same origin, so no CORS
-  allow-list is needed, and it works through a tunnel. Without the voice server the launcher still
-  opens; pressing Start shows the widget's error state.
+  it through this server: `GET /voice/agent/context`, `GET /voice/agent/token` and
+  `POST /voice/agent/session` (nothing else) are forwarded to `VOICE_API` (default
+  `http://127.0.0.1:8000`), with the visitor's ticket (`Authorization`) and address
+  (`X-Forwarded-For`, replaced, never appended). Same origin, so no CORS allow-list is needed, and
+  it works through a tunnel. Without the voice server the launcher still opens; pressing Start
+  shows the widget's error state.
+- **Behind a load balancer:** set `TRUST_PROXY=1` so the proxy takes the visitor's address from
+  the balancer's `X-Forwarded-For` (last entry) instead of the balancer's own. Only with exactly
+  one proxy in front; otherwise leave it unset.
+- **Behind Cloudflare** (a Cloudflare Tunnel, as in `../DEPLOY.md`): set `TRUST_PROXY=cloudflare`
+  instead. The visitor's address is then the `CF-Connecting-IP` header Cloudflare sets. Only when
+  nothing but Cloudflare can reach this server, since anyone else could send that header too.
+- **Bot check** (`talkie-verify.js`): when the voice server sets `TURNSTILE_SECRET_KEY`, the
+  assistant's `verify` hook loads Cloudflare Turnstile on demand and renders it in `.talkie-verify`
+  above the launcher (invisible unless Turnstile needs a click). With the check off, nothing loads.
 - **Sharing (`ngrok http 8080`):** gives the HTTPS the microphone needs on other devices. It also
-  makes `/voice/agent/token` public: anyone with the URL can mint AssemblyAI tokens on your
-  account. Stop the tunnel when you are done testing, or put ngrok's `basic-auth` traffic policy
-  in front of it.
+  makes `/voice/agent/token` public. The voice server's per-IP and global caps and its 900 s
+  session cap still apply, but set `TALKIE_TICKET_SECRET` and the Turnstile keys on it (its
+  README, *Token access control*) before sharing the link widely, or stop the tunnel when you
+  are done testing.
 - **Microphone:** browsers only allow it on `localhost` or HTTPS.
 - **Layout** (`styles.css`, "Talkie assistant"): widget uses the page's Hanken Grotesk (no extra
   Google Fonts request); on phones the launcher and panel sit above the sticky CTA bar; hidden in
@@ -206,7 +218,7 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 ```bash
 npm run smoke         # headless NullEngine: glTF parse, bounds, spawn search, gravity
-npm run test:talkie   # voice agent tools: schemas, room/section handling, error results
+npm run test:talkie   # voice agent tools (schemas, room/section handling, error results) and the bot-check hook
 npm run test:api      # boots server on a random port: 201/400/413/405/honeypot, restores data file; /talkie/* embed route, /voice/* proxy
 npm run test:anchors  # headless Chrome: screenshots every anchor -> tests/shots/, fails on drift/blocked view
 ```
@@ -219,7 +231,6 @@ console-error + horizontal-overflow checks).
 CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; credited anyway), in `assets/env/` and `assets/tex/`:
 
 - HDRI [“Kloofendal 48d Partly Cloudy (Pure Sky)”](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) — Greg Zaal, Jarod Guest
-  (`assets/env/overcast_soil_puresky_2k.hdr`, the previous overcast sky, is kept but no longer loaded)
 - Textures [“Brick Pavement 02”](https://polyhaven.com/a/brick_pavement_02) and [“Asphalt 07”](https://polyhaven.com/a/asphalt_07) — Charlotte Baglioni
 - Bark and needle maps from [“Pine Tree 01”](https://polyhaven.com/a/pine_tree_01) — Rob Tuytel, Rico Cilliers
   (`pine_branch.png` / `pine_tuft.png` are composed from its twig texture)
@@ -228,7 +239,7 @@ CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; cr
 Broadleaf trees: **“Low Poly Tree Scene Free”** by *Nicholas-3D*,
 [Sketchfab](https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd), licensed **CC BY 4.0** (credit required).
 Modified: `models/props/broadleaf_trees.glb` keeps only the trees (grass, ground and water removed, textures
-resized to ≤512 px); the original download is `models/props/low_poly_tree_scene_free.glb` (not loaded).
+resized to ≤512 px).
 
 Distant mountains: **“Mountain low poly For distant mountains”** by *adventurer*,
 [Sketchfab](https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8), licensed **CC BY 4.0** (credit required).
@@ -246,8 +257,8 @@ Garage cars (`cars.js`), replacing the model's own cars, which were cut out of t
   [Sketchfab](https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243), licensed **CC BY-NC 4.0**
   (credit required, **non-commercial use only**).
 
-Modified: `models/props/garage_ferrari_sf90.glb` / `garage_porsche_911_gt3.glb` are the originals
-(`2021_ferrari_sf90_spider.glb` / `porsche_911_gt3.glb`, not loaded) with node transforms baked,
+Modified: `models/props/garage_ferrari_sf90.glb` / `garage_porsche_911_gt3.glb` are the original
+downloads with node transforms baked,
 meshes merged by material, scaled to real length (4.704 m / 4.573 m), wheels on y = 0, front on +z, and
 quantized (KHR_mesh_quantization).
 
