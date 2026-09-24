@@ -1,0 +1,30 @@
+# Build context for virtual-tour/Containerfile (the repo root). Keep it to what the tour needs.
+.git
+.github
+.claude
+**/.DS_Store
+**/node_modules
+**/.env
+**/.env.*
+.cf-token
+**/.cf-token
+demo-video
+DEPLOY.md
+compose.yaml
+
+# talkie-sdk: only package.json, the lockfile and src/ are copied
+talkie-sdk/dist
+talkie-sdk/site
+talkie-sdk/tests
+talkie-sdk/docs
+talkie-sdk/.tmp
+
+# virtual-tour: no local data, assets, tests or tools
+virtual-tour/data
+virtual-tour/models
+virtual-tour/assets
+virtual-tour/tests
+virtual-tour/tools
+virtual-tour/.tmp
+virtual-tour/.playwright-cli
+virtual-tour/Containerfile

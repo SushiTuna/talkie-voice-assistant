@@ -1,0 +1,35 @@
+# The virtual tour's server (server.mjs). Build from the repo root, not from virtual-tour/:
+# the tour bundles the Talkie widget from ../talkie-sdk at runtime, so both folders go in, side by
+# side as in the repo.
+#
+#   podman build -f virtual-tour/Containerfile -t talkie-tour .
+#
+# Models, sky, textures and photos come from R2 (assets.js), so none of them are in the image.
+FROM docker.io/library/node:26-slim
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Dependencies first, so a code change doesn't reinstall them. Production only: esbuild is a
+# runtime dependency (server.mjs bundles in memory); sharp, wrangler and gltf-transform are for
+# the asset tools, which don't run here.
+COPY talkie-sdk/package.json talkie-sdk/package-lock.json talkie-sdk/
+COPY virtual-tour/package.json virtual-tour/package-lock.json virtual-tour/
+RUN cd talkie-sdk && npm ci --omit=dev \
+ && cd ../virtual-tour && npm ci --omit=dev \
+ && npm cache clean --force
+
+# The widget's sources (the tour builds talkie-sdk/src/embed.js) and the tour itself.
+COPY talkie-sdk/src talkie-sdk/src
+COPY virtual-tour virtual-tour
+
+# data/ holds the booking requests (data/tour-requests.json); mount a volume there. It is created
+# here so the volume starts out owned by the unprivileged user.
+RUN mkdir -p virtual-tour/data && chown node:node virtual-tour/data
+USER node
+WORKDIR /app/virtual-tour
+
+ENV PORT=8080
+EXPOSE 8080
+# Health check: compose.yaml (Podman's default OCI image format drops HEALTHCHECK).
+CMD ["node", "server.mjs"]
