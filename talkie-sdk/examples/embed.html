@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Embed Example</title>
+<!--
+  A stand-in for someone else's website: no build step, no framework, its own styles.
+  Everything the assistant needs is the one script tag and the one element below.
+
+  Run it:   npm run example   →   http://localhost:5173/examples/embed
+
+  It is served from :5173 on purpose, a different origin from the voice server on :8000,
+  so the token request is a real cross-origin call. Start the voice server with
+  TALKIE_ALLOWED_ORIGINS including http://localhost:5173 or the browser will block it.
+-->
+<style>
+  /* Deliberately hostile host styles: the widget must look the same regardless. */
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  button { all: unset; }
+  body {
+    font: 17px/1.6 Georgia, 'Times New Roman', serif;
+    color: #222;
+    background: #fbfaf7;
+  }
+  header {
+    position: sticky; top: 0; z-index: 1000;
+    background: #1d3557; color: #fff;
+    padding: 16px 24px;
+    font: 600 18px/1 system-ui, sans-serif;
+  }
+  main { max-width: 680px; margin: 0 auto; padding: 48px 16px 160px; }
+  h1 { font-size: 34px; line-height: 1.2; margin-bottom: 16px; }
+  p { margin-bottom: 16px; }
+  code { font-size: 15px; background: #eee; padding: 1px 5px; border-radius: 3px; }
+  pre { background: #f0efe9; padding: 16px; border-radius: 6px; overflow-x: auto; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+  <header>Example Co. Help Centre</header>
+  <main>
+    <h1>Any page, one script tag</h1>
+    <p>This page stands in for a site that has nothing to do with Talkie. It has no bundler,
+      no framework, and a global CSS reset that would flatten most widgets.</p>
+    <p>The round button in the bottom-right corner is the assistant. It was added with:</p>
+    <pre><code>&lt;script src="/dist/talkie-embed.js" defer&gt;&lt;/script&gt;
+&lt;talkie-assistant api="http://localhost:8000" fonts="google"&gt;&lt;/talkie-assistant&gt;</code></pre>
+    <p>Add <code>?profile=it-support</code> to this page's address to try another of the
+      server's agent profiles.</p>
+  </main>
+
+  <script src="/dist/talkie-embed.js" defer></script>
+  <talkie-assistant api="http://localhost:8000" fonts="google" label="Ask a question"></talkie-assistant>
+
+  <!-- Only for this demo: forward ?profile= from the page URL onto the element. -->
+  <script>
+    const profile = new URLSearchParams(location.search).get('profile');
+    if (profile) document.querySelector('talkie-assistant').setAttribute('profile', profile);
+  </script>
+</body>
+</html>

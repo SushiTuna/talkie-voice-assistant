@@ -7,7 +7,10 @@
     "start": "node server.mjs",
     "smoke": "node tests/smoke.mjs",
     "test:api": "node tests/api.mjs",
-    "test:anchors": "node tests/anchor-shots.mjs"
+    "test:anchors": "node tests/anchor-shots.mjs",
+    "test:indoor": "node tests/indoor-shadow-shots.mjs",
+    "optimize": "node tools/optimize-models.mjs",
+    "test:talkie": "node tests/talkie-tools.mjs && node tests/talkie-verify.mjs"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +18,17 @@
   "type": "module",
   "dependencies": {
     "@babylonjs/core": "^9.27.0",
-    "@babylonjs/loaders": "^9.27.0"
+    "@babylonjs/loaders": "^9.27.0",
+    "@lion/ui": "^0.21.1",
+    "esbuild": "^0.28.2",
+    "leaflet": "^1.9.4",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "meshoptimizer": "^1.2.0",
+    "sharp": "^0.35.4"
   }
 }

@@ -8,15 +8,27 @@
 <title>Modular House Cube 3 — Explore in 3D &amp; Book a Tour</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
+<meta name="theme-color" content="#0f1011" />
 <link rel="stylesheet" href="/styles.css" />
+<!-- scroll animations (styles.css "html.fx", page.js) — set before first paint, skipped under reduced motion -->
+<script>if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("fx");</script>
+<!-- theme (styles.css html[data-theme], page.js toggle) — saved choice, else the system setting; set before first paint -->
+<script>(function () { var t; try { t = localStorage.getItem("theme"); } catch (e) {}
+  if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === "light" ? "#f5f2ec" : "#0f1011"; })();</script>
 <script type="importmap">
 {
   "imports": {
     "@babylonjs/core": "/node_modules/@babylonjs/core/index.js",
     "@babylonjs/core/": "/node_modules/@babylonjs/core/",
     "@babylonjs/loaders": "/node_modules/@babylonjs/loaders/index.js",
-    "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/"
+    "@babylonjs/loaders/": "/node_modules/@babylonjs/loaders/",
+    "leaflet": "/node_modules/leaflet/dist/leaflet-src.esm.js",
+    "lit": "/node_modules/lit/index.js",
+    "lit/": "/node_modules/lit/",
+    "@lion/ui/": "/node_modules/@lion/ui/exports/"
   }
 }
 </script>
@@ -25,14 +37,17 @@
 <header class="site-header">
   <div class="header-inner">
     <a class="wordmark" href="#top" aria-label="Modular House Cube 3 — back to top">
-      <span class="wm-a">Modular House</span><span class="wm-b">Cube&nbsp;3</span>
+      <span class="wm-logo" aria-hidden="true"></span><span class="wm-text"><span class="wm-a">Modular House</span><span class="wm-b">Cube&nbsp;3</span></span>
     </a>
     <nav class="main-nav" aria-label="Primary">
+      <a href="#floor-plan">Floor plan</a>
       <a href="#tour-section">Tour</a>
       <a href="#residence">Residence</a>
-      <a href="#floor-plan">Floor plan</a>
+      <a href="#location">Location</a>
       <a href="#contact">Contact</a>
     </nav>
+    <!-- components/tour-switch.js: Lion switch, checked = dark; page.js wireTheme syncs it with html[data-theme] -->
+    <tour-switch class="theme-toggle" id="themeToggle" label="Dark mode" label-sr-only></tour-switch>
     <a class="btn btn-primary btn-header" href="#contact">Schedule a tour</a>
   </div>
 </header>
@@ -43,7 +58,7 @@
     <picture>
       <source type="image/webp" srcset="/assets/hero.webp" />
       <img class="hero-img" src="/assets/hero.jpg" width="2400" height="1350"
-           alt="The raised modular home seen from the lawn" fetchpriority="high" />
+           alt="The dark-clad raised home in a misty pine forest, warm light in its windows" fetchpriority="high" />
     </picture>
     <div class="hero-scrim" aria-hidden="true"></div>
     <div class="hero-content container">
@@ -55,6 +70,77 @@
         <a class="btn btn-primary" href="#contact">Schedule a tour</a>
         <a class="btn btn-secondary btn-on-dark" href="#tour-section">Explore in 3D</a>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ FLOOR PLAN ============ -->
+  <section id="floor-plan" class="floor-plan">
+    <div class="container">
+      <header class="section-head reveal" data-stagger>
+        <p class="eyebrow">Floor plan</p>
+        <h2>One level, four wings</h2>
+        <p class="section-sub">Schematic layout — click any room to jump to it in the 3D tour.</p>
+      </header>
+      <div class="plan-wrap reveal">
+        <svg class="plan" viewBox="0 0 900 470" role="group" aria-label="Clickable schematic floor plan">
+          <!-- shell (outer wall is drawn last, on top of the room edges) -->
+          <rect class="plan-deck" x="12" y="120" width="68" height="180" />
+          <rect class="plan-deck" x="300" y="392" width="300" height="62" />
+
+          <!-- interactive rooms (data-anchor = id in anchors.js) -->
+          <g class="plan-room" data-anchor="lounge" tabindex="0" role="button" aria-label="View Lounge in the 3D tour">
+            <rect x="80" y="40" width="170" height="340" /><text x="165" y="215">Lounge</text>
+          </g>
+          <g class="plan-room" data-anchor="dining" tabindex="0" role="button" aria-label="View Dining in the 3D tour">
+            <rect x="250" y="150" width="180" height="120" /><text x="340" y="215">Dining</text>
+          </g>
+          <g class="plan-room" data-anchor="kitchen" tabindex="0" role="button" aria-label="View Kitchen in the 3D tour">
+            <rect x="250" y="270" width="180" height="110" /><text x="340" y="330">Kitchen</text>
+          </g>
+          <g class="plan-room" data-anchor="laundry" tabindex="0" role="button" aria-label="View Laundry in the 3D tour">
+            <rect x="250" y="40" width="110" height="110" /><text x="305" y="100">Laundry</text>
+          </g>
+          <g class="plan-room" data-anchor="study-nook" tabindex="0" role="button" aria-label="View Study Nook in the 3D tour">
+            <rect x="360" y="40" width="110" height="110" /><text x="415" y="92">Study</text><text x="415" y="110">nook</text>
+          </g>
+          <g class="plan-room" data-anchor="rumpus" tabindex="0" role="button" aria-label="View Rumpus in the 3D tour">
+            <rect x="430" y="150" width="150" height="120" /><text x="505" y="215">Rumpus</text>
+          </g>
+          <g class="plan-room" data-anchor="room-3" tabindex="0" role="button" aria-label="View Room 3 in the 3D tour">
+            <rect x="430" y="270" width="100" height="110" /><text x="480" y="330">Room 3</text>
+          </g>
+          <g class="plan-room" data-anchor="room-2" tabindex="0" role="button" aria-label="View Room 2 in the 3D tour">
+            <rect x="530" y="270" width="100" height="110" /><text x="580" y="330">Room 2</text>
+          </g>
+          <g class="plan-room" data-anchor="room-1" tabindex="0" role="button" aria-label="View Room 1 in the 3D tour">
+            <rect x="630" y="270" width="90" height="110" /><text x="675" y="330">Room 1</text>
+          </g>
+          <g class="plan-room" data-anchor="bathroom" tabindex="0" role="button" aria-label="View Bathroom in the 3D tour">
+            <rect x="470" y="40" width="110" height="110" /><text x="525" y="94">Bath</text><text class="plan-sub" x="525" y="112">freestanding</text>
+          </g>
+          <g class="plan-room" data-anchor="ensuite" tabindex="0" role="button" aria-label="View Ensuite in the 3D tour">
+            <rect x="720" y="40" width="120" height="110" /><text x="780" y="100">Ensuite</text>
+          </g>
+          <g class="plan-room" data-anchor="master-bedroom" tabindex="0" role="button" aria-label="View Master Bedroom in the 3D tour">
+            <rect x="720" y="230" width="120" height="150" /><text x="780" y="310">Master</text>
+          </g>
+          <g class="plan-room" data-anchor="balcony" tabindex="0" role="button" aria-label="View Balcony in the 3D tour">
+            <rect x="12" y="120" width="68" height="180" /><text x="46" y="210" transform="rotate(-90 46 210)" dy="4">Balcony</text>
+          </g>
+          <g class="plan-room" data-anchor="garage" tabindex="0" role="button" aria-label="View the carport in the 3D tour">
+            <rect x="300" y="392" width="300" height="62" /><text x="450" y="419">Carport</text><text class="plan-sub" x="450" y="437">2 cars · under the home</text>
+          </g>
+
+          <!-- static bits -->
+          <rect class="plan-static" x="580" y="40" width="140" height="230" />
+          <text class="plan-sub" x="650" y="160">Hall</text>
+          <rect class="plan-static" x="720" y="150" width="120" height="80" />
+          <text class="plan-sub" x="780" y="195">Walk-in robe</text>
+          <text class="plan-note" x="450" y="26">Schematic layout · not to scale</text>
+          <rect class="plan-wall" x="80" y="40" width="760" height="340" />
+        </svg>
+      </div>
+      <p class="plan-hint">Swipe sideways to see the whole plan →</p>
     </div>
   </section>
 
@@ -71,21 +157,23 @@
   <!-- ============ 3D TOUR (Phase 2 shell — ids are load-bearing for main.js) ============ -->
   <section class="tour-section" id="tour-section" aria-label="Interactive 3D tour">
     <div class="container">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Interactive 3D tour</p>
         <h2>Walk the home, room by room</h2>
         <p class="section-sub">Real-time walkthrough of the actual model — 15 viewpoints, dollhouse orbit, no app required.</p>
       </header>
     </div>
-    <div class="container">
+    <div class="container tour-frame">
     <div id="tour">
+      <!-- the 3D view and its overlays; the room dock sits below it, never on top of the scene -->
+      <div class="tour-stage">
       <canvas id="renderCanvas" tabindex="1" aria-label="3D tour viewport — click to take control"></canvas>
 
       <div class="tour-poster" id="tourPoster">
         <div class="poster-inner">
           <h2>Step inside in 3D</h2>
           <p>First-person walkthrough · dollhouse orbit view · 15 room viewpoints</p>
-          <button class="btn btn-light" id="startBtn">Start tour</button>
+          <tour-button class="btn btn-light" id="startBtn">Start tour</tour-button>
           <div class="bar" id="loadWrap" role="progressbar" aria-label="Tour loading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <i id="loadBar"></i>
           </div>
@@ -94,25 +182,70 @@
       </div>
 
       <div id="crosshair" hidden></div>
+      <!-- touch screens: zoom (main.js zoom()); rooms are reached from the dock, not by walking -->
+      <div id="zoomCtl" role="group" aria-label="Zoom">
+        <tour-button class="zoom-btn" id="zoomIn" type="button" aria-label="Zoom in">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        </tour-button>
+        <tour-button class="zoom-btn" id="zoomOut" type="button" aria-label="Zoom out">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+        </tour-button>
+      </div>
       <p id="tourHint" hidden>Click the view to take control</p>
       <div id="badge" role="status"></div>
 
-      <button id="fsBtn" type="button" aria-pressed="false">
+      <tour-button id="fsBtn" type="button" aria-pressed="false">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
           <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
         </svg>
         <span id="fsLabel">Fullscreen</span>
-      </button>
-
-      <nav id="anchorBar" aria-label="Room viewpoints"></nav>
-
-      <p id="credit">Model: <a href="https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0" target="_blank" rel="noopener">“Modular House Cube 3 by Swanbuild Australia”</a> by <a href="https://sketchfab.com/edsahergom" target="_blank" rel="noopener">EDSAHERGOM STUDIO</a> (Sketchfab) · CC BY 4.0 · Built with Babylon.js</p>
+      </tour-button>
 
       <div class="tour-error" id="noModel" hidden>
         <h2>No 3D model found</h2>
         <p>Place a model file in <code>virtual-tour/models/</code> and reload.</p>
-        <button class="btn btn-light" id="retryBtn">I’ve added it — reload</button>
+        <tour-button class="btn btn-light" id="retryBtn">I’ve added it — reload</tour-button>
       </div>
+      </div>
+
+      <!-- room dock: pills are built by main.js (buildAnchorBar) from anchors.js.
+           tour-collapsible owns the show/hide: #dockToggle is its invoker, #dockBody its content. -->
+      <nav id="anchorBar" class="room-dock" aria-label="Room viewpoints">
+        <tour-collapsible id="dockCollapse" class="dock-collapse" opened>
+          <div class="dock-head">
+            <p class="dock-now" aria-live="polite" aria-atomic="true">
+              <span class="dock-now-label">Now viewing</span>
+              <span class="dock-now-name" id="dockNowName">—</span>
+              <span class="dock-now-cap" id="dockNowCap"></span>
+            </p>
+            <div class="dock-actions">
+              <span class="dock-count" id="dockCount" aria-hidden="true"></span>
+              <tour-button class="dock-btn" id="dockPrev" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg>
+                <span class="dock-btn-text">Previous</span>
+              </tour-button>
+              <tour-button class="dock-btn" id="dockNext" type="button">
+                <span class="dock-btn-text">Next room</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg>
+              </tour-button>
+            </div>
+          </div>
+          <tour-button class="dock-btn dock-toggle" id="dockToggle" slot="invoker" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9.5 6 6 6-6"/></svg>
+            <span class="dock-btn-text">Hide rooms</span>
+          </tour-button>
+          <div class="dock-body" id="dockBody" slot="content">
+            <p class="sr-only" id="dockKeys">Use the left and right arrow keys to move between rooms, Home and End to jump to the first or last, and Enter to go there.</p>
+            <button class="dock-scroll dock-scroll-prev" type="button" tabindex="-1" aria-hidden="true" data-dir="-1">
+              <svg viewBox="0 0 24 24"><path d="m14.5 6-6 6 6 6"/></svg>
+            </button>
+            <div class="dock-track" id="dockTrack" role="toolbar" aria-label="Rooms" aria-describedby="dockKeys"></div>
+            <button class="dock-scroll dock-scroll-next" type="button" tabindex="-1" aria-hidden="true" data-dir="1">
+              <svg viewBox="0 0 24 24"><path d="m9.5 6 6 6-6 6"/></svg>
+            </button>
+          </div>
+        </tour-collapsible>
+      </nav>
     </div>
     </div>
   </section>
@@ -120,7 +253,7 @@
   <!-- ============ RESIDENCE GALLERY ============ -->
   <section id="residence" class="residence">
     <div class="container">
-      <header class="section-head reveal">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Residence</p>
         <h2>The rooms, rendered from the model</h2>
         <p class="section-sub">Every image is a real frame of the walkthrough. Open any room in 3D.</p>
@@ -129,146 +262,193 @@
     </div>
   </section>
 
-  <!-- ============ FLOOR PLAN ============ -->
-  <section id="floor-plan" class="floor-plan">
+  <!-- ============ LOCATION (neighborhood.js; places from landmarks.js) ============ -->
+  <section id="location" class="location">
     <div class="container">
-      <header class="section-head reveal">
-        <p class="eyebrow">Floor plan</p>
-        <h2>One level, four wings</h2>
-        <p class="section-sub">Schematic layout — click any room to jump to it in the 3D tour.</p>
+      <header class="section-head reveal" data-stagger>
+        <p class="eyebrow">Location</p>
+        <h2>The neighborhood</h2>
+        <p class="section-sub">The home sits in <span id="nbhdArea"></span>. Schools, churches, police, hospitals and malls nearby.</p>
       </header>
-      <div class="plan-wrap reveal">
-        <svg class="plan" viewBox="0 0 900 470" role="group" aria-label="Clickable schematic floor plan">
-          <!-- shell -->
-          <rect class="plan-wall" x="80" y="40" width="760" height="340" />
-          <rect class="plan-deck" x="12" y="120" width="68" height="180" />
-          <rect class="plan-deck" x="300" y="392" width="300" height="62" />
-          <text class="plan-note" x="450" y="428">Carport · 2 cars (under home)</text>
-
-          <!-- interactive rooms (data-anchor = id in anchors.js) -->
-          <g class="plan-room" data-anchor="lounge" tabindex="0" role="button" aria-label="View Lounge in the 3D tour">
-            <rect x="80" y="40" width="170" height="340" /><text x="165" y="215">Lounge</text>
-          </g>
-          <g class="plan-room" data-anchor="dining" tabindex="0" role="button" aria-label="View Dining in the 3D tour">
-            <rect x="250" y="150" width="180" height="120" /><text x="340" y="215">Dining</text>
-          </g>
-          <g class="plan-room" data-anchor="kitchen" tabindex="0" role="button" aria-label="View Kitchen in the 3D tour">
-            <rect x="250" y="270" width="180" height="110" /><text x="340" y="330">Kitchen</text>
-          </g>
-          <g class="plan-room" data-anchor="laundry" tabindex="0" role="button" aria-label="View Laundry in the 3D tour">
-            <rect x="250" y="40" width="110" height="110" /><text x="305" y="100">Laundry</text>
-          </g>
-          <g class="plan-room" data-anchor="study-nook" tabindex="0" role="button" aria-label="View Study Nook in the 3D tour">
-            <rect x="360" y="40" width="110" height="110" /><text x="415" y="94">Study</text><text class="plan-sub" x="415" y="110">nook</text>
-          </g>
-          <g class="plan-room" data-anchor="rumpus" tabindex="0" role="button" aria-label="View Rumpus in the 3D tour">
-            <rect x="430" y="150" width="190" height="120" /><text x="525" y="215">Rumpus</text>
-          </g>
-          <g class="plan-room" data-anchor="room-3" tabindex="0" role="button" aria-label="View Room 3 in the 3D tour">
-            <rect x="430" y="270" width="100" height="110" /><text x="480" y="330">Room 3</text>
-          </g>
-          <g class="plan-room" data-anchor="room-2" tabindex="0" role="button" aria-label="View Room 2 in the 3D tour">
-            <rect x="530" y="270" width="100" height="110" /><text x="580" y="330">Room 2</text>
-          </g>
-          <g class="plan-room" data-anchor="room-1" tabindex="0" role="button" aria-label="View Room 1 in the 3D tour">
-            <rect x="630" y="270" width="90" height="110" /><text x="675" y="330">Room 1</text>
-          </g>
-          <g class="plan-room" data-anchor="bathroom" tabindex="0" role="button" aria-label="View Bathroom in the 3D tour">
-            <rect x="470" y="40" width="110" height="110" /><text x="525" y="94">Bath</text><text class="plan-sub" x="525" y="110">freestanding</text>
-          </g>
-          <g class="plan-room" data-anchor="ensuite" tabindex="0" role="button" aria-label="View Ensuite in the 3D tour">
-            <rect x="720" y="40" width="120" height="110" /><text x="780" y="100">Ensuite</text>
-          </g>
-          <g class="plan-room" data-anchor="master-bedroom" tabindex="0" role="button" aria-label="View Master Bedroom in the 3D tour">
-            <rect x="720" y="230" width="120" height="150" /><text x="780" y="310">Master</text>
-          </g>
-          <g class="plan-room" data-anchor="balcony" tabindex="0" role="button" aria-label="View Balcony in the 3D tour">
-            <rect x="12" y="120" width="68" height="180" />
-          </g>
-          <g class="plan-room" data-anchor="garage" tabindex="0" role="button" aria-label="View the carport in the 3D tour">
-            <rect x="300" y="392" width="300" height="62" />
-          </g>
-
-          <!-- static bits -->
-          <rect class="plan-static" x="580" y="40" width="140" height="230" />
-          <text class="plan-sub" x="650" y="160">Hall</text>
-          <rect class="plan-static" x="720" y="150" width="120" height="80" />
-          <text class="plan-sub" x="780" y="195">Walk-in robe</text>
-          <text class="plan-note" x="450" y="26">Schematic layout · not to scale</text>
-        </svg>
+      <div class="nbhd-grid">
+        <div class="nbhd-map reveal" id="nbhdMap" role="region" aria-label="Map of the property and nearby landmarks"></div>
+        <div class="nbhd-side reveal">
+          <div class="nbhd-filters" id="nbhdFilters" role="group" aria-label="Show nearby places"></div>
+          <ul class="nbhd-list" id="nbhdList"></ul>
+          <p class="nbhd-note">Straight-line distances. Places from <a href="https://www.openstreetmap.org/#map=15/16.42138/120.55929" target="_blank" rel="noopener">OpenStreetMap</a>.</p>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- ============ SCHEDULE A TOUR ============ -->
-  <section id="contact" class="contact">
-    <div class="container narrow">
-      <header class="section-head reveal">
+  <section id="contact" class="contact" aria-labelledby="contact-title">
+    <div class="container">
+      <header class="section-head reveal" data-stagger>
         <p class="eyebrow">Schedule a tour</p>
-        <h2>Book a time to visit</h2>
+        <h2 id="contact-title">Book a time to visit</h2>
+        <p class="section-sub">Choose how and when you’d like to see the home. Nothing is final until the agent confirms your time.</p>
       </header>
 
-      <form id="tourForm" novalidate class="reveal">
-        <div class="form-grid">
-          <p class="field">
-            <label for="f-name">Full name</label>
-            <input id="f-name" name="name" type="text" autocomplete="name" required aria-describedby="err-name" />
-            <span class="field-error" id="err-name"></span>
-          </p>
-          <p class="field">
-            <label for="f-email">Email</label>
-            <input id="f-email" name="email" type="email" autocomplete="email" required aria-describedby="err-email" />
-            <span class="field-error" id="err-email"></span>
-          </p>
-          <p class="field">
-            <label for="f-phone">Phone</label>
-            <input id="f-phone" name="phone" type="tel" autocomplete="tel" required aria-describedby="err-phone" />
-            <span class="field-error" id="err-phone"></span>
-          </p>
-          <p class="field">
-            <label for="f-date">Preferred date</label>
-            <input id="f-date" name="date" type="date" required aria-describedby="err-date" />
-            <span class="field-error" id="err-date"></span>
-          </p>
-          <p class="field">
-            <label for="f-time">Time window</label>
-            <select id="f-time" name="timeWindow" required aria-describedby="err-time">
-              <option value="">Select a window…</option>
-              <option value="morning">Morning (9–12)</option>
-              <option value="afternoon">Afternoon (12–4)</option>
-              <option value="evening">Evening (4–7)</option>
-            </select>
-            <span class="field-error" id="err-time"></span>
-          </p>
-          <fieldset class="field field-radios">
-            <legend>Tour type</legend>
-            <label class="radio"><input type="radio" name="tourType" value="in-person" checked /> In-person</label>
-            <label class="radio"><input type="radio" name="tourType" value="video" /> Video call</label>
-          </fieldset>
-          <p class="field field-full">
-            <label for="f-message">Message <span class="optional">(optional)</span></label>
-            <textarea id="f-message" name="message" rows="4" maxlength="1000" aria-describedby="err-message"></textarea>
-            <span class="field-error" id="err-message"></span>
-          </p>
+      <div class="book-grid">
+        <!-- what happens next + who you'll hear from -->
+        <aside class="book-aside reveal" aria-labelledby="book-steps-title">
+          <h3 class="eyebrow" id="book-steps-title">How it works</h3>
+          <ol class="book-steps">
+            <li>
+              <span class="step-dot" aria-hidden="true">1</span>
+              <div><p class="step-title">Pick a tour, day and time</p>
+              <p>In person at the home, or a live video walkthrough — on a day and time window that suits you.</p></div>
+            </li>
+            <li>
+              <span class="step-dot" aria-hidden="true">2</span>
+              <div><p class="step-title">The agent confirms by email</p>
+              <p>You’ll get a reply with an exact time within your window.</p></div>
+            </li>
+            <li>
+              <span class="step-dot" aria-hidden="true">3</span>
+              <div><p class="step-title">See it for yourself</p>
+              <p>Bring your questions — or look around the 3D tour first.</p></div>
+            </li>
+          </ol>
+          <div class="agent-card">
+            <p class="eyebrow">Your agent</p>
+            <p class="agent-name" data-bind="agent.name"></p>
+            <p class="agent-line" data-bind="agent.phone"></p>
+            <p class="agent-line"><a id="agentEmail2" href="#contact"></a></p>
+          </div>
+          <a class="btn btn-secondary book-3d" href="#tour-section">Explore the 3D tour first</a>
+        </aside>
+
+        <div class="book-panel reveal">
+          <lion-form id="tourLionForm">
+          <form id="tourForm" novalidate aria-labelledby="contact-title" aria-describedby="form-note">
+            <p class="form-note" id="form-note">All fields are required unless marked optional.</p>
+
+            <!-- filled by page.js when a submit fails; focused so screen readers announce it -->
+            <div class="error-summary" id="errorSummary" tabindex="-1" role="group" aria-labelledby="errorSummaryTitle" hidden>
+              <p class="error-summary-title" id="errorSummaryTitle">Please check the following:</p>
+              <ul id="errorSummaryList"></ul>
+            </div>
+
+            <fieldset class="step" aria-describedby="err-type">
+              <legend><span class="step-dot" aria-hidden="true">1</span>How would you like to tour?</legend>
+              <tour-radio-group class="choice-grid choice-grid-3" name="tourType" id="f-tourType">
+                <tour-radio class="choice choice-compact" choice-value="in-person" checked>
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h13V9.5M10 20v-5.5h4V20"/></svg>
+                    <span class="choice-title">In person</span>
+                    <span class="choice-desc">With the agent.</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="video">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6.5" width="12.5" height="11" rx="1.5"/><path d="m15.5 10.5 5.5-3v9l-5.5-3"/></svg>
+                    <span class="choice-title">Video call</span>
+                    <span class="choice-desc">From anywhere.</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="inquiry">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8l-4 4V6a1 1 0 0 1 1-1Z"/></svg>
+                    <span class="choice-title">Inquiry only</span>
+                    <span class="choice-desc">No booking yet.</span>
+                  </label>
+                </tour-radio>
+              </tour-radio-group>
+              <p class="field-error" id="err-type"></p>
+            </fieldset>
+
+            <fieldset class="step" id="step-date" aria-describedby="date-hint err-date">
+              <legend><span class="step-dot" aria-hidden="true">2</span>Pick a day</legend>
+              <p class="step-hint" id="date-hint">The next two weeks are shown. Use arrow keys to move between days.</p>
+              <tour-radio-group class="date-grid" name="date" id="dateChips"></tour-radio-group>
+              <tour-input-datepicker class="field date-other" id="dateOtherWrap" name="dateOther" label="Your preferred date" hidden>
+                <input slot="input" id="f-date" aria-describedby="err-date" />
+              </tour-input-datepicker>
+              <p class="field-error" id="err-date"></p>
+            </fieldset>
+
+            <fieldset class="step" id="step-time" aria-describedby="err-time">
+              <legend><span class="step-dot" aria-hidden="true">3</span>Pick a time window</legend>
+              <tour-radio-group class="choice-grid choice-grid-3" name="timeWindow" id="f-timeWindow">
+                <tour-radio class="choice choice-compact" choice-value="morning">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M7.5 18a4.5 4.5 0 0 1 9 0M12 7v3M5.6 11.6l1.8 1.3M18.4 11.6l-1.8 1.3"/></svg>
+                    <span class="choice-title">Morning</span>
+                    <span class="choice-desc">9 am – 12 pm</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="afternoon">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg>
+                    <span class="choice-title">Afternoon</span>
+                    <span class="choice-desc">12 – 4 pm</span>
+                  </label>
+                </tour-radio>
+                <tour-radio class="choice choice-compact" choice-value="evening">
+                  <label slot="label">
+                    <svg class="choice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+                    <span class="choice-title">Evening</span>
+                    <span class="choice-desc">4 – 7 pm</span>
+                  </label>
+                </tour-radio>
+              </tour-radio-group>
+              <p class="field-error" id="err-time"></p>
+            </fieldset>
+
+            <fieldset class="step">
+              <legend><span class="step-dot" aria-hidden="true">4</span>Your details</legend>
+              <div class="form-grid">
+                <tour-input class="field field-full" name="name" label="Full name">
+                  <input slot="input" id="f-name" type="text" autocomplete="name" required maxlength="120" />
+                  <span class="field-error" id="err-name" slot="feedback"></span>
+                </tour-input>
+                <tour-input-email class="field" name="email" label="Email" type="email">
+                  <input slot="input" id="f-email" type="email" autocomplete="email" required spellcheck="false" />
+                  <span class="field-hint" id="email-hint" slot="help-text">We’ll send your confirmation here.</span>
+                  <span class="field-error" id="err-email" slot="feedback"></span>
+                </tour-input-email>
+                <tour-input-tel class="field" name="phone" label="Phone" type="tel">
+                  <input slot="input" id="f-phone" type="tel" autocomplete="tel" required />
+                  <span class="field-hint" id="phone-hint" slot="help-text">Only used if we need to reach you about the visit.</span>
+                  <span class="field-error" id="err-phone" slot="feedback"></span>
+                </tour-input-tel>
+                <tour-textarea class="field field-full" name="message" rows="3">
+                  <label slot="label">Anything we should know? <span class="optional">(optional)</span></label>
+                  <textarea slot="input" id="f-message" rows="3" maxlength="1000"></textarea>
+                  <span class="field-hint field-count" id="msg-count" slot="help-text">Up to 1000 characters.</span>
+                  <span class="field-error" id="err-message" slot="feedback"></span>
+                </tour-textarea>
+              </div>
+            </fieldset>
+
+            <!-- honeypot: humans never see or fill this -->
+            <p class="hp" aria-hidden="true">
+              <label for="f-company">Company</label>
+              <input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off" />
+            </p>
+
+            <div class="form-foot">
+              <div class="book-summary" id="bookSummary">
+                <p class="eyebrow">Your request</p>
+                <p class="book-summary-text" id="bookSummaryText"></p>
+              </div>
+              <tour-button-submit class="btn btn-primary btn-submit" id="submitBtn" aria-describedby="bookSummaryText">Request a tour</tour-button-submit>
+              <p class="reassurance" data-bind="reassurance"></p>
+            </div>
+          </form>
+          </lion-form>
+          <div id="formStatus" class="sr-only" role="status" aria-live="polite"></div>
         </div>
-        <!-- honeypot: humans never see or fill this -->
-        <p class="hp" aria-hidden="true">
-          <label for="f-company">Company</label>
-          <input id="f-company" name="company" type="text" tabindex="-1" autocomplete="off" />
-        </p>
-        <div class="form-foot">
-          <button class="btn btn-primary" id="submitBtn" type="submit">Request a tour</button>
-          <p class="reassurance" data-bind="reassurance"></p>
-        </div>
-      </form>
-      <div id="formStatus" role="status" aria-live="polite"></div>
+      </div>
     </div>
   </section>
 </main>
 
 <!-- ============ FOOTER ============ -->
 <footer class="site-footer">
-  <div class="container footer-grid">
+  <div class="container footer-grid" data-stagger>
     <div>
       <p class="eyebrow">Agent</p>
       <p class="foot-strong" data-bind="agent.name"></p>
@@ -284,6 +464,12 @@
     <div>
       <p class="eyebrow">About this page</p>
       <p>3D model: <a href="https://sketchfab.com/3d-models/modular-house-cube-3-by-swanbuild-australia-fc4d35cfe8ee435993e0353dbecae7e0" target="_blank" rel="noopener">“Modular House Cube 3 by Swanbuild Australia”</a> by <a href="https://sketchfab.com/edsahergom" target="_blank" rel="noopener">EDSAHERGOM STUDIO</a> · CC BY 4.0</p>
+      <p>Broadleaf trees: <a href="https://sketchfab.com/3d-models/low-poly-tree-scene-free-89daa5e21f0d4f08a59dba0d566e88bd" target="_blank" rel="noopener">“Low Poly Tree Scene Free”</a> by <a href="https://sketchfab.com/Nicholas01" target="_blank" rel="noopener">Nicholas-3D</a> (Sketchfab) · CC BY 4.0, trees extracted, textures resized.</p>
+      <p>Mountains: <a href="https://sketchfab.com/3d-models/mountain-low-poly-for-distant-mountains-cb7f28b5ee0e4ddfb12700ff9d9d35c8" target="_blank" rel="noopener">“Mountain low poly For distant mountains”</a> by <a href="https://sketchfab.com/ahmagh2e" target="_blank" rel="noopener">adventurer</a> (Sketchfab) · CC BY 4.0, instanced, rescaled and re-tinted.</p>
+      <p>Cars: <a href="https://sketchfab.com/3d-models/2021-ferrari-sf90-spider-94a830f22c974dc2a8d437fab830456f" target="_blank" rel="noopener">“2021 Ferrari SF90 Spider”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · <a href="https://sketchfab.com/3d-models/porsche-911-gt3-593c83f3662a4a45a016f95dedd9f243" target="_blank" rel="noopener">“Porsche 911 GT3”</a> by <a href="https://sketchfab.com/Outlaw_Games" target="_blank" rel="noopener">Outlaw Games™</a> (Sketchfab) · CC BY-NC 4.0 · both rescaled, meshes merged and quantized.</p>
+      <p>Sky, grass, pavers, asphalt and pine textures: <a href="https://polyhaven.com" target="_blank" rel="noopener">Poly Haven</a> · CC0.</p>
+      <p>Logo: “Home” icon (Keek Line) by <a href="https://icons8.com" target="_blank" rel="noopener">Icons8</a>.</p>
+      <p>Map: <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet</a> · map tiles, map data and nearby places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors (ODbL).</p>
       <p>Built with Babylon.js.</p>
     </div>
   </div>
@@ -295,7 +481,11 @@
   <a class="btn btn-primary" href="#contact">Schedule a tour</a>
 </div>
 
-<script type="module" src="/page.js"></script>
-<script type="module" src="/main.js"></script>
+<script type="module" src="/dist/page.js"></script>
+<script type="module" src="/dist/main.js"></script>
+<!-- Talkie voice assistant (server.mjs /talkie/* and /voice/*, styles.css "Talkie assistant").
+     api="/voice": same-origin proxy to the voice server — README "Voice assistant". -->
+<script src="/talkie/talkie-embed.js" defer></script>
+<talkie-assistant api="/voice" profile="property" mode="conversation" label="Ask about this home"></talkie-assistant>
 </body>
 </html>

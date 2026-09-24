@@ -1,0 +1,722 @@
+/* ------------------------------------------------------------------- tokens */
+
+/* The accent is the launcher's teal, so the site and the assistant read as one product.
+   Every text pair meets WCAG AA (4.5:1); --field-line and --focus meet 3:1 as UI boundaries. */
+:root {
+  --bg: #fff;
+  --surface: #f6f7f7;
+  --raised: #fff;
+  --ink: #111416;
+  --ink-soft: #52595b;
+  --line: #e3e6e6;
+  --field-line: #868e91;
+  --accent: #0f766e;
+  --accent-ink: #fff;
+  --accent-soft: #e7f5f2;
+  --focus: #0f766e;
+  --danger: #dc2626;
+  --success: #15803d;
+  --code-bg: #0f1719;
+  --code-ink: #e2e8f0;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow-sm: 0 1px 2px rgb(16 24 26 / 0.06), 0 1px 3px rgb(16 24 26 / 0.04);
+  --shadow: 0 12px 32px -8px rgb(16 24 26 / 0.18), 0 2px 6px rgb(16 24 26 / 0.06);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --header-h: 56px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1012;
+    --surface: #171a1c;
+    --raised: #1d2123;
+    --ink: #eceeef;
+    --ink-soft: #a3abad;
+    --line: #2c3134;
+    --field-line: #6b7477;
+    --accent: #2dd4bf;
+    --accent-ink: #042f2e;
+    --accent-soft: #0f2a28;
+    --focus: #5eead4;
+    --danger: #f87171;
+    --success: #4ade80;
+    --code-bg: #08090a;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow: 0 12px 32px -8px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.3);
+    color-scheme: dark;
+  }
+}
+
+/* ------------------------------------------------------------------- body & base */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-underline-offset: 0.15em; }
+
+::selection { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+
+/* One switch for every transition and animation on the site. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+*:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 200;
+  padding: 0.5rem 0.75rem;
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: 6px;
+}
+.skip-link:focus { top: 0.5rem; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+[hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------- lion fields */
+
+lion-input,
+lion-textarea,
+lion-select,
+lion-input-range,
+lion-radio-group {
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+lion-input > label[slot="label"],
+lion-textarea > label[slot="label"],
+lion-select > label[slot="label"],
+lion-input-range > label[slot="label"],
+lion-radio-group > label[slot="label"] {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 0.15rem;
+}
+
+/* The label lights up with its field; an invalid field keeps the plain label so red stays the signal. */
+:is(lion-input, lion-textarea, lion-select):focus-within:not([shows-feedback-for~="error"]) > label[slot="label"] {
+  color: var(--accent);
+  transition: color 0.18s var(--ease);
+}
+
+[slot="help-text"] {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+lion-input > input[slot="input"],
+lion-textarea > textarea[slot="input"],
+lion-select > select[slot="input"] {
+  box-sizing: border-box;
+  width: 100%;
+  /* A soft well at rest that lifts to --raised on focus. No accent tint here: even 4% of it
+     drops --field-line under 3:1 against the fill in the light theme. */
+  background-color: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--field-line);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.95rem;
+  transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease);
+}
+
+lion-textarea > textarea[slot="input"] {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  min-height: 4.5rem;
+}
+
+lion-input > input[slot="input"]:hover,
+lion-textarea > textarea[slot="input"]:hover,
+lion-select > select[slot="input"]:hover {
+  border-color: var(--ink-soft);
+  background-color: color-mix(in srgb, var(--surface) 50%, var(--raised));
+}
+
+/* Full --ink-soft: at 80% opacity the placeholder fell under 4.5:1 on the --surface fill. */
+lion-input > input[slot="input"]::placeholder,
+lion-textarea > textarea[slot="input"]::placeholder {
+  color: var(--ink-soft);
+}
+
+/* The outline stays as the indicator that survives forced-colors mode, which drops box-shadow. */
+lion-input > input[slot="input"]:focus-visible,
+lion-textarea > textarea[slot="input"]:focus-visible,
+lion-select > select[slot="input"]:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 0;
+  background-color: var(--raised);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* A colour input is a square swatch tile, not a full-width bar. flex: none keeps Lion's input
+   flex box from stretching it. */
+lion-input[type="color"] > input[slot="input"] {
+  flex: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 3px;
+  cursor: pointer;
+}
+lion-input[type="color"] > input[slot="input"]::-webkit-color-swatch-wrapper { padding: 0; }
+lion-input[type="color"] > input[slot="input"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 3px);
+}
+lion-input[type="color"] > input[slot="input"]::-moz-color-swatch {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 3px);
+}
+
+/* The select draws its own arrow (two gradient halves of a small triangle) so it matches the
+   other fields and can take the state colour. The field rules set background-color, not the
+   background shorthand, so they leave this image alone. */
+lion-select > select[slot="input"] {
+  --_chevron: var(--ink-soft);
+  appearance: none;
+  padding-right: 2.25rem;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--_chevron) 50%),
+    linear-gradient(135deg, var(--_chevron) 50%, transparent 50%);
+  background-position: calc(100% - 1.15rem) 50%, calc(100% - 0.8rem) 50%;
+  background-size: 0.35rem 0.35rem;
+  background-repeat: no-repeat;
+}
+lion-select > select[slot="input"]:hover { --_chevron: var(--ink); }
+lion-select > select[slot="input"]:focus-visible { --_chevron: var(--accent); }
+lion-select[shows-feedback-for~="error"] > select[slot="input"] { --_chevron: var(--danger); }
+/* Forced colours may drop the drawn arrow; fall back to the platform one. */
+@media (forced-colors: active) {
+  lion-select > select[slot="input"] {
+    appearance: auto;
+    background-image: none;
+    padding-right: 0.7rem;
+  }
+}
+
+/* Invalid fields, once Lion decides to show the error. */
+[shows-feedback-for~="error"] > [slot="input"] {
+  border-color: var(--danger);
+}
+/* Element-level specificity, after the hover and focus rules, so a field stays red while it is
+   hovered or being fixed. */
+:is(lion-input, lion-textarea, lion-select)[shows-feedback-for~="error"] > :is(input, textarea, select)[slot="input"] {
+  border-color: var(--danger);
+  background-color: color-mix(in srgb, var(--danger) 5%, var(--surface));
+}
+:is(lion-input, lion-textarea, lion-select)[shows-feedback-for~="error"] > :is(input, textarea, select)[slot="input"]:focus-visible {
+  outline-color: var(--danger);
+  background-color: var(--raised);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+[slot="feedback"] {
+  display: block;
+  color: var(--danger);
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+/* A drawn slider: a --field-line track (3:1, like a field border) filled with --accent up to the
+   value, and a --raised thumb in an --accent ring. SiteInputRange (site/src/lion.js) sets --_fill;
+   Firefox paints its own progress. Each engine's pseudo-elements get their own rule, because one
+   unknown selector in a list drops the whole rule. */
+lion-input-range > input[slot="input"] {
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 1.5rem;
+  margin: 0.15rem 0 0;
+  background: transparent;
+  cursor: pointer;
+}
+/* Focus is drawn on the thumb instead of round the whole input. */
+lion-input-range > input[slot="input"]:focus-visible { outline: none; }
+
+lion-input-range > input[slot="input"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--accent) var(--_fill, 0%), var(--field-line) var(--_fill, 0%));
+}
+lion-input-range > input[slot="input"]::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--field-line);
+}
+lion-input-range > input[slot="input"]::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+lion-input-range > input[slot="input"]::-webkit-slider-thumb {
+  appearance: none;
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: calc((6px - 1.125rem) / 2);
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--raised);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+}
+lion-input-range > input[slot="input"]::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: var(--raised);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.18s var(--ease), transform 0.18s var(--ease);
+}
+
+/* Hover: a soft halo. Drag: the thumb grows and the halo deepens. */
+lion-input-range > input[slot="input"]:hover::-webkit-slider-thumb {
+  box-shadow: var(--shadow-sm), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+lion-input-range > input[slot="input"]:hover::-moz-range-thumb {
+  box-shadow: var(--shadow-sm), 0 0 0 6px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+lion-input-range > input[slot="input"]:active { cursor: grabbing; }
+lion-input-range > input[slot="input"]:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: var(--shadow-sm), 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+lion-input-range > input[slot="input"]:active::-moz-range-thumb {
+  transform: scale(1.15);
+  box-shadow: var(--shadow-sm), 0 0 0 7px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Keyboard focus: a --focus ring, set off from the thumb by a --bg gap. */
+lion-input-range > input[slot="input"]:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);
+}
+lion-input-range > input[slot="input"]:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--focus);
+}
+
+/* The site-wide reduced-motion rule covers ::before/::after, not the thumb pseudo-elements. */
+@media (prefers-reduced-motion: reduce) {
+  lion-input-range > input[slot="input"]::-webkit-slider-thumb { transition: none; }
+  lion-input-range > input[slot="input"]::-moz-range-thumb { transition: none; }
+}
+/* Forced colours drop box-shadows (so the focus ring) and repaint the track; use the platform
+   slider and its own focus outline. */
+@media (forced-colors: active) {
+  lion-input-range > input[slot="input"] { appearance: auto; }
+  lion-input-range > input[slot="input"]:focus-visible { outline: 2px solid; }
+}
+
+/* Lion lays a radio out as a flex row (input, label, then help text on its own line); keep
+   that rather than `display: block`, which stacked the label under the input. */
+lion-radio {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+/* A drawn radio in the fields' language: --surface well, --field-line ring, and an --accent dot
+   set in a --raised gap when chosen. */
+lion-radio > input[slot="input"] {
+  appearance: none;
+  flex: none;
+  box-sizing: border-box;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  border: 1px solid var(--field-line);
+  border-radius: 50%;
+  background-color: var(--surface);
+  cursor: pointer;
+  transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease),
+    box-shadow 0.18s var(--ease);
+}
+lion-radio:hover > input[slot="input"] {
+  border-color: var(--ink-soft);
+  background-color: color-mix(in srgb, var(--surface) 50%, var(--raised));
+}
+lion-radio > input[slot="input"]:checked {
+  border-color: var(--accent);
+  background-color: var(--accent);
+  box-shadow: inset 0 0 0 3px var(--raised);
+}
+lion-radio-group[shows-feedback-for~="error"] lion-radio > input[slot="input"] {
+  border-color: var(--danger);
+}
+lion-radio > label[slot="label"] { cursor: pointer; }
+/* Forced colours repaint backgrounds, which would erase the drawn dot; use the platform radio. */
+@media (forced-colors: active) {
+  lion-radio > input[slot="input"] { appearance: auto; }
+}
+
+/* ------------------------------------------------------------------- lion-switch */
+
+/* The label and the button are two shadow-DOM groups; lay them out on one line. */
+lion-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+lion-switch > [slot="input"] {
+  flex: none;
+  width: 2.25rem;
+}
+lion-switch > label[slot="label"] {
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+lion-form lion-switch {
+  display: flex;
+  margin-bottom: 1.1rem;
+}
+
+/* ------------------------------------------------------------------- buttons */
+
+/* Secondary by default; add .primary for the one main action in a group. */
+lion-button,
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0.4rem 0.95rem;
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--ink);
+  border: 1px solid var(--field-line);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 550;
+  text-decoration: none;
+  line-height: 1.2;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s,
+    transform 0.1s var(--ease);
+}
+
+lion-button:hover,
+.btn:hover {
+  border-color: var(--ink-soft);
+  background: var(--surface);
+}
+
+/* A small press, so a click feels registered before anything else changes. */
+lion-button:not([disabled]):active,
+.btn:not([disabled]):active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+lion-button.primary,
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+lion-button.primary:hover,
+.btn.primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 88%, var(--ink));
+}
+
+lion-button.danger,
+.btn.danger {
+  color: var(--danger);
+}
+lion-button.danger:hover,
+.btn.danger:hover {
+  border-color: var(--danger);
+}
+/* --bg as the text colour: white on the light red, near-black on the dark theme's pink red
+   (white on that one is under 3:1). */
+.btn.danger.primary {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--bg);
+}
+.btn.danger.primary:hover {
+  background: color-mix(in srgb, var(--danger) 88%, var(--ink));
+  border-color: color-mix(in srgb, var(--danger) 88%, var(--ink));
+}
+
+lion-button[disabled],
+.btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Plain invoker buttons of lion-collapsible / lion-accordion. lion-accordion moves its invokers
+   and contents into a private slot and marks them with .invoker / .content, so match those
+   (the slot names only hold until it upgrades). */
+lion-collapsible > button[slot="invoker"],
+lion-accordion > .invoker > button,
+lion-accordion > [slot="invoker"] > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.7rem 0.9rem;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+lion-collapsible > button[slot="invoker"]::after,
+lion-accordion > .invoker > button::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s;
+  flex: none;
+}
+lion-collapsible[opened] > button[slot="invoker"]::after,
+lion-accordion > .invoker > button[expanded]::after {
+  transform: rotate(-135deg);
+}
+lion-collapsible > button[slot="invoker"]:hover,
+lion-accordion > .invoker > button:hover {
+  background: var(--surface);
+}
+
+lion-collapsible {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ------------------------------------------------------------------- lion-dialog */
+
+/* The overlay supplies no surface of its own. */
+.dialog {
+  box-sizing: border-box;
+  width: min(92vw, 520px);
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.25rem 1.5rem;
+}
+
+/* ------------------------------------------------------------------- lion-tabs */
+
+lion-tabs [slot="tab"] {
+  padding: 0.6rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+lion-tabs [slot="tab"]:hover {
+  color: var(--ink);
+  border-bottom-color: var(--line);
+}
+
+/* Positioned, so the underline paints over the panel's top border (the tab track). */
+lion-tabs [slot="tab"][selected] {
+  position: relative;
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------- code */
+
+pre.code {
+  margin: 0;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  text-align: left;
+}
+
+/* ------------------------------------------------------------------- header & nav */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-sizing: border-box;
+  min-height: var(--header-h);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 0.4rem 1rem;
+  gap: 0.25rem 1rem;
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  text-decoration: none;
+}
+.site-brand::before {
+  content: "";
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2bb3a0, #1c7f70);
+  box-shadow: inset 0 0 0 3px color-mix(in srgb, #fff 35%, transparent);
+}
+
+.site-nav {
+  display: flex;
+  gap: 0.15rem;
+  margin-right: auto;
+}
+
+.site-nav a {
+  color: var(--ink-soft);
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.925rem;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.site-nav a:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.site-nav [aria-current="page"] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.site-controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.site-controls lion-input {
+  margin: 0;
+}
+.site-controls lion-input > label[slot="label"] {
+  /* The placeholder-free field still needs a name for screen readers. */
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
+}
+.site-controls lion-input > input[slot="input"] {
+  width: 15rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+}
+
+.backend-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.backend-badge[data-live] {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 40%, transparent);
+}
+
+/* ------------------------------------------------------------------- responsive */
+
+@media (max-width: 720px) {
+  .site-header {
+    padding: 0.4rem 0.75rem;
+  }
+  .site-nav {
+    order: 3;
+    width: 100%;
+    margin: 0 -0.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .site-controls {
+    margin-left: auto;
+  }
+  .site-controls lion-input {
+    order: 5;
+    flex-basis: 100%;
+  }
+  .site-controls lion-input > input[slot="input"] {
+    width: 100%;
+  }
+}

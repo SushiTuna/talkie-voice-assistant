@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Talkie — Persona console</title>
+  <link rel="stylesheet" href="src/theme.css" />
+  <link rel="stylesheet" href="src/console.css" />
+</head>
+<body>
+  <header id="site-header"></header>
+  <main id="main" tabindex="-1">
+    <div class="console-layout">
+      <aside class="console-list-panel">
+        <h1>Personas</h1>
+        <p class="lede">A persona is the system prompt, greeting and voice your voice server hands the agent.</p>
+        <lion-select label="Profile" id="profile-select">
+          <select slot="input">
+            <option value="">— select or create —</option>
+          </select>
+        </lion-select>
+        <section class="server-current" aria-labelledby="server-title">
+          <div class="server-head">
+            <h2 id="server-title">On the voice server</h2>
+            <lion-button id="btn-server-load">Load</lion-button>
+          </div>
+          <div id="server-item" class="server-item" hidden>
+            <span class="server-item-name" id="server-item-name"></span>
+            <span class="server-item-desc" id="server-item-desc"></span>
+          </div>
+          <p id="server-status" class="server-status" role="status"></p>
+        </section>
+        <div class="list-actions">
+          <lion-button id="btn-new" class="primary icon-btn" aria-label="New profile" title="New profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </lion-button>
+          <lion-button id="btn-duplicate" class="icon-btn" aria-label="Duplicate profile" title="Duplicate profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></g></svg>
+          </lion-button>
+          <lion-button id="btn-delete" class="danger icon-btn" aria-label="Delete profile" title="Delete profile">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></g></svg>
+          </lion-button>
+        </div>
+        <p class="note">Profiles are kept in this browser. <strong>Send to server</strong> writes one to the voice server, which then serves it from <code>/agent/context?profile=</code>. Personas that are only on the server are listed in the Profile menu once loaded.</p>
+      </aside>
+
+      <section class="console-editor-panel" aria-labelledby="editor-title">
+        <div class="editor-head">
+          <h2 id="editor-title">Edit profile</h2>
+          <span id="form-status" class="form-status" role="status"></span>
+        </div>
+        <div id="server-drift" class="drift-notice" hidden>
+          <p id="server-drift-text"></p>
+          <lion-button id="btn-server-sync">Use the server's version</lion-button>
+        </div>
+        <lion-form id="profile-form">
+          <form>
+            <div class="field-row">
+              <lion-input label="Name" name="name" help-text="Also becomes the profile id (slugified)"></lion-input>
+              <lion-select label="Voice" name="voice" help-text="Output voice, from the voice server's list">
+                <select slot="input"><option value="">Server default</option></select>
+              </lion-select>
+            </div>
+            <lion-input label="Description" name="description"></lion-input>
+            <lion-textarea label="System prompt" name="systemPrompt" rows="5" help-text="Who the agent is and how it should answer"></lion-textarea>
+            <lion-input label="Greeting" name="greeting" help-text="Spoken when a conversation starts; the voice server requires one"></lion-input>
+            <lion-textarea label="Keyterms" name="keyterms" help-text="Words the speech recogniser should expect: product names, jargon. Comma or newline separated."></lion-textarea>
+            <section id="tool-editor" class="tool-editor" aria-labelledby="tool-editor-title">
+              <div class="tool-editor-head">
+                <h3 id="tool-editor-title" class="tool-editor-title">Tools</h3>
+                <div class="tool-mode" role="group" aria-label="Edit tools as">
+                  <button type="button" class="tool-mode-btn" data-mode="form" aria-pressed="true">Form</button>
+                  <button type="button" class="tool-mode-btn" data-mode="json" aria-pressed="false">JSON</button>
+                </div>
+              </div>
+              <p class="tool-editor-help">Actions the agent can ask this page to run. They are stored on the server with the profile; the embedding page runs each call through <code>onToolCall</code>.</p>
+              <p class="tool-editor-note" role="status"></p>
+              <div class="tool-form">
+                <ul class="tool-list"></ul>
+                <button type="button" class="btn tool-add">+ Add a tool</button>
+              </div>
+              <lion-textarea label="Tools (JSON)" name="tools" rows="8" hidden help-text='An array of { "type": "function", "name", "description", "parameters" }.'></lion-textarea>
+            </section>
+          </form>
+        </lion-form>
+        <div class="form-actions">
+          <lion-button id="btn-send" class="primary">Send to server…</lion-button>
+          <lion-button id="btn-test">Test persona</lion-button>
+          <lion-button id="btn-export">Export JSON</lion-button>
+          <lion-button id="btn-import">Import…</lion-button>
+        </div>
+        <p class="mock-info" id="mock-note-info"></p>
+
+        <div class="context-block">
+          <p class="section-title">Agent context <span class="hint">— what /agent/context should return for this profile</span></p>
+          <pre id="context-preview" class="code context-preview"></pre>
+        </div>
+        <lion-collapsible id="test-log-collapsible">
+          <button slot="invoker" type="button">Test log</button>
+          <div slot="content">
+            <ol id="test-log" class="test-log" aria-live="polite"></ol>
+          </div>
+        </lion-collapsible>
+      </section>
+    </div>
+
+    <!-- Delete confirmation dialog -->
+    <lion-dialog id="delete-dialog">
+      <div slot="content" class="dialog" role="alertdialog" aria-labelledby="delete-title" aria-describedby="delete-confirm-message">
+        <h3 id="delete-title">Delete profile?</h3>
+        <p id="delete-confirm-message"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn danger primary danger-btn">Delete</button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Send to voice server dialog -->
+    <lion-dialog id="send-dialog">
+      <div slot="content" class="dialog" role="dialog" aria-labelledby="send-title" aria-describedby="send-target">
+        <h3 id="send-title">Send to voice server</h3>
+        <p id="send-target" class="send-target"></p>
+        <lion-input id="send-api" label="Voice server URL"></lion-input>
+        <lion-input id="send-token" type="password" label="Admin token" help-text="The server's TALKIE_PROFILE_ADMIN_TOKEN. Kept for this browser tab only."></lion-input>
+        <p id="send-warning" class="warning-msg"></p>
+        <p id="send-error" class="error-msg" role="alert"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary send-btn">Send</button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Generic confirmation dialog -->
+    <lion-dialog id="confirm-dialog">
+      <div slot="content" class="dialog" role="alertdialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+        <h3 id="confirm-title"></h3>
+        <p id="confirm-message"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary confirm-btn"></button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Add / edit one tool; tool-editor.js fills the body -->
+    <lion-dialog id="tool-dialog">
+      <div slot="content" class="dialog tool-dialog" role="dialog" aria-labelledby="tool-dialog-title">
+        <h3 id="tool-dialog-title" class="tool-dialog-title">Edit tool</h3>
+        <div class="tool-dialog-body"></div>
+        <div class="dialog-buttons">
+          <button type="button" class="btn danger delete-btn">Delete tool</button>
+          <span class="dialog-spacer"></span>
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary save-btn">Save</button>
+        </div>
+      </div>
+    </lion-dialog>
+
+    <!-- Import profile dialog -->
+    <lion-dialog id="import-dialog">
+      <div slot="content" class="dialog" role="dialog" aria-labelledby="import-title">
+        <h3 id="import-title">Import profile</h3>
+        <lion-textarea label="Profile JSON" rows="8" help-text="Paste an exported profile or an agents/*.json file, or choose a file below."></lion-textarea>
+        <div class="file-row">
+          <label for="import-file">Or choose a file</label>
+          <input type="file" accept="application/json,.json" id="import-file" />
+        </div>
+        <p id="import-error" class="error-msg" role="alert"></p>
+        <div class="dialog-buttons">
+          <button type="button" class="btn cancel-btn">Cancel</button>
+          <button type="button" class="btn primary import-btn">Import</button>
+        </div>
+      </div>
+    </lion-dialog>
+  </main>
+  <script type="module" src="dist/console.js"></script>
+</body>
+</html>

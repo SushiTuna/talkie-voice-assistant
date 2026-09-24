@@ -1,0 +1,284 @@
+/* ------------------------------------------------------------------- Playground layout */
+
+#main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 1.5rem 2.5rem;
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+#main:focus { outline: none; }
+
+.page-intro {
+  grid-column: 1 / -1;
+}
+
+.page-intro h1 {
+  margin: 0 0 0.9rem;
+  font-size: clamp(1.6rem, 3vw, 2rem);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+/* Three numbered steps: the whole first run at a glance. Each is a number tile beside one
+   text block (title line, then the sentence), so the li's flex never splits the sentence's
+   inline runs into separate columns. */
+.start-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: start;
+}
+.start-steps li {
+  counter-increment: start;
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+.start-steps li::before {
+  content: counter(start);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.start-steps li > span { min-width: 0; line-height: 1.45; }
+.start-steps strong {
+  display: block;
+  margin-bottom: 0.1rem;
+  color: var(--ink);
+}
+
+.section-title {
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem;
+  color: var(--ink);
+}
+
+/* Left column — tabs container */
+.playground-form {
+  min-width: 0;
+}
+
+/* The panel's top border is the tab track; the selected tab's underline sits on it. */
+.playground-form [slot="panel"] {
+  padding: 1.25rem 0 0;
+  max-width: 40rem;
+  border-top: 1px solid var(--line);
+}
+
+/* Group headings in the Configure and Theme panels. */
+#config .section-title,
+#theme .section-title {
+  margin: 1.75rem 0 0.9rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--line);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+#config .section-title:first-child,
+#theme form > .section-title:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* Right column — sticky preview card */
+.preview-card {
+  position: sticky;
+  top: calc(var(--header-h) + 1rem);
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.btn-block {
+  width: 100%;
+  min-height: 2.75rem;
+  font-size: 0.95rem;
+}
+/* lion-button wraps its content in one shadow flex box, so the host's gap never reaches it. */
+.btn-block > svg { margin-right: 0.45rem; }
+
+.preview-head,
+.snippet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.preview-head .section-title,
+.snippet-head .section-title {
+  margin: 0;
+}
+.snippet-head {
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.preview-card .status-line {
+  color: var(--ink-soft);
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.preview-card pre code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.copy-status {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: 0.85rem;
+}
+.copy-status[data-kind="ok"] { color: var(--success); }
+.copy-status[data-kind="error"] { color: var(--danger); }
+#btn-copy[data-copied] {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+/* Theme panel */
+.theme-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Each colour is a card row: name and note on the left, hex and swatch on the right, so the
+   swatches line up down each column whether or not a card has help text. The host is the flex
+   box; its two shadow groups (label + help text, then the input group) are the flex items. */
+.theme-colors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 0.6rem;
+}
+.theme-colors lion-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.6rem 0.6rem 0.6rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: background-color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.theme-colors lion-input:hover { border-color: var(--field-line); }
+.theme-colors lion-input:focus-within {
+  border-color: var(--accent);
+  background: var(--raised);
+}
+.theme-colors lion-input > label[slot="label"] {
+  margin: 0;
+  cursor: pointer;
+}
+.theme-colors lion-input > [slot="help-text"] { margin: 0.1rem 0 0; }
+/* The hex readout beside each swatch (playground.js fills it); fixed width keeps swatches aligned. */
+.color-hex {
+  display: block;
+  line-height: 2.5rem; /* the swatch's height, so the text centres on it */
+  min-width: 7ch;
+  margin-right: 0.6rem;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+.reset-btn {
+  align-self: flex-start;
+}
+
+/* Events panel */
+.events-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.event-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.event-log-container ol {
+  list-style: none;
+  margin: 0;
+  padding: 0 0.9rem 0.75rem;
+  max-height: 320px;
+  overflow-y: auto;
+  font-size: 0.8rem;
+  font-family: var(--mono);
+}
+
+.event-log-container ol:empty::before {
+  content: "No events yet. Open the preview and talk to it.";
+  display: block;
+  padding: 0.35rem 0;
+  color: var(--ink-soft);
+  font-family: inherit;
+}
+
+.event-log-container ol li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line);
+  overflow-wrap: anywhere;
+}
+
+.event-log-container ol li:last-child {
+  border-bottom: none;
+}
+
+.action-btn {
+  align-self: flex-start;
+}
+
+/* Responsive: single column under 900px, the card first so the snippet stays in reach. */
+@media (max-width: 900px) {
+  #main {
+    grid-template-columns: 1fr;
+    padding: 1.25rem 1rem;
+  }
+
+  .preview-card {
+    position: static;
+    order: 1;
+  }
+  .start-steps {
+    grid-template-columns: 1fr;
+  }
+  .playground-form {
+    order: 2;
+  }
+}

@@ -1,1 +1,4 @@
 .DS_Store
+# local agent tooling (skills point at paths on one machine)
+.claude/
+.github/skills/

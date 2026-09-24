@@ -1,12 +1,14 @@
 // Screenshot every room anchor from anchors.js in headless Chrome and check the camera stays where it was put.
 // Needs the server running (npm start). Usage: node tests/anchor-shots.mjs [baseUrl]
 // Output: tests/shots/anchor-<id>.png plus one line of numbers per anchor; exits 1 if any anchor drifts or is blocked.
+// Also shoots close-ups of the props the anchors don't frame (view-<id>.png: cars, a broadleaf tree, the
+// mountains). SHOTS_DIR=tests/shots/before writes elsewhere, e.g. to compare model builds.
 import { spawn } from "node:child_process";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { ROOM_ANCHORS } from "../anchors.js";
 
 const BASE = process.argv[2] || "http://localhost:8080/";
-const OUT = new URL("./shots/", import.meta.url).pathname;
+const OUT = process.env.SHOTS_DIR ? `${process.env.SHOTS_DIR.replace(/\/$/, "")}/` : new URL("./shots/", import.meta.url).pathname;
 const W = 1280, H = 800, PORT = 9336;
 mkdirSync(OUT, { recursive: true });
 
@@ -78,8 +80,31 @@ async function main() {
     if (bad) failed++;
     console.log(`${bad ? "FAIL" : "ok  "} ${a.id.padEnd(15)} drift=${st.drift.toFixed(3)}m sight=${st.sight?.toFixed(2) ?? "open"}m sees=${st.sees ?? "-"}`);
   }
+  // Prop close-ups: camera placed relative to whatever the scene loaded, looking at its centre.
+  const VIEWS = {
+    ferrari: `const c = centre(scene.getTransformNodeByName("car-ferrari").getChildMeshes()); return [c.add(new B.Vector3(2.6, 0.5, 2.6)), c];`,
+    porsche: `const c = centre(scene.getTransformNodeByName("car-porsche").getChildMeshes()); return [c.add(new B.Vector3(-2.6, 0.5, 2.6)), c];`,
+    tree: `const t = scene.meshes.filter((m) => /^broadleaf\\d+$/.test(m.name)).sort((a, b) => a.position.length() - b.position.length())[0];
+      const c = centre([t]), d = c.subtract(new B.Vector3(0, c.y, 0)).normalize().scale(-9); return [c.add(new B.Vector3(d.x, 0, d.z)), c];`,
+    mountains: `const p = scene.meshes.filter((m) => /^peakTpl/.test(m.sourceMesh?.name || "")).sort((a, b) => a.position.length() - b.position.length())[0];
+      const eye = new B.Vector3(-17, -1.7, 11.4); return [eye, new B.Vector3(p.position.x, eye.y + 40, p.position.z)];`,
+  };
+  for (const [id, pose] of Object.entries(VIEWS)) {
+    await ev(`(async () => {
+      const B = await import("@babylonjs/core");
+      await window.tour?.goTo("exterior", { instant: true }); // walk mode, and wakes the idle render loop
+      const scene = window.__scene, fp = scene.cameras.find(c => c.name === 'fp');
+      const centre = (ms) => { const { min, max } = B.Mesh.MinMax(ms); return min.add(max).scale(0.5); };
+      const [eye, at] = (() => { ${pose} })();
+      scene.activeCamera = fp; fp.position.copyFrom(eye); fp.setTarget(at);
+    })()`);
+    await sleep(1800);
+    const shot = await send("Page.captureScreenshot", { format: "png" }, s);
+    writeFileSync(`${OUT}view-${id}.png`, Buffer.from(shot.data, "base64"));
+    console.log(`view ${id}`);
+  }
   console.log(errors.length ? `console errors:\n  ${errors.join("\n  ")}` : "console errors: none");
-  console.log(`${ROOM_ANCHORS.length - failed}/${ROOM_ANCHORS.length} anchors ok — screenshots in tests/shots/ (open them to confirm each room)`);
+  console.log(`${ROOM_ANCHORS.length - failed}/${ROOM_ANCHORS.length} anchors ok — screenshots in ${OUT} (open them to confirm each room)`);
   process.exitCode = failed || errors.length ? 1 : 0;
 }
 main().catch((e) => { console.error("FAILED:", e.message); process.exitCode = 1; }).finally(() => chrome.kill());

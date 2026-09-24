@@ -1,0 +1,46 @@
+{
+  "name": "@talkie/voice-ui",
+  "version": "0.1.0",
+  "description": "Talkie Voice UI SDK — framework-agnostic voice interface components",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./core/state-machine.js": "./src/core/state-machine.js",
+    "./core/backend.js": "./src/core/backend.js",
+    "./core/agent-profiles.js": "./src/core/agent-profiles.js",
+    "./core/access-ticket.js": "./src/core/access-ticket.js",
+    "./backends/mock-backend.js": "./src/backends/mock-backend.js",
+    "./backends/http-backend.js": "./src/backends/http-backend.js",
+    "./backends/voice-agent-backend.js": "./src/backends/voice-agent-backend.js",
+    "./audio/mic-capture.js": "./src/audio/mic-capture.js",
+    "./audio/pcm-codec.js": "./src/audio/pcm-codec.js",
+    "./define/talkie-assistant.js": "./src/define/talkie-assistant.js",
+    "./define/talkie-widget.js": "./src/define/talkie-widget.js",
+    "./define/talkie-launcher.js": "./src/define/talkie-launcher.js",
+    "./define/talkie-transcript.js": "./src/define/talkie-transcript.js",
+    "./define/talkie-waveform.js": "./src/define/talkie-waveform.js",
+    "./embed": "./dist/talkie-embed.js",
+    "./audio/pcm-player.js": "./src/audio/pcm-player.js"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "build": "node build.mjs",
+    "build:site": "node build-site.mjs",
+    "example": "node build.mjs && PORT=5173 node server.mjs",
+    "site": "node build.mjs && node build-site.mjs && node server.mjs",
+    "test": "node tests/state-machine.mjs && node tests/mock-backend.mjs && node tests/components.mjs && node tests/pcm-worklet.mjs && node tests/http-backend.mjs && node tests/pcm-codec.mjs && node tests/pcm-player.mjs && node tests/voice-agent-backend.mjs && node tests/talkie-assistant.mjs && node tests/agent-profiles.mjs && node tests/access-ticket.mjs && node tests/embed-bundle.mjs && node tests/site.mjs && node tests/server.mjs"
+  },
+  "dependencies": {
+    "@lion/ui": "^0.21.1",
+    "@open-wc/scoped-elements": "^2.1.0",
+    "lit": "^3.3.3"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^2.1.1",
+    "esbuild": "^0.28.2",
+    "hono": "^4.13.8",
+    "marked": "^18.0.13"
+  },
+  "license": "ISC"
+}
