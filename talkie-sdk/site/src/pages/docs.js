@@ -1,8 +1,8 @@
 /**
- * Docs page — README, integration guide and production checklist, one lion-tabs panel each.
+ * Docs page — the README, rendered as the Guide.
  *
  * The markdown is fetched from the dev server, never copied, so the page can't drift from the
- * docs. Each panel renders once, on first show.
+ * docs. Addresses keep the `#guide/<heading>` shape so links into a section stay shareable.
  */
 
 import '../lion.js';
@@ -11,24 +11,9 @@ import { marked } from 'marked';
 
 mountShell('docs');
 
-const DOCS = [
-  { id: 'guide', file: '../README.md' },
-  { id: 'integration', file: '../docs/integration.md' },
-  { id: 'checklist', file: '../docs/production-checklist.md' },
-];
+const DOC = { id: 'guide', file: '../README.md' };
 
-/** Markdown file name → tab index, whatever path prefix a link uses. */
-const TAB_BY_FILE = new Map([
-  ['README.md', 0],
-  ['integration.md', 1],
-  ['production-checklist.md', 2],
-]);
-
-const tabs = /** @type {any} */ (document.getElementById('tabs-bar'));
-const loaded = new Set();
-/** The doc being rendered, so in-page links can carry its tab id. */
-let rendering = -1;
-const currentIndex = () => (rendering === -1 ? tabs.selectedIndex : rendering);
+const panel = document.querySelector(`[data-doc="${DOC.id}"]`);
 
 function slugger() {
   const used = new Map();
@@ -44,26 +29,20 @@ function scrollToId(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-/** Select a tab and, once its panel has rendered, scroll to an anchor inside it. */
-async function show(index, anchor) {
-  if (tabs.selectedIndex !== index) tabs.selectedIndex = index;
-  await render(index);
-  if (anchor) {
-    scrollToId(anchor);
-    setHash(index, anchor);
-  }
-}
-
-/** `#integration` or `#guide/some-heading` → [tab index, anchor]; unknown → [-1]. */
+/** `#guide/some-heading` → the heading id; `#guide` or anything else → undefined. */
 function parseHash(hash) {
   const [id, anchor] = decodeURIComponent(hash.replace(/^#/, '')).split('/');
-  return [DOCS.findIndex((d) => d.id === id), anchor];
+  return id === DOC.id ? anchor : undefined;
 }
 
-/** Keep the address bar pointing at the current tab (and section) so it can be shared. */
-function setHash(index, anchor) {
-  const doc = DOCS[index];
-  if (doc) history.replaceState(null, '', `#${doc.id}${anchor ? `/${anchor}` : ''}`);
+/** Keep the address bar pointing at the section in view, so it can be shared. */
+function setHash(anchor) {
+  history.replaceState(null, '', `#${DOC.id}${anchor ? `/${anchor}` : ''}`);
+}
+
+function goTo(anchor) {
+  scrollToId(anchor);
+  setHash(anchor);
 }
 
 function wireLinks(root, fileUrl) {
@@ -76,24 +55,23 @@ function wireLinks(root, fileUrl) {
     }
     if (href.startsWith('#')) {
       const id = decodeURIComponent(href.slice(1));
-      link.href = `#${DOCS[currentIndex()]?.id}/${id}`;
+      link.href = `#${DOC.id}/${id}`;
       link.addEventListener('click', (ev) => {
         ev.preventDefault();
-        scrollToId(id);
-        setHash(tabs.selectedIndex, id);
+        goTo(id);
       });
       continue;
     }
     const [path, anchor] = href.split('#');
-    const tabIndex = TAB_BY_FILE.get(path.split('/').pop());
-    if (tabIndex !== undefined) {
+    if (path.split('/').pop() === 'README.md') {
+      link.href = `#${DOC.id}${anchor ? `/${anchor}` : ''}`;
       link.addEventListener('click', (ev) => {
         ev.preventDefault();
-        show(tabIndex, anchor && decodeURIComponent(anchor));
+        if (anchor) goTo(decodeURIComponent(anchor));
       });
       continue;
     }
-    // Anything else (source files, images) resolves against the markdown file's own URL.
+    // Anything else (other docs, source files, images) resolves against the README's own URL.
     link.href = new URL(href, fileUrl).href;
   }
 }
@@ -118,7 +96,7 @@ function addCopyButtons(root) {
 }
 
 /** An "On this page" list of the doc's h2s (h3s indented), highlighting the section in view. */
-function buildToc(root, docId) {
+function buildToc(root) {
   const heads = [...root.querySelectorAll('h2, h3')];
   if (heads.filter((h) => h.tagName === 'H2').length < 2) return null;
   const nav = document.createElement('nav');
@@ -131,13 +109,12 @@ function buildToc(root, docId) {
   const linkFor = new Map();
   for (const h of heads) {
     const a = document.createElement('a');
-    a.href = `#${docId}/${h.id}`;
+    a.href = `#${DOC.id}/${h.id}`;
     a.textContent = h.textContent;
     a.dataset.level = h.tagName.slice(1);
     a.addEventListener('click', (ev) => {
       ev.preventDefault();
-      scrollToId(h.id);
-      setHash(tabs.selectedIndex, h.id);
+      goTo(h.id);
     });
     const li = document.createElement('li');
     li.append(a);
@@ -164,13 +141,8 @@ function buildToc(root, docId) {
   return nav;
 }
 
-async function render(index) {
-  const doc = DOCS[index];
-  if (!doc || loaded.has(doc.id)) return;
-  loaded.add(doc.id);
-  // lion-tabs replaces panel ids with its own (for aria-controls), so find panels by data-doc.
-  const panel = tabs.querySelector(`[data-doc="${doc.id}"]`);
-  const fileUrl = new URL(doc.file, location.href);
+async function render() {
+  const fileUrl = new URL(DOC.file, location.href);
   const loading = document.createElement('p');
   loading.className = 'loading-msg';
   loading.textContent = 'Loading…';
@@ -189,39 +161,29 @@ async function render(index) {
       table.replaceWith(wrap);
       wrap.append(table);
     }
-    rendering = index;
     wireLinks(body, fileUrl);
-    rendering = -1;
     addCopyButtons(body);
     const article = document.createElement('article');
     article.className = 'docs-article';
     article.append(...body.childNodes);
     panel.replaceChildren(article);
-    const toc = buildToc(article, doc.id);
+    const toc = buildToc(article);
     if (toc) panel.prepend(toc);
     panel.classList.toggle('has-toc', !!toc);
   } catch (err) {
-    loaded.delete(doc.id);
     const p = document.createElement('p');
     p.className = 'error-msg';
-    p.textContent = `Couldn't load ${doc.file} (${err.message}). Run the site with npm run site.`;
+    p.textContent = `Couldn't load ${DOC.file} (${err.message}). Run the site with npm run site.`;
     panel.replaceChildren(p);
   }
 }
 
-tabs.addEventListener('selected-changed', () => {
-  if (!DOCS[tabs.selectedIndex]) return;
-  const [index] = parseHash(location.hash);
-  if (index !== tabs.selectedIndex) setHash(tabs.selectedIndex);
-  render(tabs.selectedIndex);
-});
-
 window.addEventListener('hashchange', () => {
-  const [index, anchor] = parseHash(location.hash);
-  if (index !== -1) show(index, anchor);
+  const anchor = parseHash(location.hash);
+  if (anchor) scrollToId(anchor);
 });
 
-// lion-tabs picks its initial selection on first update; set ours after that.
-await tabs.updateComplete;
-const [initial, initialAnchor] = parseHash(location.hash);
-show(initial === -1 ? 0 : initial, initialAnchor);
+await render();
+const initialAnchor = parseHash(location.hash);
+if (initialAnchor) scrollToId(initialAnchor);
+else setHash();

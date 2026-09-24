@@ -2,33 +2,27 @@
 
 #main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 1.5rem 2.5rem;
-  padding: 2rem;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 1.5rem 2rem;
+  padding: 0 2rem 3rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 #main:focus { outline: none; }
+/* The hero glow reaches past the column; clip it without making #main a scroll box. */
+#main { overflow-x: clip; }
 
-.page-intro {
+.playground-hero {
   grid-column: 1 / -1;
 }
 
-.page-intro h1 {
-  margin: 0 0 0.9rem;
-  font-size: clamp(1.6rem, 3vw, 2rem);
-  font-weight: 750;
-  letter-spacing: -0.02em;
-}
-
-/* Three numbered steps: the whole first run at a glance. Each is a number tile beside one
-   text block (title line, then the sentence), so the li's flex never splits the sentence's
-   inline runs into separate columns. */
+/* Three numbered steps under the lede: the whole first run at a glance. Each is a number
+   disc beside one text block, so the li's flex never splits the sentence's inline runs. */
 .start-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  margin: 0;
+  margin: 1.5rem 0 0;
   padding: 0;
   list-style: none;
   counter-reset: start;
@@ -36,14 +30,15 @@
 .start-steps li {
   counter-increment: start;
   display: flex;
-  gap: 0.65rem;
+  gap: 0.7rem;
   align-items: flex-start;
-  padding: 0.8rem 0.9rem;
-  background: var(--surface);
+  padding: 0.85rem 1rem;
+  background: color-mix(in srgb, var(--raised) 80%, transparent);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 .start-steps li::before {
   content: counter(start);
@@ -52,11 +47,11 @@
   place-items: center;
   width: 1.75rem;
   height: 1.75rem;
-  border-radius: var(--radius-sm);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 0.85rem;
-  font-weight: 700;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.8rem;
+  font-weight: 800;
 }
 .start-steps li > span { min-width: 0; line-height: 1.45; }
 .start-steps strong {
@@ -72,28 +67,43 @@
   color: var(--ink);
 }
 
-/* Left column — tabs container */
+/* ------------------------------------------------------------------- settings card */
+
 .playground-form {
   min-width: 0;
+  align-self: start;
+  padding: 1rem 1.5rem 1.75rem;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 
-/* The panel's top border is the tab track; the selected tab's underline sits on it. */
 .playground-form [slot="panel"] {
   padding: 1.25rem 0 0;
-  max-width: 40rem;
-  border-top: 1px solid var(--line);
 }
 
-/* Group headings in the Configure and Theme panels. */
+/* Group headings in the Configure and Theme panels: a gradient tick, then the name. */
 #config .section-title,
 #theme .section-title {
-  margin: 1.75rem 0 0.9rem;
-  padding-top: 1.25rem;
-  border-top: 1px dashed var(--line);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 2rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+#config .section-title::before,
+#theme .section-title::before {
+  content: "";
+  width: 0.35rem;
+  height: 1.15rem;
+  border-radius: 999px;
+  background: linear-gradient(var(--accent), var(--leaf));
 }
 #config .section-title:first-child,
 #theme form > .section-title:first-child {
@@ -102,20 +112,81 @@
   border-top: 0;
 }
 
-/* Right column — sticky preview card */
+/* ------------------------------------------------------------------- preview card */
+
 .preview-card {
   position: sticky;
   top: calc(var(--header-h) + 1rem);
   align-self: start;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
   background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 1.25rem;
+  border-radius: 22px;
+  box-shadow: var(--shadow), 0 30px 60px -34px color-mix(in srgb, var(--accent) 50%, transparent);
+  overflow: hidden;
   font-size: 0.9rem;
+}
+
+/* The stage: a fixed deep-teal panel in both themes, so its text colours are fixed too. */
+.stage {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem 1.35rem;
+  background:
+    radial-gradient(18rem 10rem at 0% 100%, rgb(88 181 42 / 0.35), transparent 70%),
+    radial-gradient(14rem 9rem at 100% 0%, rgb(255 138 76 / 0.22), transparent 70%),
+    linear-gradient(145deg, #0f766e, #0b3b39);
+  color: #f0fdfa;
+  text-align: center;
+}
+.stage .preview-head { align-self: stretch; }
+.stage .section-title { color: #fff; }
+.stage .backend-badge {
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  border-color: rgb(255 255 255 / 0.3);
+}
+.stage .backend-badge[data-live] {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #dcfce7;
+}
+.stage-mascot {
+  width: 112px;
+  height: auto;
+  margin: 0.25rem 0 -0.25rem;
+  filter: drop-shadow(0 10px 14px rgb(0 0 0 / 0.3));
+  animation: mascot-bob 3.2s var(--ease) infinite alternate;
+}
+.preview-card .stage .status-line {
+  margin: 0;
+  max-width: 19rem;
+  color: #ccfbf1;
+  font-size: 0.85rem;
+}
+/* On the teal: a white primary button. */
+.stage lion-button.primary {
+  background: #fff;
+  border-color: #fff;
+  color: #0b3b39;
+  box-shadow: 0 8px 22px -10px rgb(0 0 0 / 0.55);
+}
+.stage lion-button.primary:hover {
+  background: #ecfdf5;
+  border-color: #ecfdf5;
+}
+.stage :focus-visible { outline-color: #fff; }
+
+.snippet {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem 1.25rem 1.1rem;
 }
 
 .btn-block {
@@ -136,17 +207,6 @@
 .preview-head .section-title,
 .snippet-head .section-title {
   margin: 0;
-}
-.snippet-head {
-  margin-top: 0.75rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
-}
-
-.preview-card .status-line {
-  color: var(--ink-soft);
-  margin: 0;
-  font-size: 0.85rem;
 }
 
 .preview-card pre code {
@@ -268,8 +328,9 @@
 @media (max-width: 900px) {
   #main {
     grid-template-columns: 1fr;
-    padding: 1.25rem 1rem;
+    padding: 0 1rem 2rem;
   }
+  .playground-form { padding: 0.85rem 1rem 1.25rem; }
 
   .preview-card {
     position: static;

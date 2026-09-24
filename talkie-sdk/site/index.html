@@ -4,92 +4,195 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Talkie — Overview</title>
+  <meta name="description" content="Talkie adds a voice assistant to any web page with one script tag. Visitors ask out loud; it answers in a natural voice and can act on the page." />
   <link rel="stylesheet" href="src/theme.css" />
   <link rel="stylesheet" href="src/home.css" />
 </head>
 <body>
   <header id="site-header"></header>
   <main id="main" tabindex="-1">
-    <section class="home-hero">
-      <p class="eyebrow">Talkie Voice UI SDK</p>
-      <h1>A voice assistant for any web page</h1>
-      <p class="subline">Talkie adds a hands-free voice assistant to a site with one script tag. Visitors talk; it listens, answers and speaks back.</p>
-      <div class="btn-row">
-        <button type="button" id="try-btn" class="btn primary btn-lg">Try the demo</button>
-        <a href="/site/playground" class="btn btn-lg">Configure it →</a>
-      </div>
-      <p class="demo-note" id="demo-note">The demo runs on scripted answers. Switch on <strong>Live voice server</strong> above to talk to a real one.</p>
-    </section>
-    <section class="home-section" id="how-it-works">
-      <h2>How it works</h2>
-      <div class="how-it-works-steps">
-        <div>
-          <p class="step-number"></p>
-          <p class="step-title">Add one script tag and one element</p>
-          <p class="step-desc">Import the embed bundle and place &lt;talkie-assistant&gt; in your HTML.</p>
-          <pre class="code step-snippet"><code>&lt;script src="/path/to/talkie-embed.js" defer&gt;&lt;/script&gt;
 
-&lt;talkie-assistant api="https://your-voice-server"&gt;&lt;/talkie-assistant&gt;</code></pre>
+    <!-- ============================================================ hero -->
+    <section class="home-hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Talkie Voice UI SDK</p>
+        <h1 id="hero-title">Let visitors <span class="hl">talk</span> to your website</h1>
+        <p class="subline">Talkie adds a friendly voice assistant to any page with one script tag. Visitors ask out loud; it answers in a natural voice, and can show them what they asked for.</p>
+        <div class="btn-row">
+          <button type="button" id="try-btn" class="btn primary btn-lg" data-try-demo>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+            Try the demo
+          </button>
+          <a href="/site/playground" class="btn btn-lg">Configure it <span aria-hidden="true">→</span></a>
         </div>
-        <div>
-          <p class="step-number"></p>
-          <p class="step-title">Your server mints a short-lived token</p>
-          <p class="step-desc">Your API key never reaches the browser. A tiny server route proxies the token request so only ephemeral credentials are exposed client-side.</p>
-        </div>
-        <div>
-          <p class="step-number"></p>
-          <p class="step-title">Speech recognition, the reply and the voice run over one connection</p>
-          <p class="step-desc">AssemblyAI's Voice Agent API handles transcription, model reasoning and speech synthesis in a single WebSocket — no round-trips between services.</p>
-        </div>
+        <p class="demo-note" id="demo-note">The demo runs on scripted answers. Switch on <strong>Live voice server</strong> above to talk to a real one.</p>
+        <ul class="hero-points">
+          <li>One script tag</li>
+          <li>Phones and desktop</li>
+          <li>Your API key stays on your server</li>
+        </ul>
       </div>
+
+      <figure class="hero-visual" role="img" aria-label="Illustration: a visitor asks to see the kitchen, the assistant opens the kitchen view on the page and answers out loud.">
+        <img class="mascot" src="assets/mascot.webp" width="560" height="522" alt="" fetchpriority="high" />
+        <div class="call-card" aria-hidden="true">
+          <div class="call-head">
+            <span class="call-dot"></span>
+            <span class="call-title">Property guide</span>
+            <span class="call-state">Speaking</span>
+          </div>
+          <div class="wave">
+            <i style="--h:.35"></i><i style="--h:.6"></i><i style="--h:.9"></i><i style="--h:.55"></i><i style="--h:.75"></i><i style="--h:1"></i><i style="--h:.65"></i><i style="--h:.4"></i><i style="--h:.8"></i><i style="--h:.95"></i><i style="--h:.5"></i><i style="--h:.7"></i><i style="--h:.45"></i><i style="--h:.85"></i><i style="--h:.6"></i><i style="--h:.3"></i><i style="--h:.7"></i><i style="--h:.9"></i><i style="--h:.5"></i><i style="--h:.35"></i>
+          </div>
+          <div class="bubble you">Can you show me the kitchen?</div>
+          <div class="tool-chip"><span class="tool-check">✓</span> show_room <span class="tool-arg">kitchen</span></div>
+          <div class="bubble agent">Here's the kitchen. Want to see the dining room next?</div>
+        </div>
+      </figure>
     </section>
-    <section class="home-section" id="features">
-      <h2>Features</h2>
-      <div class="features-grid">
-        <div class="feature-card">
-          <h3>Hands-free conversation or push-to-talk</h3>
-          <p>Conversation mode keeps the mic open between turns so visitors just talk. Push-to-talk provides Start / Stop &amp; Send instead.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Live transcript and word-by-word replies</h3>
-          <p>The widget displays the user's utterance as it arrives, and shows the agent's answer incrementally as the voice reaches each word.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Tools: the agent can act on your page</h3>
-          <p>Declare function tools and receive callbacks from the agent. Run them and send results back so the reply reflects the outcome.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Minimize without ending the call</h3>
-          <p>Pressing the minimize button hides the panel but keeps the conversation alive. Tap the launcher again to restore it.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Bottom sheet on phones, floating panel on desktop</h3>
-          <p>The layout attribute defaults to auto: a bottom sheet at ≤600 px wide, a floating panel otherwise. CSS properties control offset positions.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Themeable with CSS custom properties</h3>
-          <p>All visual appearance flows through variables like --talkie-paper and --talkie-ink. Restyle without piercing shadow DOM.</p>
-        </div>
-        <div class="feature-card">
-          <h3>Screen-reader announcements and reduced-motion support</h3>
-          <p>An aria-live region announces state changes. The waveform and launcher waves respect prefers-reduced-motion.</p>
-        </div>
-        <div class="feature-card">
-          <h3>No build step: a single 119 KiB script</h3>
-          <p>Build the embed bundle once, host it anywhere, and add two lines of HTML. No bundler or framework required.</p>
-        </div>
+
+    <!-- ============================================================ use cases -->
+    <section class="home-section" id="use-cases" aria-labelledby="use-cases-title">
+      <div class="section-head">
+        <p class="kicker">Where it fits</p>
+        <h2 id="use-cases-title">One assistant, shaped to your site</h2>
+        <p class="lede">Give it a persona and a few page tools, and it takes on the job. A few ideas:</p>
       </div>
-    </section>
-    <section class="home-section what-you-provide" id="what-you-provide">
-      <h2>What you provide</h2>
-      <ul>
-        <li>An <a href="https://www.assemblyai.com" target="_blank" rel="noopener">AssemblyAI account</a> with an API key.</li>
-        <li>A token route — a few lines of server code that proxy <a href="https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/generate-voice-agent-token" target="_blank" rel="noopener">the vendor's token endpoint</a> and return { token, expires_in_seconds }. See <a href="/site/docs#guide/voiceagentbackend-one-socket-for-the-whole-turn">the token route</a> in the guide.</li>
-        <li>A persona — a system prompt and optional voice profile. Configure it on the <a href="/site/console">Persona console</a>.</li>
+      <ul class="use-cases">
+        <li class="use-case">
+          <p class="use-case-title">Property and venue tours</p>
+          <p class="say">“Show me the master bedroom.”</p>
+          <p class="use-case-desc">A tool moves the tour, and the agent describes what is on screen.</p>
+        </li>
+        <li class="use-case">
+          <p class="use-case-title">Help centres</p>
+          <p class="say">“How do I change my delivery address?”</p>
+          <p class="use-case-desc">Answers from your persona's knowledge, then scrolls to the right section.</p>
+        </li>
+        <li class="use-case">
+          <p class="use-case-title">Bookings and forms</p>
+          <p class="say">“A table for four on Friday, please.”</p>
+          <p class="use-case-desc">The agent fills the form fields through your tools; the visitor checks and sends.</p>
+        </li>
+        <li class="use-case">
+          <p class="use-case-title">Product pages</p>
+          <p class="say">“Which plan suits a team of five?”</p>
+          <p class="use-case-desc">A guide that knows your catalogue, with the words on screen as it speaks.</p>
+        </li>
       </ul>
     </section>
-    <section class="home-section good-to-know" id="good-to-know">
-      <h2>Good to know</h2>
+
+    <!-- ============================================================ how it works -->
+    <section class="home-section" id="how-it-works" aria-labelledby="how-title">
+      <div class="section-head">
+        <p class="kicker">How it works</p>
+        <h2 id="how-title">Three steps to a talking site</h2>
+      </div>
+      <div class="how-grid">
+        <ol class="steps">
+          <li>
+            <p class="step-title">Add one script tag and one element</p>
+            <p class="step-desc">Host the embed bundle and place <code>&lt;talkie-assistant&gt;</code> in your HTML. No bundler or framework needed.</p>
+          </li>
+          <li>
+            <p class="step-title">Your server mints a short-lived token</p>
+            <p class="step-desc">A small server route requests the token, so your API key never reaches the browser. Only short-lived credentials do.</p>
+          </li>
+          <li>
+            <p class="step-title">Speech recognition, the reply and the voice run over one connection</p>
+            <p class="step-desc">AssemblyAI's Voice Agent API handles transcription, the model's reply and speech synthesis over a single WebSocket, with no hops between separate services.</p>
+          </li>
+        </ol>
+        <div class="code-window">
+          <div class="code-bar" aria-hidden="true"><i></i><i></i><i></i><span>index.html</span></div>
+          <pre class="code"><code><span class="c-tag">&lt;script</span> <span class="c-attr">src</span>=<span class="c-str">"/path/to/talkie-embed.js"</span> <span class="c-attr">defer</span><span class="c-tag">&gt;&lt;/script&gt;</span>
+<span class="c-tag">&lt;talkie-assistant</span> <span class="c-attr">api</span>=<span class="c-str">"https://your-voice-server"</span><span class="c-tag">&gt;&lt;/talkie-assistant&gt;</span>
+
+<span class="c-com">&lt;!-- Optional: let the agent act on the page --&gt;</span>
+<span class="c-tag">&lt;script&gt;</span>
+  document.querySelector(<span class="c-str">'talkie-assistant'</span>).onToolCall =
+    <span class="c-kw">async</span> ({ name, arguments: args }) =&gt; {
+      <span class="c-kw">if</span> (name === <span class="c-str">'show_room'</span>) <span class="c-kw">await</span> tour.goTo(args.room);
+      <span class="c-kw">return</span> { ok: <span class="c-kw">true</span> };
+    };
+<span class="c-tag">&lt;/script&gt;</span></code></pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ features -->
+    <section class="home-section" id="features" aria-labelledby="features-title">
+      <div class="section-head">
+        <p class="kicker">Features</p>
+        <h2 id="features-title">Everything a voice assistant needs</h2>
+      </div>
+      <div class="bento">
+        <article class="tile tile-wide tile-tools">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l7 16 2.5-6.5L20 11z"/></svg>
+          <h3>It can act on your page</h3>
+          <p>Declare function tools and the agent calls them mid-conversation: show a room, scroll to a section, fill in a form. Your handler's result goes back to the agent, so the reply matches what is on screen.</p>
+          <ul class="chips" aria-label="Example tools">
+            <li>show_room</li><li>go_to_section</li><li>fill_booking_form</li>
+          </ul>
+        </article>
+        <article class="tile">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+          <h3>Talk naturally</h3>
+          <p>Conversation mode keeps listening between turns, and visitors can talk over an answer to interrupt it. Push-to-talk is there if you prefer it.</p>
+        </article>
+        <article class="tile">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13"/></svg>
+          <h3>See every word</h3>
+          <p>A live transcript shows what the visitor said as it arrives, and the reply appears word by word as the voice speaks it.</p>
+        </article>
+        <article class="tile">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="8" cy="10" r="1.3"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="16" cy="10" r="1.3"/><path d="M12 21c-1.5-2 0-4 2-4h2a4 4 0 0 0 4-4"/></svg>
+          <h3>Looks like your brand</h3>
+          <p>Colours, fonts and the launcher come from CSS custom properties such as <code>--talkie-paper</code>. No shadow-DOM hacks.</p>
+          <div class="swatches" aria-hidden="true"><i class="sw-teal"></i><i class="sw-purple"></i><i class="sw-orange"></i><i class="sw-ink"></i></div>
+        </article>
+        <article class="tile">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="13" height="10" rx="1.5"/><rect x="15" y="9" width="6" height="11" rx="1.5"/><path d="M7 18h5"/></svg>
+          <h3>At home on any screen</h3>
+          <p>A bottom sheet on phones and a floating panel on desktop. Minimize the panel and the conversation keeps going.</p>
+        </article>
+        <article class="tile">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.5" r="1.8"/><path d="M5 8.5l7 1.5 7-1.5M12 10v5M12 15l-3 6M12 15l3 6"/></svg>
+          <h3>Accessible by default</h3>
+          <p>Screen readers hear every state change. It works from the keyboard (<kbd>Space</kbd>, <kbd>Esc</kbd>) and respects reduced motion.</p>
+        </article>
+        <article class="tile tile-wide tile-light">
+          <svg class="tile-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"/></svg>
+          <h3>Light, with no build step</h3>
+          <p>One self-contained script to host anywhere. It adds no dependencies to your project and needs no framework.</p>
+          <dl class="stats">
+            <div><dt>Script size</dt><dd>121 KiB</dd></div>
+            <div><dt>Gzipped</dt><dd>37 KiB</dd></div>
+            <div><dt>Lines of HTML</dt><dd>2</dd></div>
+          </dl>
+        </article>
+      </div>
+    </section>
+
+    <!-- ============================================================ what you provide -->
+    <section class="home-section what-you-provide" id="what-you-provide" aria-labelledby="provide-title">
+      <div class="section-head">
+        <p class="kicker">Before you start</p>
+        <h2 id="provide-title">What you provide</h2>
+      </div>
+      <ul>
+        <li>An <a href="https://www.assemblyai.com" target="_blank" rel="noopener">AssemblyAI account</a> with an API key.</li>
+        <li>A token route: a few lines of server code that call <a href="https://www.assemblyai.com/docs/voice-agents/voice-agent-api/api-spec/generate-voice-agent-token" target="_blank" rel="noopener">AssemblyAI's token endpoint</a> and return { token, expires_in_seconds }. See <a href="/site/docs#guide/voiceagentbackend-one-socket-for-the-whole-turn">the token route</a> in the guide.</li>
+        <li>A persona: a system prompt and optional voice profile. Configure it on the <a href="/site/console">Persona console</a>.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ good to know -->
+    <section class="home-section good-to-know" id="good-to-know" aria-labelledby="faq-title">
+      <div class="section-head">
+        <p class="kicker">Honest answers</p>
+        <h2 id="faq-title">Good to know</h2>
+      </div>
       <lion-accordion>
         <h3 slot="invoker"><button type="button">How fast does it answer?</button></h3>
         <div slot="content">Speech starts about 5.5 s after the caller stops talking; about 3.5 s of that is the voice service's own lead-in (measured).</div>
@@ -100,6 +203,19 @@
         <h3 slot="invoker"><button type="button">Is the visitor's voice stored?</button></h3>
         <div slot="content">Audio streams to AssemblyAI; check their data-retention terms against your privacy policy. The mic opens only after the visitor presses Start.</div>
       </lion-accordion>
+    </section>
+
+    <!-- ============================================================ closing call to action -->
+    <section class="home-cta" aria-labelledby="cta-title">
+      <img class="cta-mascot" src="assets/mascot.webp" width="560" height="522" alt="" loading="lazy" />
+      <div class="cta-copy">
+        <h2 id="cta-title">Give your site a voice</h2>
+        <p>Try it in the demo, then shape its persona and look in the playground.</p>
+        <div class="btn-row">
+          <button type="button" class="btn primary btn-lg" data-try-demo>Try the demo</button>
+          <a href="/site/docs" class="btn btn-lg btn-on-cta">Read the docs</a>
+        </div>
+      </div>
     </section>
   </main>
   <footer class="home-footer" id="home-footer">

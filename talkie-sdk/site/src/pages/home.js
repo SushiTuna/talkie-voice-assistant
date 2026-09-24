@@ -52,8 +52,8 @@ window.addEventListener('talkie-site-backend', ({ detail }) => {
 
 /* ------------------------------------------------------------------- "Try it" — opens the current preview widget */
 
-const tryBtn = document.getElementById('try-btn');
-if (tryBtn) {
+// The hero and the closing call to action each carry a "Try the demo" button.
+for (const tryBtn of document.querySelectorAll('[data-try-demo]')) {
   tryBtn.addEventListener('click', () => {
     preview?.open();
   });

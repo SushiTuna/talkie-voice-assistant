@@ -89,7 +89,7 @@ Four pages, built with Lion components, for showing and setting up the assistant
 | Overview | What Talkie does, with a live assistant to try |
 | Playground | Every attribute and theme token in a form, the preview updating as you go, and the embed snippet to copy |
 | Persona console | Browse and open the voice server's personas, write and test profiles, and send them back (or export the file for its `agents/` folder) |
-| Docs | This README, the integration guide and the production checklist, rendered from these files |
+| Docs | This README, rendered from this file |
 
 Each page runs on `MockBackend` (scripted answers, no mic) until **Live voice server** is
 switched on in the header, and then talks to the server at the URL given there. Console

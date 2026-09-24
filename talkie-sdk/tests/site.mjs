@@ -532,14 +532,13 @@ function check(name, condition, detail = '') {
 {
   const page = (name) => readFileSync(join(ROOT, 'site', name), 'utf8');
 
-  // lion-tabs overwrites panel ids with its own, so docs.js finds panels by data-doc.
+  // The Docs page renders the README alone; links into it keep the #guide/<heading> shape.
   const docs = page('docs.html');
   const docsJs = readFileSync(join(ROOT, 'site', 'src', 'pages', 'docs.js'), 'utf8');
-  for (const id of ['guide', 'integration', 'checklist']) {
-    check(`docs.html has a data-doc="${id}" panel`, docs.includes(`data-doc="${id}"`));
-    check(`docs.js knows doc id "${id}"`, docsJs.includes(`id: '${id}'`));
-  }
-  check('docs.html panels carry no ids for lion-tabs to overwrite', !/slot="panel"[^>]*\sid=/.test(docs));
+  check('docs.html has the data-doc="guide" panel', docs.includes('data-doc="guide"'));
+  check('docs.js knows doc id "guide"', docsJs.includes("id: 'guide'"));
+  check('docs.html has no Integration or Production checklist tab',
+    !/data-doc="(integration|checklist)"/.test(docs) && !/<lion-tabs/.test(docs));
 
   // <lion-form> must wrap the native <form>, not the other way round.
   const consoleHtml = page('console.html');

@@ -10,10 +10,17 @@
 <body>
   <header id="site-header"></header>
   <main id="main" tabindex="-1">
+    <section class="page-hero console-hero" aria-labelledby="page-title">
+      <div>
+        <p class="kicker">Persona console</p>
+        <h1 id="page-title">Give your assistant a personality</h1>
+        <p class="lede">A persona is the system prompt, greeting and voice your voice server hands the agent. Shape one here, test it, then send it to the server.</p>
+      </div>
+      <img class="page-hero-mascot" src="assets/mascot.webp" width="560" height="522" alt="" />
+    </section>
     <div class="console-layout">
-      <aside class="console-list-panel">
-        <h1>Personas</h1>
-        <p class="lede">A persona is the system prompt, greeting and voice your voice server hands the agent.</p>
+      <aside class="console-list-panel" aria-labelledby="list-title">
+        <h2 id="list-title" class="panel-title">Your personas</h2>
         <lion-select label="Profile" id="profile-select">
           <select slot="input">
             <option value="">— select or create —</option>
@@ -21,7 +28,7 @@
         </lion-select>
         <section class="server-current" aria-labelledby="server-title">
           <div class="server-head">
-            <h2 id="server-title">On the voice server</h2>
+            <h3 id="server-title">On the voice server</h3>
             <lion-button id="btn-server-load">Load</lion-button>
           </div>
           <div id="server-item" class="server-item" hidden>
@@ -45,62 +52,71 @@
       </aside>
 
       <section class="console-editor-panel" aria-labelledby="editor-title">
-        <div class="editor-head">
-          <h2 id="editor-title">Edit profile</h2>
-          <span id="form-status" class="form-status" role="status"></span>
-        </div>
-        <div id="server-drift" class="drift-notice" hidden>
-          <p id="server-drift-text"></p>
-          <lion-button id="btn-server-sync">Use the server's version</lion-button>
-        </div>
-        <lion-form id="profile-form">
-          <form>
-            <div class="field-row">
-              <lion-input label="Name" name="name" help-text="Also becomes the profile id (slugified)"></lion-input>
-              <lion-select label="Voice" name="voice" help-text="Output voice, from the voice server's list">
-                <select slot="input"><option value="">Server default</option></select>
-              </lion-select>
-            </div>
-            <lion-input label="Description" name="description"></lion-input>
-            <lion-textarea label="System prompt" name="systemPrompt" rows="5" help-text="Who the agent is and how it should answer"></lion-textarea>
-            <lion-input label="Greeting" name="greeting" help-text="Spoken when a conversation starts; the voice server requires one"></lion-input>
-            <lion-textarea label="Keyterms" name="keyterms" help-text="Words the speech recogniser should expect: product names, jargon. Comma or newline separated."></lion-textarea>
-            <section id="tool-editor" class="tool-editor" aria-labelledby="tool-editor-title">
-              <div class="tool-editor-head">
-                <h3 id="tool-editor-title" class="tool-editor-title">Tools</h3>
-                <div class="tool-mode" role="group" aria-label="Edit tools as">
-                  <button type="button" class="tool-mode-btn" data-mode="form" aria-pressed="true">Form</button>
-                  <button type="button" class="tool-mode-btn" data-mode="json" aria-pressed="false">JSON</button>
-                </div>
-              </div>
-              <p class="tool-editor-help">Actions the agent can ask this page to run. They are stored on the server with the profile; the embedding page runs each call through <code>onToolCall</code>.</p>
-              <p class="tool-editor-note" role="status"></p>
-              <div class="tool-form">
-                <ul class="tool-list"></ul>
-                <button type="button" class="btn tool-add">+ Add a tool</button>
-              </div>
-              <lion-textarea label="Tools (JSON)" name="tools" rows="8" hidden help-text='An array of { "type": "function", "name", "description", "parameters" }.'></lion-textarea>
-            </section>
-          </form>
-        </lion-form>
-        <div class="form-actions">
-          <lion-button id="btn-send" class="primary">Send to server…</lion-button>
-          <lion-button id="btn-test">Test persona</lion-button>
-          <lion-button id="btn-export">Export JSON</lion-button>
-          <lion-button id="btn-import">Import…</lion-button>
-        </div>
-        <p class="mock-info" id="mock-note-info"></p>
-
-        <div class="context-block">
-          <p class="section-title">Agent context <span class="hint">— what /agent/context should return for this profile</span></p>
-          <pre id="context-preview" class="code context-preview"></pre>
-        </div>
-        <lion-collapsible id="test-log-collapsible">
-          <button slot="invoker" type="button">Test log</button>
-          <div slot="content">
-            <ol id="test-log" class="test-log" aria-live="polite"></ol>
+        <div class="editor-card">
+          <div class="editor-head">
+            <h2 id="editor-title">Edit profile</h2>
+            <span id="form-status" class="form-status" role="status"></span>
           </div>
-        </lion-collapsible>
+          <div id="server-drift" class="drift-notice" hidden>
+            <p id="server-drift-text"></p>
+            <lion-button id="btn-server-sync">Use the server's version</lion-button>
+          </div>
+          <lion-form id="profile-form">
+            <form>
+              <h3 class="group-title">Identity</h3>
+              <div class="field-row">
+                <lion-input label="Name" name="name" help-text="Also becomes the profile id (slugified)"></lion-input>
+                <lion-select label="Voice" name="voice" help-text="Output voice, from the voice server's list">
+                  <select slot="input"><option value="">Server default</option></select>
+                </lion-select>
+              </div>
+              <lion-input label="Description" name="description"></lion-input>
+              <h3 class="group-title">How it talks</h3>
+              <lion-textarea label="System prompt" name="systemPrompt" rows="5" help-text="Who the agent is and how it should answer"></lion-textarea>
+              <lion-input label="Greeting" name="greeting" help-text="Spoken when a conversation starts; the voice server requires one"></lion-input>
+              <lion-textarea label="Keyterms" name="keyterms" help-text="Words the speech recogniser should expect: product names, jargon. Comma or newline separated."></lion-textarea>
+              <section id="tool-editor" class="tool-editor" aria-labelledby="tool-editor-title">
+                <div class="tool-editor-head">
+                  <h3 id="tool-editor-title" class="tool-editor-title">Tools</h3>
+                  <div class="tool-mode" role="group" aria-label="Edit tools as">
+                    <button type="button" class="tool-mode-btn" data-mode="form" aria-pressed="true">Form</button>
+                    <button type="button" class="tool-mode-btn" data-mode="json" aria-pressed="false">JSON</button>
+                  </div>
+                </div>
+                <p class="tool-editor-help">Actions the agent can ask this page to run. They are stored on the server with the profile; the embedding page runs each call through <code>onToolCall</code>.</p>
+                <p class="tool-editor-note" role="status"></p>
+                <div class="tool-form">
+                  <ul class="tool-list"></ul>
+                  <button type="button" class="btn tool-add">+ Add a tool</button>
+                </div>
+                <lion-textarea label="Tools (JSON)" name="tools" rows="8" hidden help-text='An array of { "type": "function", "name", "description", "parameters" }.'></lion-textarea>
+              </section>
+            </form>
+          </lion-form>
+          <div class="form-actions">
+            <lion-button id="btn-send" class="primary">Send to server…</lion-button>
+            <lion-button id="btn-test">Test persona</lion-button>
+            <lion-button id="btn-export">Export JSON</lion-button>
+            <lion-button id="btn-import">Import…</lion-button>
+          </div>
+          <p class="mock-info" id="mock-note-info"></p>
+        </div>
+
+        <div class="context-card">
+          <div class="context-block">
+            <p class="section-title">Agent context <span class="hint">— what /agent/context should return for this profile</span></p>
+            <div class="code-window">
+              <div class="code-bar" aria-hidden="true"><i></i><i></i><i></i><span>GET /agent/context</span></div>
+              <pre id="context-preview" class="code context-preview"></pre>
+            </div>
+          </div>
+          <lion-collapsible id="test-log-collapsible">
+            <button slot="invoker" type="button">Test log</button>
+            <div slot="content">
+              <ol id="test-log" class="test-log" aria-live="polite"></ol>
+            </div>
+          </lion-collapsible>
+        </div>
       </section>
     </div>
 
