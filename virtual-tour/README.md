@@ -179,7 +179,13 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
   the tab is hidden; full rate only while the view moves, input arrives, a `goTo()` animates or
   data loads (plus 1.2 s after); otherwise none — the canvas keeps the last frame. Anything that changes the scene from outside the render loop must
   call `wake()`.
-- **Motion quality**: frames are GPU-bound (M2, Retina: ~45–60 ms GPU vs ~7 ms CPU). While the view
+- **LITE rendering on every device** (`LITE = true` in `main.js`; set it to `false` for the
+  full-quality build). The canvas renders at CSS resolution, with a 1024 px shadow map, a 128 px sky
+  cube and textures capped at 512 px. SSAO, MSAA, bloom, grain and the broadleaf trees are all off.
+  The touch UI (tap hints, zoom buttons, finger-speed look) is separate (`TOUCH`, from
+  `pointer: coarse`), so desktops keep the mouse/keyboard controls. The next bullet only applies
+  to the full build.
+- **Motion quality** (full build): frames are GPU-bound (M2, Retina: ~45–60 ms GPU vs ~7 ms CPU). While the view
   moves, the canvas renders at CSS resolution (instead of up to 1.5×) with 8-sample, cheap-blur SSAO —
   about half the GPU time; when it comes to rest, one last frame renders at full quality.
 - **Cheaper at no visual cost**: the shadow map renders once (sun and casters are static; redrawn

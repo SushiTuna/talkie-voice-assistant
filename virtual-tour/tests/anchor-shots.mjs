@@ -85,19 +85,23 @@ async function main() {
     ferrari: `const c = centre(scene.getTransformNodeByName("car-ferrari").getChildMeshes()); return [c.add(new B.Vector3(2.6, 0.5, 2.6)), c];`,
     porsche: `const c = centre(scene.getTransformNodeByName("car-porsche").getChildMeshes()); return [c.add(new B.Vector3(-2.6, 0.5, 2.6)), c];`,
     tree: `const t = scene.meshes.filter((m) => /^broadleaf\\d+$/.test(m.name)).sort((a, b) => a.position.length() - b.position.length())[0];
+      if (!t) return null; // LITE mode skips the broadleaf trees
       const c = centre([t]), d = c.subtract(new B.Vector3(0, c.y, 0)).normalize().scale(-9); return [c.add(new B.Vector3(d.x, 0, d.z)), c];`,
     mountains: `const p = scene.meshes.filter((m) => /^peakTpl/.test(m.sourceMesh?.name || "")).sort((a, b) => a.position.length() - b.position.length())[0];
       const eye = new B.Vector3(-17, -1.7, 11.4); return [eye, new B.Vector3(p.position.x, eye.y + 40, p.position.z)];`,
   };
   for (const [id, pose] of Object.entries(VIEWS)) {
-    await ev(`(async () => {
+    const shown = await ev(`(async () => {
       const B = await import("@babylonjs/core");
       await window.tour?.goTo("exterior", { instant: true }); // walk mode, and wakes the idle render loop
       const scene = window.__scene, fp = scene.cameras.find(c => c.name === 'fp');
       const centre = (ms) => { const { min, max } = B.Mesh.MinMax(ms); return min.add(max).scale(0.5); };
-      const [eye, at] = (() => { ${pose} })();
-      scene.activeCamera = fp; fp.position.copyFrom(eye); fp.setTarget(at);
+      const p = (() => { ${pose} })();
+      if (!p) return false;
+      scene.activeCamera = fp; fp.position.copyFrom(p[0]); fp.setTarget(p[1]);
+      return true;
     })()`);
+    if (!shown) { console.log(`view ${id} skipped (not in this scene)`); continue; }
     await sleep(1800);
     const shot = await send("Page.captureScreenshot", { format: "png" }, s);
     writeFileSync(`${OUT}view-${id}.png`, Buffer.from(shot.data, "base64"));
