@@ -1,11 +1,68 @@
 # Talkie Voice UI SDK
 
-A framework-agnostic voice assistant interface built on Lit and Lion web components. Provides a
-floating launcher button and a full-state widget (idle → listening → transcribing → thinking →
-speaking → error) with CSS custom-property theming, a pluggable backend contract, and zero side
-effects on import — safe to use alongside other versions of the same library.
+Talkie adds a voice assistant to a website. Visitors press one button and talk; the assistant
+answers out loud, and it can act on the page while it talks (show a room, scroll to a section,
+fill in a form). One script tag embeds it in any page, whatever framework built the page (or
+none). It gets its answers from a voice server you run, which holds the persona and the
+AssemblyAI API key.
 
-## Run
+**Where to start:**
+
+| You are… | Read |
+|---|---|
+| **A product manager** deciding whether and how to use it | [What it does](#what-it-does), [What you need](#what-you-need), [Before you go live](#before-you-go-live), [Known gaps](#known-gaps) |
+| **A site owner** putting it on a page | [Add it to your site](#add-it-to-your-site), [Theming](#theming), [Web UI](#web-ui), [Before you go live](#before-you-go-live) |
+| **A developer** integrating or extending it | [Try it locally](#try-it-locally), [Developer reference](#developer-reference), [docs/integration.md](docs/integration.md) for Angular, Vue, React and plain HTML |
+
+## What it does
+
+- **Talk, don't type.** The default is a hands-free *conversation*: the visitor presses **Start
+  conversation** once, and the assistant greets them, works out when they have finished
+  speaking, answers, and listens again. They can talk over an answer to interrupt it. A
+  *push-to-talk* mode (Start Recording → Stop & Send) is also available. Details:
+  [Interaction model](#interaction-model).
+- **Acts on the page.** Your page can give the assistant *tools*, functions it may call, such as
+  "show the kitchen" or "open the contact form". See
+  [Tools](#tools-let-the-agent-act-on-the-page).
+- **One persona per use case.** What the assistant knows, how it speaks, which voice it uses and
+  which tools it gets are kept in a *profile* on the voice server, not in the page. You can change
+  a profile without rebuilding the page, and one server can hold many profiles (a property guide,
+  an IT helpdesk…). Profiles are written and tested in the [Persona console](#web-ui).
+- **Matches your brand.** Colours, fonts, position and the assistant's name and tagline are all
+  settings. See [Theming](#theming).
+- **Stays out of the host page's way.** Its internal elements all carry a `talkie-` prefix, so it
+  runs beside a page that ships its own copy of the Lion library it is built on. Its keyboard
+  shortcuts apply only when the visitor is using the assistant.
+- **Built for keyboard and screen-reader users.** Start and stop are presses, not
+  press-and-hold. The panel is a labelled dialog and focus moves to its main control, then back
+  to where it came from when it closes.
+- **Works on phones.** On narrow screens the panel becomes a bottom sheet.
+
+### Key terms
+
+| Term | Meaning |
+|---|---|
+| **Voice server** | The server the assistant talks to. It holds the AssemblyAI API key, serves profiles, and hands the browser short-lived tokens. It is a separate project, not in this repository. |
+| **Profile** (persona) | A JSON file on the voice server: the assistant's instructions, knowledge, greeting, voice and tools. |
+| **Tool** | A function the page lets the assistant call. The page runs it and tells the assistant what happened. |
+| **Token** | A single-use pass the voice server gives the browser so it can connect to AssemblyAI without ever seeing the API key. |
+| **Backend** | The code the widget uses for speech and answers. Most sites never touch this; `<talkie-assistant>` picks one for you. |
+
+## What you need
+
+- **An [AssemblyAI](https://www.assemblyai.com) account and API key.** Speech recognition, the
+  model's answer and the synthesised voice all come from AssemblyAI's
+  [Voice Agent API](https://www.assemblyai.com/docs/voice-agents/voice-agent-api), billed to
+  that account.
+- **A voice server** holding that key: the Talkie voice server, or any server that offers the
+  same routes. The minimum is a token route: see *The token route* under
+  [Backend interface](#backend-interface).
+- **HTTPS.** Browsers only allow microphone access on HTTPS pages or `localhost`
+  ([MDN](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia#security)).
+- **Your site's address on the voice server's allow-list** (`TALKIE_ALLOWED_ORIGINS`), so the
+  voice server accepts requests from your page.
+
+## Try it locally
 
 ```bash
 cd talkie-sdk
@@ -13,30 +70,51 @@ npm install        # once
 npm start          # -> http://localhost:8081
 ```
 
-Opens the demo harness: state rail, live event log, clock, and all six states driven by the real
-components wired to `MockBackend`.
+This opens the demo harness: every state of the widget (idle → listening → transcribing →
+thinking → speaking → error), a live event log and a recording clock, all running on
+`MockBackend`, which plays scripted answers and uses no microphone or network. To try a real
+voice, see [Trying it live](#trying-it-live). To try the full site (overview, playground,
+persona console), run `npm run site` ([Web UI](#web-ui)).
 
-## Embed on any page
+## Add it to your site
+
+Build the one-file bundle once. It needs nothing else installed:
 
 ```bash
-npm run build      # -> dist/talkie-embed.js, one file, no dependencies to install
+npm run build      # -> dist/talkie-embed.js (about 120 KiB, every dependency inlined)
 ```
+
+Upload that file with your site, then add two lines to any page:
 
 ```html
 <script src="/path/to/talkie-embed.js" defer></script>
-<talkie-assistant api="http://localhost:8000"></talkie-assistant>
+<talkie-assistant api="https://voice.example.com" profile="property"></talkie-assistant>
 ```
 
-That is the whole integration: a launcher and widget, wired to the voice server named by `api`.
-It holds a hands-free **conversation** by default (see [Interaction model](#interaction-model));
-`mode="push-to-talk"` gives Start / Stop & Send instead.
-The voice server must list the page's origin in `TALKIE_ALLOWED_ORIGINS`. `npm run example`
-serves a sample host page on `:5173`. Attributes, CORS, CSP and HTTPS notes are in
-[docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step).
+That is the whole integration: a floating launcher button, bottom right, that opens the
+assistant, which connects to the voice server named by `api`. The voice server must list the
+page's origin in `TALKIE_ALLOWED_ORIGINS`. `npm run example` serves a sample host page on `:5173`.
+
+The settings site owners change most:
+
+| Attribute | Default | What it changes |
+|---|---|---|
+| `api` | `http://localhost:8000` | Address of your voice server. **Always set it in production.** |
+| `profile` | server's default | Which persona to use |
+| `heading` | `Product Expert` | The assistant's name, shown at the top of the panel and read out by screen readers |
+| `subtitle` | `Ask about features, pricing, integrations, or compatibility.` | The line on the start screen |
+| `mode` | `conversation` | `conversation` (hands-free) or `push-to-talk` (Start / Stop & Send) |
+| `idle-timeout` | `60` | Seconds of silence before a conversation ends and the microphone closes |
+| `layout` | `auto` | `auto`: bottom sheet on phones, floating panel elsewhere; `sheet` / `floating` force one |
+
+Every attribute, plus CORS, Content-Security-Policy and HTTPS notes, is in
+[docs/integration.md](docs/integration.md#drop-in-embed-any-web-page-no-build-step). The
+[Playground](#web-ui) lets you try the settings and copy the finished snippet.
 
 ### Tools: let the agent act on the page
 
-The agent can call functions the page runs: show a room, scroll to a section, fill a form.
+Tools need a few lines of JavaScript on the page, so this part is for whoever maintains the
+site's code. The agent can call functions the page runs: show a room, scroll to a section, fill a form.
 The page needs one thing, an `onToolCall` handler. The tool *definitions* (names,
 descriptions, parameter schemas) can come from the voice server's profile, so leave `tools`
 unset:
@@ -78,6 +156,9 @@ unset:
 
 ## Web UI
 
+A small site for trying the assistant, tuning its settings and writing personas without
+touching code. Useful for demos, and for product owners who manage what the assistant says.
+
 ```bash
 npm run site       # -> http://localhost:8081/site/
 ```
@@ -107,6 +188,108 @@ tickets, profiles, voices, and profile saves, which still need the admin token),
 server needs no CORS entry and no public address. When the voice server asks for a bot check,
 the pages run Cloudflare Turnstile (`site/src/verify.js`). `Containerfile` and the repo's
 `compose.yaml` run it this way.
+
+## Theming
+
+Colours, fonts and the launcher's position come from your site's stylesheet: paste the tokens
+below into it and change the values. The [Playground](#web-ui) shows each change live. For
+developers: every token is a CSS custom property read through the shadow DOM, so no selector
+needs to reach inside the components.
+
+```css
+:root {
+  /* Background and text palette */
+  --talkie-paper: #f7f5ec;      /* card background      */
+  --talkie-ink:   #101d20;      /* primary text color   */
+  --talkie-ink-soft: #4a5a58;   /* secondary / hint text */
+
+  /* Fonts */
+  --talkie-font-display: 'Space Grotesk', sans-serif;
+  --talkie-font-body: 'Instrument Sans', sans-serif;
+  --talkie-font-mono: 'IBM Plex Mono', monospace;
+
+  /* State accent (glow, status dot, spinner, Start button shadow). Leave it unset to keep a
+     colour per state (src/core/state-colors.js); set here, one colour serves every state.
+     Per state: talkie-widget[state="listening"] { --talkie-state: #ff8a4c; } */
+  --talkie-state: #5fd9c6;
+
+  /* Launcher floating button gradient */
+  --talkie-launcher-bg: linear-gradient(145deg, #6ee7d4, #1c7f70);
+  --talkie-launcher-offset-right: 28px;
+  --talkie-launcher-offset-bottom: 28px;
+
+  /* <talkie-assistant> bottom sheet (phones): distance from the bottom edge */
+  --talkie-sheet-offset-bottom: 0px;
+
+  /* Waveform height */
+  --talkie-wave-height: 72px;
+}
+
+/* Example rebrand to a dark purple theme */
+[data-theme="purple"] {
+  --talkie-paper:    #1a1025;
+  --talkie-ink:      #f3e8ff;
+  --talkie-ink-soft: #b59ad4;
+  --talkie-state:    #c084fc;
+  --talkie-launcher-bg: linear-gradient(145deg, #9333ea, #4c1d95);
+  --talkie-font-display: 'Inter', sans-serif;
+}
+```
+
+Each component also accepts per-instance overrides via attributes (e.g. `color` on
+`<talkie-waveform>`).
+
+**Dark mode.** With paper and ink left unset, the panel follows the page's `color-scheme`: a page
+that declares `color-scheme: dark` (or `light dark` on a dark system) gets a dark panel
+(`#16191b` paper, `#eceeef` ink); a page that declares nothing keeps the light one. Setting any of
+the tokens above wins over this in both schemes.
+
+## Before you go live
+
+Decisions for product and site owners. The full list, with the code behind each item, is
+[docs/production-checklist.md](docs/production-checklist.md).
+
+- **Privacy.** The visitor's voice is streamed to AssemblyAI. Say so in your privacy policy and
+  check AssemblyAI's data-retention terms against your own obligations. The microphone opens
+  only when the visitor presses Start.
+- **Cost.** AssemblyAI bills your account. In conversation mode the microphone keeps streaming
+  until the visitor ends the conversation, stays silent for `idle-timeout` seconds, or leaves the
+  page. Never set `idle-timeout="0"` on a public page, and set a spend alert on the account.
+- **Who can use your key.** The voice server's token route spends your account for anyone who
+  calls it. Turn on its visitor tickets and bot check (`TALKIE_TICKET_SECRET`, Cloudflare
+  Turnstile; see
+  [docs/integration.md](docs/integration.md#visitor-tickets-and-the-bot-check)).
+- **Who can change the persona.** Anyone holding `TALKIE_PROFILE_ADMIN_TOKEN` can change what
+  the assistant says to every visitor. Leave it unset in production, or keep the route on an
+  admin network, and never put it in a page.
+- **Response time.** Measured against the live service, the spoken answer starts about 5.5 s
+  after the visitor stops talking, and the first ~3.5 s of that is the service itself. Set
+  expectations in your copy. See *Behaviour worth knowing* under
+  [Backend interface](#backend-interface).
+- **English only.** Apart from `heading` and `subtitle`, the panel's text (button labels, hints,
+  error messages) is fixed English.
+
+## Known gaps
+
+Out of scope for the current release:
+
+- **No multi-turn conversation history.** The widget shows the current exchange only. A scrollable
+  transcript panel for previous turns is planned.
+- **No text-input fallback.** The error view copy says "or type your question" but there is no text
+  input element yet. This would need a `<talkie-text-input>` component or a prop injection.
+- **Not on npm yet.** Use `dist/talkie-embed.js`, or install from a local checkout with
+  `npm install ../talkie-sdk`.
+- **A token holder chooses the prompt.** The browser sends `system_prompt` and `tools` in
+  `session.update`, so anyone who gets a token can run their own instructions on your account.
+  Visitor tickets, the bot check and the voice server's quotas limit *who* gets tokens and how
+  many; they do not lock the agent to your persona. Without `TALKIE_TICKET_SECRET` on the voice
+  server, only its per-IP and global caps stand in front of `/agent/token`.
+
+## Developer reference
+
+The rest of this guide is for developers: importing the components yourself, the backend
+contract and the backends that ship, the interaction model, events, the public API and tests.
+Framework snippets (Angular, Vue, React, plain HTML) are in [docs/integration.md](docs/integration.md).
 
 ## Install & use
 
@@ -393,83 +576,6 @@ microphone, so the browser will ask for permission.
 
 See [`docs/integration.md`](docs/integration.md) for Angular, Vue, React, and plain HTML snippets.
 
-## Theming
-
-All visual appearance flows through CSS custom properties set on the host. Restyle without piercing
-shadow DOM:
-
-```css
-:root {
-  /* Background and text palette */
-  --talkie-paper: #f7f5ec;      /* card background      */
-  --talkie-ink:   #101d20;      /* primary text color   */
-  --talkie-ink-soft: #4a5a58;   /* secondary / hint text */
-
-  /* Fonts */
-  --talkie-font-display: 'Space Grotesk', sans-serif;
-  --talkie-font-body: 'Instrument Sans', sans-serif;
-  --talkie-font-mono: 'IBM Plex Mono', monospace;
-
-  /* State accent (glow, status dot, spinner, Start button shadow). Leave it unset to keep a
-     colour per state (src/core/state-colors.js); set here, one colour serves every state.
-     Per state: talkie-widget[state="listening"] { --talkie-state: #ff8a4c; } */
-  --talkie-state: #5fd9c6;
-
-  /* Launcher floating button gradient */
-  --talkie-launcher-bg: linear-gradient(145deg, #6ee7d4, #1c7f70);
-  --talkie-launcher-offset-right: 28px;
-  --talkie-launcher-offset-bottom: 28px;
-
-  /* <talkie-assistant> bottom sheet (phones): distance from the bottom edge */
-  --talkie-sheet-offset-bottom: 0px;
-
-  /* Waveform height */
-  --talkie-wave-height: 72px;
-}
-
-/* Example rebrand to a dark purple theme */
-[data-theme="purple"] {
-  --talkie-paper:    #1a1025;
-  --talkie-ink:      #f3e8ff;
-  --talkie-ink-soft: #b59ad4;
-  --talkie-state:    #c084fc;
-  --talkie-launcher-bg: linear-gradient(145deg, #9333ea, #4c1d95);
-  --talkie-font-display: 'Inter', sans-serif;
-}
-```
-
-Each component also accepts per-instance overrides via attributes (e.g. `color` on
-`<talkie-waveform>`).
-
-**Dark mode.** With paper and ink left unset, the panel follows the page's `color-scheme`: a page
-that declares `color-scheme: dark` (or `light dark` on a dark system) gets a dark panel
-(`#16191b` paper, `#eceeef` ink); a page that declares nothing keeps the light one. Setting any of
-the tokens above wins over this in both schemes.
-
-## Events
-
-Every component dispatches `CustomEvent`s that bubble and compose, making them listenable at any
-ancestor level (including `document`). Prefix is always `talkie-`:
-
-| Event               | Detail                         | When emitted                       |
-|---------------------|--------------------------------|------------------------------------|
-| `talkie-state-change` | `{ from, to }`               | Every legal FSM transition         |
-| `talkie-transcript`   | `{ text }`                   | User utterance captured            |
-| `talkie-response`     | `{ text }`                   | Assistant answer complete          |
-| `talkie-error`        | `{ reason, error }`          | Backend rejects / unhandled error  |
-| `talkie-open`         | —                            | Widget opens (`show()` called)     |
-| `talkie-close`        | `{ reason }`                 | Widget closes (`hide()` called)    |
-| `talkie-minimize`     | —                            | Panel hidden, conversation kept (`minimize()`) |
-| `talkie-restore`      | —                            | Minimized panel back (`restore()`, or `show()`) |
-
-Example listener:
-
-```js
-widget.addEventListener('talkie-state-change', ev => {
-  console.log(`State: ${ev.detail.from} → ${ev.detail.to}`);
-});
-```
-
 ## Interaction model
 
 Two modes, set by the widget's `mode` property (`<talkie-assistant mode="…">`):
@@ -513,6 +619,30 @@ had it before (usually the launcher), unless the visitor has already moved it el
 While recording, the widget shows a live `mm:ss` clock so a long answer never looks stalled.
 Discarding (or <kbd>Esc</kbd>) closes the microphone and the speech socket without sending the
 transcript.
+
+## Events
+
+Every component dispatches `CustomEvent`s that bubble and compose, making them listenable at any
+ancestor level (including `document`). Prefix is always `talkie-`:
+
+| Event               | Detail                         | When emitted                       |
+|---------------------|--------------------------------|------------------------------------|
+| `talkie-state-change` | `{ from, to }`               | Every legal FSM transition         |
+| `talkie-transcript`   | `{ text }`                   | User utterance captured            |
+| `talkie-response`     | `{ text }`                   | Assistant answer complete          |
+| `talkie-error`        | `{ reason, error }`          | Backend rejects / unhandled error  |
+| `talkie-open`         | —                            | Widget opens (`show()` called)     |
+| `talkie-close`        | `{ reason }`                 | Widget closes (`hide()` called)    |
+| `talkie-minimize`     | —                            | Panel hidden, conversation kept (`minimize()`) |
+| `talkie-restore`      | —                            | Minimized panel back (`restore()`, or `show()`) |
+
+Example listener:
+
+```js
+widget.addEventListener('talkie-state-change', ev => {
+  console.log(`State: ${ev.detail.from} → ${ev.detail.to}`);
+});
+```
 
 ## Public API
 
@@ -579,25 +709,10 @@ configured), `unauthorized`, `exists`, `not-found`, `invalid` or `failed` (the s
 functions); `err.message` carries the
 server's reason. Anyone with the token can rewrite what the agent says, so never ship it in a page.
 
-
-These are intentionally out of scope for the current release. See linked issues for tracking.
-
-- **No multi-turn conversation history.** The widget shows the current exchange only. A scrollable
-  transcript panel for previous turns is planned.
-- **No text-input fallback.** The error view copy says "or type your question" but there is no text
-  input element yet. This would need a `<talkie-text-input>` component or a prop injection.
-- **Not on npm yet.** Use `dist/talkie-embed.js`, or install from a local checkout with
-  `npm install ../talkie-sdk`.
-- **A token holder chooses the prompt.** The browser sends `system_prompt` and `tools` in
-  `session.update`, so anyone who gets a token can run their own instructions on your account.
-  Visitor tickets, the bot check and the voice server's quotas limit *who* gets tokens and how
-  many; they do not lock the agent to your persona. Without `TALKIE_TICKET_SECRET` on the voice
-  server, only its per-IP and global caps stand in front of `/agent/token`.
-
 ## Testing
 
 ```bash
-npm test          # 812 assertions across fourteen suites — state machine, backends, visitor tickets, audio, widget, embed, the built bundle, the site and its dev server
+npm test          # 865 assertions across fourteen suites — state machine, backends, visitor tickets, audio, widget, embed, the built bundle, the site and its dev server
 ```
 
 Runs entirely in Node. No browser or JSDOM required for the core unit tests.
