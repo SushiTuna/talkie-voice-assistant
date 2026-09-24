@@ -352,7 +352,13 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
   padding-bottom: clamp(48px, 9vh, 110px); color: #fff;
 }
 .hero h1 { font-size: clamp(46px, 8vw, 112px); font-weight: 300; letter-spacing: -0.035em; max-width: 14ch; }
-.hero-eyebrow { color: var(--warm); margin-bottom: 18px; }
+/* On a dark pill: the photo behind it (dark cladding, bright sky) changes with the viewport. */
+.hero-eyebrow {
+  display: inline-block; margin-bottom: 18px; padding: 7px 14px; border-radius: 999px;
+  font-size: 12px; color: #fff; background: rgba(15, 16, 17, .62);
+  box-shadow: inset 0 0 0 1px rgba(201, 168, 119, .55);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
 .hero-tagline { font-size: clamp(16px, 2vw, 20px); max-width: 52ch; color: rgba(255, 255, 255, .92); margin-top: 18px; }
 .hero-facts {
   margin-top: 14px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase;
