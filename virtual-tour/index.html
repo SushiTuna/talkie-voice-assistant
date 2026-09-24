@@ -86,49 +86,53 @@
       </header>
       <div class="plan-wrap reveal">
         <svg class="plan" viewBox="0 0 900 470" role="group" aria-label="Clickable schematic floor plan">
+          <!-- Room areas (m², approximate): measured on Swanbuild's published Cube 3 floor plan
+               (swanbuild.com.au/wp-content/uploads/2017/04/cube-3-fp.jpg, archived 2019), between
+               inner wall faces, scaled by the 3D model's interior (26.73 × 7.24 m). listing.js has
+               the published total. -->
           <!-- shell (outer wall is drawn last, on top of the room edges) -->
           <rect class="plan-deck" x="12" y="120" width="68" height="180" />
           <rect class="plan-deck" x="300" y="392" width="300" height="62" />
 
           <!-- interactive rooms (data-anchor = id in anchors.js) -->
           <g class="plan-room" data-anchor="lounge" tabindex="0" role="button" aria-label="View Lounge in the 3D tour">
-            <rect x="80" y="40" width="170" height="340" /><text x="165" y="215">Lounge</text>
+            <rect x="80" y="40" width="170" height="340" /><text x="165" y="207">Lounge</text><text class="plan-sub plan-area" x="165" y="225">15.9 m²</text>
           </g>
           <g class="plan-room" data-anchor="dining" tabindex="0" role="button" aria-label="View Dining in the 3D tour">
-            <rect x="250" y="150" width="180" height="120" /><text x="340" y="215">Dining</text>
+            <rect x="250" y="150" width="180" height="120" /><text x="340" y="207">Dining</text><text class="plan-sub plan-area" x="340" y="225">15.7 m²</text>
           </g>
           <g class="plan-room" data-anchor="kitchen" tabindex="0" role="button" aria-label="View Kitchen in the 3D tour">
-            <rect x="250" y="270" width="180" height="110" /><text x="340" y="330">Kitchen</text>
+            <rect x="250" y="270" width="180" height="110" /><text x="340" y="322">Kitchen</text><text class="plan-sub plan-area" x="340" y="340">15.4 m²</text>
           </g>
           <g class="plan-room" data-anchor="laundry" tabindex="0" role="button" aria-label="View Laundry in the 3D tour">
-            <rect x="250" y="40" width="110" height="110" /><text x="305" y="100">Laundry</text>
+            <rect x="250" y="40" width="110" height="110" /><text x="305" y="92">Laundry</text><text class="plan-sub plan-area" x="305" y="110">3.6 m²</text>
           </g>
           <g class="plan-room" data-anchor="study-nook" tabindex="0" role="button" aria-label="View Study Nook in the 3D tour">
-            <rect x="360" y="40" width="110" height="110" /><text x="415" y="92">Study</text><text x="415" y="110">nook</text>
+            <rect x="360" y="40" width="110" height="110" /><text x="415" y="84">Study</text><text x="415" y="102">nook</text><text class="plan-sub plan-area" x="415" y="120">3.4 m²</text>
           </g>
           <g class="plan-room" data-anchor="rumpus" tabindex="0" role="button" aria-label="View Rumpus in the 3D tour">
-            <rect x="430" y="150" width="150" height="120" /><text x="505" y="215">Rumpus</text>
+            <rect x="430" y="150" width="150" height="120" /><text x="505" y="207">Rumpus</text><text class="plan-sub plan-area" x="505" y="225">19.0 m²</text>
           </g>
           <g class="plan-room" data-anchor="room-3" tabindex="0" role="button" aria-label="View Room 3 in the 3D tour">
-            <rect x="430" y="270" width="100" height="110" /><text x="480" y="330">Room 3</text>
+            <rect x="430" y="270" width="100" height="110" /><text x="480" y="322">Room 3</text><text class="plan-sub plan-area" x="480" y="340">12.0 m²</text>
           </g>
           <g class="plan-room" data-anchor="room-2" tabindex="0" role="button" aria-label="View Room 2 in the 3D tour">
-            <rect x="530" y="270" width="100" height="110" /><text x="580" y="330">Room 2</text>
+            <rect x="530" y="270" width="100" height="110" /><text x="580" y="322">Room 2</text><text class="plan-sub plan-area" x="580" y="340">12.0 m²</text>
           </g>
           <g class="plan-room" data-anchor="room-1" tabindex="0" role="button" aria-label="View Room 1 in the 3D tour">
-            <rect x="630" y="270" width="90" height="110" /><text x="675" y="330">Room 1</text>
+            <rect x="630" y="270" width="90" height="110" /><text x="675" y="322">Room 1</text><text class="plan-sub plan-area" x="675" y="340">12.0 m²</text>
           </g>
           <g class="plan-room" data-anchor="bathroom" tabindex="0" role="button" aria-label="View Bathroom in the 3D tour">
-            <rect x="470" y="40" width="110" height="110" /><text x="525" y="94">Bath</text><text class="plan-sub" x="525" y="112">freestanding</text>
+            <rect x="470" y="40" width="110" height="110" /><text x="525" y="86">Bath</text><text class="plan-sub" x="525" y="104">freestanding</text><text class="plan-sub plan-area" x="525" y="122">6.4 m²</text>
           </g>
           <g class="plan-room" data-anchor="ensuite" tabindex="0" role="button" aria-label="View Ensuite in the 3D tour">
-            <rect x="720" y="40" width="120" height="110" /><text x="780" y="100">Ensuite</text>
+            <rect x="720" y="40" width="120" height="110" /><text x="780" y="92">Ensuite</text><text class="plan-sub plan-area" x="780" y="110">4.5 m²</text>
           </g>
           <g class="plan-room" data-anchor="master-bedroom" tabindex="0" role="button" aria-label="View Master Bedroom in the 3D tour">
-            <rect x="720" y="230" width="120" height="150" /><text x="780" y="310">Master</text>
+            <rect x="720" y="230" width="120" height="150" /><text x="780" y="302">Master</text><text class="plan-sub plan-area" x="780" y="320">20.7 m²</text>
           </g>
           <g class="plan-room" data-anchor="balcony" tabindex="0" role="button" aria-label="View Balcony in the 3D tour">
-            <rect x="12" y="120" width="68" height="180" /><text x="46" y="210" transform="rotate(-90 46 210)" dy="4">Balcony</text>
+            <rect x="12" y="120" width="68" height="180" /><text x="46" y="210" transform="rotate(-90 46 210)" dy="-4">Balcony</text><text class="plan-sub plan-area" x="46" y="210" transform="rotate(-90 46 210)" dy="14">15.4 m²</text>
           </g>
           <g class="plan-room" data-anchor="garage" tabindex="0" role="button" aria-label="View the carport in the 3D tour">
             <rect x="300" y="392" width="300" height="62" /><text x="450" y="419">Carport</text><text class="plan-sub" x="450" y="437">2 cars · under the home</text>
@@ -138,8 +142,8 @@
           <rect class="plan-static" x="580" y="40" width="140" height="230" />
           <text class="plan-sub" x="650" y="160">Hall</text>
           <rect class="plan-static" x="720" y="150" width="120" height="80" />
-          <text class="plan-sub" x="780" y="195">Walk-in robe</text>
-          <text class="plan-note" x="450" y="26">Schematic layout · not to scale</text>
+          <text class="plan-sub" x="780" y="189">Walk-in robe</text><text class="plan-sub" x="780" y="205">6.7 m²</text>
+          <text class="plan-note" x="450" y="26">Schematic layout · not to scale · areas approximate</text>
           <rect class="plan-wall" x="80" y="40" width="760" height="340" />
         </svg>
       </div>

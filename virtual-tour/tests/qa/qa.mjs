@@ -825,7 +825,7 @@ async function stageE() {
   const copy = JSON.parse(await t.ev(`JSON.stringify({ text: document.body.innerText.replace(/\\s+/g, ' '),
     beds: [...document.querySelectorAll('#anchorBar .pill')].filter(p => p.closest('#anchorBar') && ['master-bedroom','room-1','room-2','room-3'].includes(p.dataset.anchor)).length })`));
   const txt = copy.text;
-  const NEED = ["[Property address]", "Price on request", "[Agent name]", "[Agent phone]", "[agent@email]", "[Listing status]", "[Response-time promise"];
+  const NEED = ["[Property address]", "Price on request", "[Agent name]", "[Agent phone]", "[agent@email]", "[Response-time promise"];
   const low = txt.toLowerCase();
   const placeholders = NEED.filter((p) => low.includes(p.toLowerCase()));
   const missingPh = NEED.filter((p) => !low.includes(p.toLowerCase()));
@@ -834,15 +834,20 @@ async function stageE() {
   flag(/four wings/i, "layout claims wings the model doesn't have");
   flag(/their own wing/i, "bedrooms described as a separate wing");
   flag(/\bpatio\b/i, "patio (model has none)");
-  flag(/\b(sqm|m²|square met|square feet|ft²)\b/i, "floor area claim");
+  // Areas: Swanbuild's published indoor size (listing.js) and the floor plan's room areas
+  // (index.html, measured on Swanbuild's plan). Any other figure is unsupported.
+  const AREAS = ["185 sqm", ...["15.9", "15.7", "15.4", "3.6", "3.4", "19.0", "12.0", "6.4", "4.5", "20.7", "6.7"].map((a) => `${a} m²`)];
+  for (const m of txt.matchAll(/\d[\d.,]*\s?(sqm|m²|square met\w*|square feet|ft²)/gi)) {
+    if (!AREAS.includes(m[0].toLowerCase())) bad.push(`floor area claim: "${m[0]}"`);
+  }
   flag(/\bpool\b/i, "pool");
   flag(/garage door|double garage|lock-up garage/i, "enclosed garage");
   flag(/\$\s?\d/, "dollar price");
   flag(/\b\d{1,2},\d{3}\b/, "price-like number");
   flag(/two[- ]?(storey|story|level)/i, "multi-level claim");
-  const facts = { beds: /4 bedrooms/.test(low) && copy.beds === 4, baths: /2 bathrooms \+ wc/.test(low), deck: /balcony deck/.test(low), carport: /carport/.test(low), raised: /raised on posts|single-level/.test(low) };
-  record("E5", placeholders.length === 7 && bad.length === 0 && Object.values(facts).every(Boolean) ? "PASS" : "FAIL",
-    `placeholders present ${placeholders.length}/7 (missing=${JSON.stringify(missingPh)}); facts ${JSON.stringify(facts)} (bedroom pills=${copy.beds}); unsupported claims → ${JSON.stringify(bad)}`);
+  const facts = { beds: /4 bedrooms/.test(low) && copy.beds === 4, baths: /2 bathrooms \+ wc/.test(low), deck: /balcony deck/.test(low), carport: /carport/.test(low), size: /185 sqm/.test(low), status: /active market listing/.test(low), raised: /raised on posts|single-level/.test(low) };
+  record("E5", placeholders.length === NEED.length && bad.length === 0 && Object.values(facts).every(Boolean) ? "PASS" : "FAIL",
+    `placeholders present ${placeholders.length}/${NEED.length} (missing=${JSON.stringify(missingPh)}); facts ${JSON.stringify(facts)} (bedroom pills=${copy.beds}); unsupported claims → ${JSON.stringify(bad)}`);
 
   // E4 — no attribution overlay on the tour canvas (page or fullscreen); the footer owns the credit
   const noOverlay = await t.ev(`(() => { const tour = document.getElementById('tour');

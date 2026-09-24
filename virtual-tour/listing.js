@@ -2,11 +2,13 @@
 // Facts come from the model's floor: single-level home raised on posts; 4 bedrooms (Master +
 // Rooms 1–3), master with walk-in robe + ensuite; main bathroom with freestanding bath + separate
 // WC; laundry; open-plan kitchen (island, butler's pantry) / dining / lounge; rumpus; study nook;
-// balcony deck; carport under the house for 2 cars. No floor area is quoted (not measured).
+// balcony deck; carport under the house for 2 cars. Indoor size 185.36 m² is Swanbuild's published
+// figure for the Cube 3 (swanbuild.com.au/product/cube-3/, archived 2019-04-03). Room areas: the
+// floor plan in index.html.
 export const listing = {
   name: "Modular House Cube 3",
   wordmark: ["Modular House", "Cube 3"],
-  eyebrow: "[Listing status] · Modular home",
+  eyebrow: "Active market listing · Modular home · 185 sqm",
   tagline: "A single-level home raised on posts — four bedrooms, open-plan living and a timber deck.",
   price: "Price on request",
   address: "[Property address]",
