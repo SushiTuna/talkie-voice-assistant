@@ -2,3 +2,6 @@
 # local agent tooling (skills point at paths on one machine)
 .claude/
 .github/skills/
+
+# compose.yaml settings (VOICE_SERVER_DIR, TUNNEL_TOKEN)
+.env

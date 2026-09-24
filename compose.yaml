@@ -1,0 +1,85 @@
+# talkie-bird.online in containers: the tour, the voice server and the Cloudflare Tunnel.
+#
+#   cp .env.example .env        # then fill it in
+#   podman compose up -d --build
+#
+# Only cloudflared talks to the outside. Nothing is published except the tour on the host's own
+# loopback (for checks from the host), so the tunnel stays the only way in: TRUST_PROXY=cloudflare
+# relies on that.
+#
+#   visitor ─▶ Cloudflare ═tunnel═▶ cloudflared ─▶ tour:8080 ─/voice/*─▶ voice:8000
+
+services:
+  tour:
+    build:
+      context: .
+      dockerfile: virtual-tour/Containerfile
+    image: localhost/talkie-tour
+    restart: unless-stopped
+    environment:
+      PORT: "8080"
+      VOICE_API: http://voice:8000
+      # The visitor is CF-Connecting-IP, set by Cloudflare. Safe only while the tunnel is the one
+      # way in (virtual-tour/README.md, TRUST_PROXY).
+      TRUST_PROXY: cloudflare
+    volumes:
+      - tour-data:/app/virtual-tour/data
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      talkie:
+        # Fixed, so the voice server can trust this address's X-Forwarded-For and no other.
+        ipv4_address: 10.89.40.10
+    healthcheck:
+      # /api/models answers even when nothing is listed; the tests use it as a liveness check too.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8080/api/models').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+    depends_on:
+      - voice
+
+  voice:
+    build:
+      context: ${VOICE_SERVER_DIR:-../talkie-voice-server}
+      dockerfile: Containerfile
+    image: localhost/talkie-voice
+    restart: unless-stopped
+    # ASSEMBLYAI_API_KEY, TALKIE_TICKET_SECRET, TURNSTILE_* … (DEPLOY.md step 12).
+    env_file:
+      - ${VOICE_SERVER_DIR:-../talkie-voice-server}/.env
+    environment:
+      # The tour's address above: uvicorn takes each visitor's address from its X-Forwarded-For.
+      FORWARDED_ALLOW_IPS: 10.89.40.10
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    networks:
+      talkie:
+        ipv4_address: 10.89.40.20
+
+  cloudflared:
+    # https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/get-started/create-remote-tunnel/
+    # In the tunnel's published application, the service URL is http://tour:8080.
+    image: docker.io/cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env}
+    networks:
+      - talkie
+    depends_on:
+      - tour
+
+networks:
+  talkie:
+    ipam:
+      config:
+        - subnet: 10.89.40.0/24
+
+volumes:
+  tour-data:
