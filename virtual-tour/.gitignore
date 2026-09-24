@@ -8,3 +8,6 @@ tests/qa/*.png
 .playwright-cli/
 # Cloudflare API token for zone rules/purge (never commit)
 .cf-token
+# Served from R2 (assets.js); restored locally only to run upload-assets or bake-sky
+/models/
+/assets/
