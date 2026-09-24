@@ -36,6 +36,25 @@ const MIME = {
 
 const MODEL_EXT = [".glb", ".gltf", ".obj", ".fbx", ".stl"];
 
+// Files the page loads from this folder, and nothing else: data/ holds visitors' booking
+// requests, and the server's own code, package files, tests and tools are not for the web.
+// Top level: index.html, styles.css and the browser modules (the unbundled fallback serves them
+// as /dist/<file>). components/ and vendor/ are browser code. node_modules/ backs the import map
+// and Leaflet's CSS and images, so only static web files from it.
+const PUBLIC_TOP = new Set([".html", ".css", ".js"]);
+const PUBLIC_DIRS = new Set(["components", "vendor", "node_modules"]);
+const PUBLIC_DEP_EXT = new Set([".js", ".mjs", ".css", ".map", ".png", ".svg", ".wasm"]);
+
+/** Whether a path relative to ROOT may be served as a static file. */
+function isPublic(rel) {
+  const parts = rel.split(/[\\/]/).filter(Boolean);
+  if (!parts.length || parts.some((p) => p.startsWith("."))) return false;
+  const ext = extname(rel).toLowerCase();
+  if (parts.length === 1) return PUBLIC_TOP.has(ext);
+  if (!PUBLIC_DIRS.has(parts[0])) return false;
+  return parts[0] === "node_modules" ? PUBLIC_DEP_EXT.has(ext) : PUBLIC_TOP.has(ext);
+}
+
 /* ------------------------------------------------------------------ bundle (/dist/*) */
 
 // page.js and main.js (+ Babylon, ~900 modules) bundled in memory by esbuild, rebuilt whenever a
@@ -437,6 +456,7 @@ const server = createServer(async (req, res) => {
       res.writeHead(403).end("Forbidden");
       return;
     }
+    if (!isPublic(rel)) throw Object.assign(new Error("not public"), { code: "ENOENT" });
     const st = await stat(filePath);
     if (!st.isFile()) throw Object.assign(new Error("not a file"), { code: "ENOENT" });
     const etag = `W/"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;

@@ -1,6 +1,7 @@
 // API tests for POST /api/tour-requests. Boots the real server on a random port,
 // exercises 201 / 400 / 413 / 405 / honeypot / bad-JSON, and restores data/tour-requests.json.
-// Also checks the Talkie embed route (/talkie/*), its mount in index.html, and the /voice/* proxy.
+// Also checks the Talkie embed route (/talkie/*), its mount in index.html, the /voice/* proxy, and
+// that only the files the page loads are served (never data/ or the server's own files).
 // Usage: node tests/api.mjs
 import { spawn } from "node:child_process";
 import { createServer } from "node:http";
@@ -139,6 +140,19 @@ async function main() {
     check("voice proxy rejects GET on the session route", res.status === 405, `got ${res.status}`);
     res = await fetch(`${BASE}/voice/health`);
     check("voice proxy forwards only allow-listed routes", res.status === 404, `got ${res.status}`);
+
+    // Static files: only what the page loads. The booking file exists at this point (201 above).
+    for (const path of ["/", "/styles.css", "/assets.js", "/components/index.js", "/vendor/meshopt_decoder.js",
+      "/node_modules/leaflet/dist/leaflet.css"]) {
+      res = await fetch(`${BASE}${path}`);
+      check(`${path} is served`, res.status === 200, `got ${res.status}`);
+    }
+    for (const path of ["/data/tour-requests.json", "/dist/data/tour-requests.json", "/server.mjs", "/package.json",
+      "/package-lock.json", "/README.md", "/tests/api.mjs", "/tools/upload-assets.mjs", "/.gitignore",
+      "/node_modules/leaflet/package.json", "/components/../data/tour-requests.json", "/%2e%2e/talkie-sdk/package.json"]) {
+      res = await fetch(`${BASE}${path}`);
+      check(`${path} is not served`, res.status === 404, `got ${res.status}`);
+    }
 
     // server survived all of the above
     res = await fetch(`${BASE}/api/models`);
