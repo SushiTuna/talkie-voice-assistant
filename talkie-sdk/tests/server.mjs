@@ -98,6 +98,90 @@ for (const link of links) {
   check(`site link ${link} is a page, not a redirect`, r.status === 200, describe(r));
 }
 
+/* ------------------------------------------------------------------- /voice proxy */
+
+{
+  // A fake voice server: records each call and echoes it back.
+  const calls = [];
+  const fakeFetch = async (url, init) => {
+    calls.push({ url, ...init });
+    return new Response(JSON.stringify({ url, method: init.method }), {
+      status: 200, headers: { 'Content-Type': 'application/json', 'Set-Cookie': 'x=1' },
+    });
+  };
+  const voiceApp = (trustProxy = '') => createApp({ voiceApi: 'http://voice:8000/', trustProxy, fetch: fakeFetch });
+  const proxy = voiceApp();
+
+  for (const [path, method] of [
+    ['/voice/agent/context?profile=property', 'GET'],
+    ['/voice/agent/token', 'GET'],
+    ['/voice/agent/profiles', 'GET'],
+    ['/voice/agent/voices', 'GET'],
+  ]) {
+    calls.length = 0;
+    const r = await proxy.request(path, { method });
+    const target = `http://voice:8000${path.slice('/voice'.length)}`;
+    check(`${method} ${path} is forwarded to the voice server`,
+      r.status === 200 && calls[0]?.url === target && calls[0]?.method === method, `${r.status} ${calls[0]?.url}`);
+    check(`...not cached, and no upstream cookie`,
+      r.headers.get('cache-control') === 'no-store' && !r.headers.get('set-cookie'), describe(r));
+  }
+
+  calls.length = 0;
+  let r = await proxy.request('/voice/agent/session', {
+    method: 'POST', body: '{"verification":"tok"}', headers: { Authorization: 'Bearer v1.t.s', 'Content-Type': 'application/json' },
+  });
+  check('POST /voice/agent/session forwards its body and the visitor ticket',
+    r.status === 200 && calls[0]?.body === '{"verification":"tok"}' && calls[0]?.headers.Authorization === 'Bearer v1.t.s'
+      && calls[0]?.headers['Content-Type'] === 'application/json', JSON.stringify(calls[0]));
+  r = await proxy.request('/voice/agent/session', { method: 'POST', body: 'x'.repeat(20 * 1024) });
+  check('an oversized session body is refused (413)', r.status === 413, describe(r));
+
+  // The console's "Send to server": forwarded with the admin token; the voice server checks it.
+  calls.length = 0;
+  const profile = JSON.stringify({ agent: { role: 'x' }, greeting: 'hi' });
+  r = await proxy.request('/voice/agent/profiles/property?overwrite=true', {
+    method: 'PUT', body: profile, headers: { Authorization: 'Bearer admin', 'Content-Type': 'application/json' },
+  });
+  check('PUT /voice/agent/profiles/{name} is forwarded with its query, body and admin token',
+    r.status === 200 && calls[0]?.url === 'http://voice:8000/agent/profiles/property?overwrite=true'
+      && calls[0]?.method === 'PUT' && calls[0]?.body === profile && calls[0]?.headers.Authorization === 'Bearer admin',
+    JSON.stringify(calls[0]));
+  calls.length = 0;
+  r = await proxy.request('/voice/agent/profiles/property', { method: 'PUT', body: 'x'.repeat(40 * 1024) });
+  check('a profile up to 64 KiB is forwarded', r.status === 200 && calls.length === 1, describe(r));
+  r = await proxy.request('/voice/agent/profiles/property', { method: 'PUT', body: 'x'.repeat(65 * 1024) });
+  check('a profile over 64 KiB is refused (413)', r.status === 413 && calls.length === 1, describe(r));
+  calls.length = 0;
+  for (const path of ['/voice/agent/profiles/a/b', '/voice/agent/profiles/.hidden', '/voice/agent/profiles/%2e%2e']) {
+    r = await proxy.request(path, { method: 'PUT', body: '{}' });
+    check(`PUT ${path} is not forwarded`, r.status === 404 && calls.length === 0, describe(r));
+  }
+  r = await proxy.request('/voice/agent/profiles/property', { method: 'DELETE' });
+  check('a profile route answers 405 to anything but PUT', r.status === 405 && r.headers.get('allow') === 'PUT' && calls.length === 0, describe(r));
+  r = await proxy.request('/voice/agent/token', { method: 'POST' });
+  check('a route answers 405 to the wrong method', r.status === 405 && r.headers.get('allow') === 'GET' && calls.length === 0, describe(r));
+  r = await proxy.request('/voice/health');
+  check('a route not on the list is 404', r.status === 404 && calls.length === 0, describe(r));
+
+  calls.length = 0;
+  await proxy.request('/voice/agent/token', { headers: { 'X-Forwarded-For': '6.6.6.6', 'CF-Connecting-IP': '7.7.7.7' } });
+  check('without TRUST_PROXY a visitor cannot choose their address', !['6.6.6.6', '7.7.7.7'].includes(calls[0]?.headers['X-Forwarded-For']),
+    calls[0]?.headers['X-Forwarded-For']);
+  calls.length = 0;
+  await voiceApp('cloudflare').request('/voice/agent/token', { headers: { 'X-Forwarded-For': '6.6.6.6', 'CF-Connecting-IP': '7.7.7.7' } });
+  check('with TRUST_PROXY=cloudflare the visitor is CF-Connecting-IP', calls[0]?.headers['X-Forwarded-For'] === '7.7.7.7',
+    calls[0]?.headers['X-Forwarded-For']);
+  calls.length = 0;
+  await voiceApp('1').request('/voice/agent/token', { headers: { 'X-Forwarded-For': '6.6.6.6, 8.8.8.8' } });
+  check('with TRUST_PROXY=1 the visitor is the last X-Forwarded-For entry', calls[0]?.headers['X-Forwarded-For'] === '8.8.8.8',
+    calls[0]?.headers['X-Forwarded-For']);
+
+  const down = createApp({ fetch: async () => { throw new Error('ECONNREFUSED'); } });
+  r = await down.request('/voice/agent/token');
+  check('an unreachable voice server is a 502', r.status === 502, describe(r));
+}
+
 /* ------------------------------------------------------------------- listening */
 
 const source = readFileSync(join(ROOT, 'server.mjs'), 'utf8');

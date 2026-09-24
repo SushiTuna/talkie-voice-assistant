@@ -6,13 +6,24 @@
 /* ------------------------------------------------------------------- storage */
 
 const STORAGE_KEY = 'talkie-site:backend';
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+/**
+ * On a dev machine: the scripted demo, with a voice server on :8000 to switch to.
+ * On a public host: live, through the site server's own /voice proxy (server.mjs), so a
+ * visitor can talk to the assistant straight away and the voice server stays private.
+ */
+export function defaultBackendSettings(loc = globalThis.location) {
+  if (!loc || LOCAL_HOSTS.has(loc.hostname)) return { backend: 'mock', api: 'http://localhost:8000' };
+  return { backend: 'live', api: `${loc.origin}/voice` };
+}
 
 function readBackendSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch { /* noop — fall through to defaults */ }
-  return { backend: 'mock', api: 'http://localhost:8000' };
+  return defaultBackendSettings();
 }
 
 function writeBackendSettings({ backend, api }) {

@@ -100,6 +100,14 @@ name and description; Edit opens a dialog for one tool and its parameters (type,
 allowed values), and a JSON view edits the raw array. Both write the same JSON. Sources are in
 `site/src/`; `npm run build:site` bundles them into `site/dist/`.
 
+Served from a public host rather than `localhost`, the site starts live, talking to the voice
+server through `server.mjs`'s own `/voice/*` proxy (`VOICE_API`, default
+`http://127.0.0.1:8000`). The proxy forwards only what the pages call (context, token, visitor
+tickets, profiles, voices, and profile saves, which still need the admin token), so the voice
+server needs no CORS entry and no public address. When the voice server asks for a bot check,
+the pages run Cloudflare Turnstile (`site/src/verify.js`). `Containerfile` and the repo's
+`compose.yaml` run it this way.
+
 ## Install & use
 
 ### Side-effect-free import (advanced / controlled registration)

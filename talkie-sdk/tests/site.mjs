@@ -636,5 +636,55 @@ function check(name, condition, detail = '') {
   check('build clears stale files from site/dist', !files.includes('chunk-STALE0000.js'));
 }
 
+/* ------------------------------------------------------------------- public site: live by default */
+
+{
+  const { defaultBackendSettings } = await import('../site/src/shell.js');
+  const at = (href) => { const u = new URL(href); return { hostname: u.hostname, origin: u.origin }; };
+  for (const href of ['http://localhost:8081/site/', 'http://127.0.0.1:8081/site/']) {
+    const s = defaultBackendSettings(at(href));
+    check(`on ${new URL(href).host} the site starts on the mock backend`,
+      s.backend === 'mock' && s.api === 'http://localhost:8000', JSON.stringify(s));
+  }
+  const pub = defaultBackendSettings(at('https://sdk.talkie-bird.online/site/'));
+  check('on a public host the site starts live, through its own /voice proxy',
+    pub.backend === 'live' && pub.api === 'https://sdk.talkie-bird.online/voice', JSON.stringify(pub));
+}
+
+/* ------------------------------------------------------------------- bot check hook */
+
+{
+  const { createTurnstileVerify } = await import('../site/src/verify.js');
+  // Just enough document for the hook: create, append, find by id, remove.
+  const byId = new Map();
+  const doc = {
+    body: { append(node) { if (node.id) byId.set(node.id, node); } },
+    createElement() {
+      return { id: '', className: '', remove() { byId.delete(this.id); } };
+    },
+    getElementById: (id) => byId.get(id) ?? null,
+  };
+  let rendered = null;
+  let removed = null;
+  const turnstile = {
+    render(selector, opts) { rendered = { selector, opts }; queueMicrotask(() => opts.callback('ts-token')); return 'w1'; },
+    remove(id) { removed = id; },
+  };
+  const verify = createTurnstileVerify(doc, { load: async () => turnstile });
+  const token = await verify({ provider: 'turnstile', siteKey: 'site-key' });
+  check('the hook resolves to the Turnstile token', token === 'ts-token', String(token));
+  check('...rendered with the server\'s site key, interaction-only',
+    rendered?.selector === '#talkie-verify' && rendered.opts.sitekey === 'site-key' && rendered.opts.appearance === 'interaction-only');
+  check('...and removes the widget and its box afterwards', removed === 'w1' && !byId.has('talkie-verify'));
+  let error = null;
+  try { await verify({ provider: 'recaptcha', siteKey: 'k' }); } catch (e) { error = e; }
+  check('an unknown bot check is refused', /Unsupported bot check/.test(error?.message ?? ''), String(error));
+
+  const preview = readFileSync(join(ROOT, 'site', 'src', 'preview.js'), 'utf8');
+  check('<talkie-preview> gets the bot-check hook', /this\.verify = createTurnstileVerify\(/.test(preview));
+  const theme = readFileSync(join(ROOT, 'site', 'src', 'theme.css'), 'utf8');
+  check('theme.css places the bot-check box', /\.talkie-verify\s*\{[^}]*position:\s*fixed/.test(theme));
+}
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

@@ -958,3 +958,13 @@ pre.code {
     font-size: 1rem; /* no iOS focus zoom */
   }
 }
+
+/* ------------------------------------------------------------------- bot check */
+/* The voice server's Turnstile check (src/verify.js). Takes no space unless Turnstile needs the
+   visitor to interact; then it sits above the launcher, over the assistant's own layer. */
+.talkie-verify {
+  position: fixed;
+  right: 16px;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 2147483001;
+}
