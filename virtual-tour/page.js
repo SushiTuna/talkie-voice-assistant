@@ -3,6 +3,7 @@
 // The 3D tour itself lives in main.js (window.tour public API) — this file only calls it.
 import { listing } from "./listing.js";
 import { ROOM_ANCHORS } from "./anchors.js";
+import { asset } from "./assets.js";
 import { wireNeighborhood } from "./neighborhood.js";
 import { wireTalkieTools } from "./talkie-tools.js";
 import { wireTalkieVerify } from "./talkie-verify.js";
@@ -55,8 +56,8 @@ function buildGallery() {
     fig.innerHTML = `
       <button class="card-media" type="button" data-anchor="${a.id}" aria-label="View ${a.label} in the 3D tour">
         <picture>
-          <source type="image/webp" srcset="/assets/gallery-${a.id}.webp" />
-          <img src="/assets/gallery-${a.id}.jpg" width="1200" height="675" loading="lazy"
+          <source type="image/webp" srcset="${asset(`assets/gallery-${a.id}.webp`)}" />
+          <img src="${asset(`assets/gallery-${a.id}.jpg`)}" width="1200" height="675" loading="lazy"
                alt="${a.label} — ${a.caption}" />
         </picture>
       </button>

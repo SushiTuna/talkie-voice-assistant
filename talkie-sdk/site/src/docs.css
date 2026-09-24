@@ -3,25 +3,24 @@
 .docs-page {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 0 1.25rem;
+  /* The hero glow reaches past the column; clip it without making #main a scroll box. */
+  overflow-x: clip;
 }
 .docs-page:focus { outline: none; }
 
-/* Tabs bar: sticks under the site header so switching docs is always one click away. */
-#tabs-bar > [slot="tab"] {
-  padding: 0.85rem 1rem;
-}
+.docs-hero { padding-bottom: 1.5rem; }
 
 /* A panel is TOC | article once rendered. */
 .markdown-body.has-toc {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 2.5rem;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 3rem;
 }
 
 .docs-article {
   min-width: 0;
-  max-width: 80ch;
+  max-width: 78ch;
 }
 
 /* ------------------------------------------------------------------- sidebar TOC */
@@ -33,16 +32,19 @@
   max-height: calc(100vh - var(--header-h) - 2rem);
   overflow-y: auto;
   font-size: 0.85rem;
-  padding-right: 0.25rem;
+  padding: 1rem 0.5rem 1rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
 }
 
 .docs-toc-title {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--ink-soft);
-  margin: 0 0 0.5rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin: 0 0 0.6rem;
 }
 
 .markdown-body .docs-toc ul {
@@ -56,13 +58,14 @@
 
 .markdown-body .docs-toc a {
   display: block;
-  padding: 0.25rem 0.75rem;
+  padding: 0.28rem 0.75rem;
   margin-left: -1px;
   color: var(--ink-soft);
   text-decoration: none;
   border-left: 2px solid transparent;
   line-height: 1.35;
   word-break: break-word;
+  transition: color 0.15s, border-color 0.15s;
 }
 
 .docs-toc a:hover {
@@ -72,7 +75,7 @@
 .docs-toc a[aria-current] {
   color: var(--accent);
   border-left-color: var(--accent);
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .docs-toc a[data-level="3"] {
@@ -89,58 +92,72 @@
   }
 }
 
-/* Hide inactive tab panels */
-.markdown-body[hidden] {
-  display: none;
-}
-
 /* ------------------------------------------------------------------- rendered markdown */
 
 .markdown-body {
-  padding: 2rem 0.5rem 4rem;
+  padding: 1.5rem 0 4rem;
+  border-top: 1px solid var(--line);
+  font-size: 1rem;
 }
 
 .markdown-body :is(h1, h2, h3, h4) {
   scroll-margin-top: calc(var(--header-h) + 1rem);
+  color: var(--ink);
+  text-wrap: balance;
 }
 
 .markdown-body h1 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin: 0 0 1rem;
-  color: var(--ink);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0.25rem 0 1rem;
+}
+/* The doc's opening paragraph reads as its lede. */
+.markdown-body h1 + p {
+  font-size: 1.1rem;
+  color: var(--ink-soft);
 }
 
+/* A short accent rule above each section, as on the Overview's feature cards. */
 .markdown-body h2 {
-  font-size: 1.35rem;
-  font-weight: 600;
-  margin: 2rem 0 0.75rem;
-  padding-bottom: 0.25rem;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink);
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 3rem 0 0.9rem;
+}
+.markdown-body h2::before {
+  content: "";
+  display: block;
+  width: 1.75rem;
+  height: 3px;
+  margin-bottom: 0.8rem;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--leaf));
 }
 
 .markdown-body h3 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 1.5rem 0 0.5rem;
-  color: var(--ink);
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 2rem 0 0.6rem;
 }
 
 .markdown-body h4 {
   font-size: 1rem;
-  font-weight: 600;
-  margin: 1.25rem 0 0.5rem;
+  font-weight: 650;
+  margin: 1.5rem 0 0.5rem;
 }
 
 .markdown-body p {
   margin: 0 0 1rem;
-  line-height: 1.65;
+  line-height: 1.7;
 }
 
 .markdown-body a {
   color: var(--accent);
   text-decoration: underline;
+  text-decoration-thickness: 1px;
 }
 
 .markdown-body a[target="_blank"]::after {
@@ -148,55 +165,65 @@
   font-size: 0.8em;
 }
 
-/* Code blocks */
+.markdown-body strong { color: var(--ink); }
+
+/* Inline code: a tinted chip. */
 .markdown-body code {
-  font-family: var(--talkie-font-mono, "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-family: var(--mono);
   font-size: 0.85em;
-  background: var(--surface);
-  padding: 0.15em 0.35em;
-  border-radius: 3px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
 }
 
+/* Code blocks: the site's dark code panel. */
 .markdown-body pre {
-  background: var(--surface);
+  background: var(--code-bg);
+  color: var(--code-ink);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   padding: 0;
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
   overflow-x: auto;
   position: relative;
 }
 
 .markdown-body pre code {
   display: block;
-  padding: 1rem 4.5rem 1rem 1rem;
+  padding: 1rem 4.5rem 1rem 1.15rem;
   background: transparent;
+  color: inherit;
   border: none;
+  border-radius: 0;
   margin: 0;
   font-size: 0.8rem;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-/* Copy button on pre blocks */
+/* Copy button on pre blocks, drawn for the dark panel. */
 .markdown-body pre .copy-btn {
   position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-  background: var(--raised);
-  color: var(--ink);
-  border: 1px solid var(--line);
+  top: 0.55rem;
+  right: 0.55rem;
+  padding: 0.25rem 0.65rem;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.08);
+  color: #e2e8f0;
+  border: 1px solid rgb(255 255 255 / 0.18);
   cursor: pointer;
+  font: inherit;
   font-size: 0.75rem;
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, background-color 0.15s;
 }
 
 .markdown-body pre:hover .copy-btn,
 .markdown-body pre .copy-btn:focus-visible {
   opacity: 1;
 }
+.markdown-body pre .copy-btn:focus-visible { outline-color: #fff; }
 
 /* No hover on touch screens: always show it. */
 @media (hover: none) {
@@ -205,7 +232,7 @@
 
 .markdown-body pre .copy-btn:hover {
   opacity: 1;
-  filter: brightness(1.1);
+  background: rgb(255 255 255 / 0.16);
 }
 
 /* Tables */
@@ -218,23 +245,34 @@
 
 .markdown-body th,
 .markdown-body td {
-  border: 1px solid var(--line);
-  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  padding: 0.6rem 0.85rem;
   text-align: left;
+  vertical-align: top;
 }
 
 .markdown-body th {
   background: var(--surface);
-  font-weight: 600;
+  font-weight: 650;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.markdown-body tbody tr:last-child td { border-bottom: 0; }
+.markdown-body tbody tr:hover td {
+  background: color-mix(in srgb, var(--accent-soft) 50%, transparent);
 }
 
 /* Horizontal scroll wrapper for wide tables */
 .markdown-body .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  margin: 0 0 1rem;
+  margin: 0 0 1.25rem;
+  background: var(--raised);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 .markdown-body .table-scroll table {
@@ -256,23 +294,29 @@
 }
 
 .markdown-body li {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.35rem;
+  line-height: 1.65;
 }
+.markdown-body li::marker { color: var(--accent); }
 
-/* Blockquotes */
+/* Blockquotes read as callouts. */
 .markdown-body blockquote {
-  border-left: 3px solid var(--accent);
-  padding: 0.5rem 1rem;
-  margin: 0 0 1rem;
-  background: var(--surface);
-  border-radius: 0 4px 4px 0;
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--accent-soft);
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
 }
+.markdown-body blockquote > :last-child { margin-bottom: 0; }
+/* The callout is already tinted; its code chips go back to the page colour. */
+.markdown-body blockquote code { background: var(--raised); }
 
 /* Hr */
 .markdown-body hr {
   border: none;
   border-top: 1px solid var(--line);
-  margin: 2rem 0;
+  margin: 2.5rem 0;
 }
 
 /* Loading / error states */
@@ -285,7 +329,7 @@
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 1rem;
   margin: 1rem 0;
 }
@@ -293,13 +337,14 @@
 /* ------------------------------------------------------------------- responsive overrides */
 
 @media (max-width: 480px) {
+  .docs-page { padding: 0 1rem; }
   .markdown-body {
-    padding: 1.5rem 1rem 2rem;
+    padding: 1.25rem 0 2rem;
   }
   .markdown-body h1 {
-    font-size: 1.4rem;
+    font-size: 1.55rem;
   }
   .markdown-body h2 {
-    font-size: 1.2rem;
+    font-size: 1.25rem;
   }
 }

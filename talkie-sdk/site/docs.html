@@ -10,15 +10,15 @@
 <body>
   <header id="site-header"></header>
   <main id="main" class="docs-page" tabindex="-1">
-    <h1 class="visually-hidden">Docs</h1>
-    <lion-tabs id="tabs-bar">
-      <button slot="tab" type="button">Guide</button>
-      <div slot="panel" data-doc="guide" class="markdown-body"></div>
-      <button slot="tab" type="button">Integration</button>
-      <div slot="panel" data-doc="integration" class="markdown-body"></div>
-      <button slot="tab" type="button">Production checklist</button>
-      <div slot="panel" data-doc="checklist" class="markdown-body"></div>
-    </lion-tabs>
+    <section class="page-hero docs-hero" aria-labelledby="page-title">
+      <div>
+        <p class="kicker">Documentation</p>
+        <h1 id="page-title">Everything you need to ship Talkie</h1>
+        <p class="lede">The SDK guide: install, embed, tools, theming, events and the full API. It's rendered straight from the repository's README, so it never drifts.</p>
+      </div>
+      <img class="page-hero-mascot" src="assets/mascot.webp" width="560" height="522" alt="" />
+    </section>
+    <div data-doc="guide" class="markdown-body"></div>
   </main>
   <script type="module" src="dist/docs.js"></script>
 </body>

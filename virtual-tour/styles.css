@@ -320,8 +320,8 @@ section { margin-block: var(--sec); scroll-margin-top: 88px; }
 /* logo: Icons8 "Home" (Keek Line), assets/brand/ — a mask, so it takes the ink colour in both themes */
 .wm-logo {
   flex: none; width: 28px; height: 28px; background: var(--ink);
-  -webkit-mask: url("/assets/brand/logo-home.png") center / contain no-repeat;
-          mask: url("/assets/brand/logo-home.png") center / contain no-repeat;
+  -webkit-mask: url("https://assets.talkie-bird.online/v1/assets/brand/logo-home.png") center / contain no-repeat;
+          mask: url("https://assets.talkie-bird.online/v1/assets/brand/logo-home.png") center / contain no-repeat;
 }
 .wm-a { font: 500 20px/1 var(--display); letter-spacing: .01em; color: var(--ink); white-space: nowrap; }
 .wm-b { font: 500 12px/1 var(--sans); letter-spacing: .14em; text-transform: uppercase; color: var(--warm); }
@@ -820,7 +820,7 @@ talkie-assistant {
 body:has(#tour.pseudo-fullscreen) talkie-assistant { display: none; }
 
 /* ---------- tour poster gets the render ---------- */
-.tour-poster { background: #0b0d0e url("/assets/hero.jpg") center / cover no-repeat; }
+.tour-poster { background: #0b0d0e url("https://assets.talkie-bird.online/v1/assets/hero.jpg") center / cover no-repeat; }
 .tour-poster::before { content: ""; position: absolute; inset: 0; background: rgba(11, 12, 13, .62); }
 .poster-inner h2 { font-size: clamp(30px, 4.6vw, 46px); }
 .poster-inner { position: relative; z-index: 1; }

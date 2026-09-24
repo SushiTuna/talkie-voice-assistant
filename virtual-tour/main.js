@@ -3,6 +3,7 @@
 // visible or the user clicks "Start tour". The tour renders inside #tour (never the whole page)
 // and captures mouse/keyboard only after the user clicks the canvas (Esc releases).
 import { ROOM_ANCHORS, DOLLHOUSE, ANCHOR_GROUPS } from "./anchors.js";
+import { asset, HOUSE_MODEL } from "./assets.js";
 
 const byId = (id) => document.getElementById(id);
 const tourEl = byId("tour");
@@ -30,11 +31,13 @@ const ROOM_RADIUS = 4.5;     // walking within this (XZ) of an anchor marks its 
 
 const B = {}; // Babylon namespace, filled by loadBabylon()
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-// Phones and tablets: iOS Safari kills the WebGL context when a page uses too much GPU memory
-// (the canvas goes black), and after that can refuse new contexts ("WebGL not supported").
-// So touch devices get a lighter scene: CSS-resolution canvas, smaller shadow map, no SSAO,
-// no MSAA/bloom/grain, textures capped at 512 px, a 128 px sky cube, and no broadleaf trees.
-const LITE = window.matchMedia("(pointer: coarse)").matches;
+// Lighter scene on every device (it began as the phone build: iOS Safari kills the WebGL context
+// when a page uses too much GPU memory): CSS-resolution canvas, 1024 px shadow map, no SSAO, no
+// MSAA/bloom/grain, textures capped at 512 px, a 128 px sky cube, and no broadleaf trees.
+// Set to false for the full-quality build.
+const LITE = true;
+// Touch input and hints (tap to look, zoom buttons, no crosshair), independent of LITE.
+const TOUCH = window.matchMedia("(pointer: coarse)").matches;
 
 let engine = null, scene = null, fpCam = null, arcCam = null, sun = null, hemi = null;
 let modelMeshes = [], shadowMap = null, ssaoPipe = null;
@@ -270,12 +273,7 @@ function resizeEngine() {
 }
 
 async function findModelFile() {
-  try {
-    const files = await (await fetch("/api/models")).json();
-    return files[0] || null;
-  } catch {
-    return null;
-  }
+  return HOUSE_MODEL; // on R2 (assets.js); the server no longer has a models/ folder to list
 }
 
 /**
@@ -420,7 +418,7 @@ function buildCameras() {
   occlude(); // conifers first, at grass height; the house call below then finds no new trees
   B.addGroundOcclusion(scene, { footprint: rb && { min: rb.minimumWorld, max: rb.maximumWorld }, y: decalY });
   // Broadleaf trees for the mid/far forest stream in after the tour is ready (5 MB); conifers if that fails.
-  (LITE ? Promise.reject(new Error("skipped on touch devices")) : B.addBroadleafTrees(scene, forest.broadleafSlots, groundY)).then(occlude, (err) => {
+  (LITE ? Promise.reject(new Error("skipped in LITE mode")) : B.addBroadleafTrees(scene, forest.broadleafSlots, groundY)).then(occlude, (err) => {
     console.warn("broadleaf trees unavailable, planting conifers instead:", err);
     forest.fillWithConifers();
     occlude();
@@ -437,7 +435,7 @@ function buildCameras() {
   fpCam.ellipsoidOffset = new B.Vector3(0, 0, 0);
   fpCam.minZ = 0.05;
   fpCam.fov = BASE_FOV;
-  fpCam.angularSensibility = LITE ? 1100 : 1800; // a finger swipe covers fewer pixels than a mouse
+  fpCam.angularSensibility = TOUCH ? 1100 : 1800; // a finger swipe covers fewer pixels than a mouse
   fpCam.inertia = 0.72;
   fpCam.speed = WALK_SPEED;
   fpCam.keysUp = [87, 38];    // W / ↑
@@ -592,7 +590,7 @@ function splitForPicking(meshes, CHUNK = 64) {
 
 /** Download a self-contained .glb with a progress bar (6–94 %); resolves to its bytes. */
 async function fetchModel(file) {
-  const res = await fetch(`/models/${encodeURIComponent(file)}`);
+  const res = await fetch(asset(`models/${encodeURIComponent(file)}`));
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${file}`);
   // Content-Length is the compressed size when the server gzips; it sends the real one alongside.
   const total = Number(res.headers.get("x-decoded-length") || (res.headers.get("content-encoding") ? 0 : res.headers.get("content-length")));
@@ -617,7 +615,7 @@ async function loadModel(file, bytes) {
     await B.ImportMeshAsync(bytes, scene, { pluginExtension: ".glb" });
   } else {
     await B.ImportMeshAsync(file, scene, {
-      rootUrl: "/models/",
+      rootUrl: asset("models/"),
       onProgress: (event) => {
         if (event.total && event.loaded) setProgress(6 + (event.loaded / event.total) * 88);
       },
@@ -773,11 +771,11 @@ function release() {
 }
 
 function updateHud() {
-  crosshairEl.hidden = !(captured && mode === "walk") || LITE; // an aiming dot only helps when walking
+  crosshairEl.hidden = !(captured && mode === "walk") || TOUCH; // an aiming dot only helps when walking
   hintEl.hidden = !ready || captured;
   if (!ready) return;
   updateZoomButtons();
-  if (LITE) {
+  if (TOUCH) {
     badgeEl.innerHTML = mode === "walk"
       ? (captured ? "<b>Room view</b> — drag to look · pick a room below" : "<b>Room view</b> — tap the view to look around")
       : (captured ? "<b>Dollhouse</b> — drag to orbit · pinch to zoom" : "<b>Dollhouse</b> — tap the view to orbit");
@@ -1087,7 +1085,7 @@ function zoom(dir) { // dir: 1 = in, -1 = out
   wake();
 }
 function updateZoomButtons() {
-  if (!LITE || !ready) return;
+  if (!TOUCH || !ready) return;
   const [inB, outB] = [byId("zoomIn"), byId("zoomOut")];
   const eps = 1e-3;
   if (mode === "dollhouse") {
@@ -1100,7 +1098,7 @@ function updateZoomButtons() {
 }
 
 function wireTour() {
-  if (LITE) {
+  if (TOUCH) {
     tourEl.classList.add("touch");
     hintEl.textContent = "Tap the view to look around";
     byId("zoomIn").addEventListener("click", () => zoom(1));

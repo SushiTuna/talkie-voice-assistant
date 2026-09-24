@@ -1,8 +1,7 @@
 import { LitElement, css, html } from 'lit';
 import { ScopedElementsMixin } from '@open-wc/scoped-elements';
 import { svg } from 'lit-html';
-import { LionIcon } from '@lion/ui/icon.js';
-import { LionButton } from '@lion/ui/button.js';
+import { TalkieButton } from './talkie-button.js';
 import { STATE_COLORS } from '../core/state-colors.js';
 
 /** Mixin-applied base class for scoped element composition. */
@@ -43,7 +42,7 @@ export class TalkieLauncher extends ScopedLitElement {
   };
 
   static get scopedElements() {
-    return { 'lion-icon': LionIcon, 'lion-button': LionButton };
+    return { 'talkie-button': TalkieButton };
   }
 
   static get styles() {
@@ -316,10 +315,10 @@ export class TalkieLauncher extends ScopedLitElement {
         ${this.active ? this._renderWaves() : ''}
         ${this.nudged ? html`<div class="nudge-toast">Have a question? Tap to ask.</div>` : ''}
         <span class="hover-label">${this.active ? 'Conversation on · tap to open' : this.label}</span>
-        <lion-button class="launcher-btn"
+        <talkie-button class="launcher-btn" aria-haspopup="dialog" aria-expanded=${this.open ? 'true' : 'false'}
             aria-label=${this.active ? 'Open the voice assistant, the conversation is still on' : `Open ${this.heading}`}>
           ${this.active && this.state === 'speaking' ? iconTalking() : iconMic()}
-        </lion-button>
+        </talkie-button>
       </div>
     `;
   }

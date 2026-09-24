@@ -13,8 +13,9 @@ import { CreateCylinder } from "@babylonjs/core/Meshes/Builders/cylinderBuilder.
 import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial.js";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture.js";
 import { MultiMaterial } from "@babylonjs/core/Materials/multiMaterial.js";
+import { asset } from "./assets.js";
 
-const TEX = "/assets/tex/";
+const TEX = asset("assets/tex/");
 
 function rng(seed) {
   return () => {

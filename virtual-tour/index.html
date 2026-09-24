@@ -8,6 +8,9 @@
 <title>Modular House Cube 3 — Explore in 3D &amp; Book a Tour</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<!-- Photos, models and textures come from R2 (assets.js): images connect without CORS, the 3D engine with it. -->
+<link rel="preconnect" href="https://assets.talkie-bird.online" />
+<link rel="preconnect" href="https://assets.talkie-bird.online" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&display=swap" rel="stylesheet" />
 <meta name="theme-color" content="#0f1011" />
 <link rel="stylesheet" href="/styles.css" />
@@ -56,8 +59,8 @@
   <!-- ============ HERO ============ -->
   <section class="hero" aria-label="Listing overview">
     <picture>
-      <source type="image/webp" srcset="/assets/hero.webp" />
-      <img class="hero-img" src="/assets/hero.jpg" width="2400" height="1350"
+      <source type="image/webp" srcset="https://assets.talkie-bird.online/v1/assets/hero.webp" />
+      <img class="hero-img" src="https://assets.talkie-bird.online/v1/assets/hero.jpg" width="2400" height="1350"
            alt="The dark-clad raised home in a misty pine forest, warm light in its windows" fetchpriority="high" />
     </picture>
     <div class="hero-scrim" aria-hidden="true"></div>

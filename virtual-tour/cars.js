@@ -10,6 +10,7 @@ import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader.js";
 import { Color3 } from "@babylonjs/core/Maths/math.color.js";
 import { MultiMaterial } from "@babylonjs/core/Materials/multiMaterial.js";
 import { SubMesh } from "@babylonjs/core/Meshes/subMesh.js";
+import { asset } from "./assets.js";
 
 const HEADLIGHT = new Color3(1.0, 0.95, 0.85); // cool-warm LED white
 const TAILLIGHT = new Color3(1.0, 0.04, 0.02);
@@ -62,8 +63,8 @@ function lightsOn(meshes) {
 // Parking spots in the house model's raw (glTF mesh) units — the centres of the original cars —
 // and the direction their headlights faced (raw +z). Converted to world space through a model mesh.
 const SPOTS = [
-  { url: "/models/props/garage_ferrari_sf90.glb", name: "ferrari", raw: [2225, -3380, 1900] },
-  { url: "/models/props/garage_porsche_911_gt3.glb", name: "porsche", raw: [7000, -3380, 1900] },
+  { url: asset("models/props/garage_ferrari_sf90.glb"), name: "ferrari", raw: [2225, -3380, 1900] },
+  { url: asset("models/props/garage_porsche_911_gt3.glb"), name: "porsche", raw: [7000, -3380, 1900] },
 ];
 
 /**

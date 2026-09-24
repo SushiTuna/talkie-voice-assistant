@@ -1,7 +1,7 @@
 import { css, html, unsafeCSS } from 'lit';
 import { ScopedElementsMixin } from '@open-wc/scoped-elements';
 import { svg } from 'lit-html';
-import { LionButton } from '@lion/ui/button.js';
+import { TalkieButton } from './talkie-button.js';
 import { LitElement } from 'lit';
 import { TalkieTranscript } from './talkie-transcript.js';
 import { TalkieWaveform } from './talkie-waveform.js';
@@ -141,6 +141,19 @@ export class TalkieWidget extends ScopedLitElement {
   #endedForSilence = false;
   /** @type {boolean} The no-converse fallback has been reported once */
   #warnedNoConverse = false;
+  /** @type {boolean} The visitor's last click or focus landed inside `keyScope` (see #ownsKey) */
+  #keysOwned = false;
+  /** @type {HTMLElement | null} What had focus when the panel was shown; it gets focus back */
+  #returnFocus = null;
+  /** @type {boolean} Focus was inside the panel when this render started (see updated()) */
+  #focusWasInside = false;
+
+  /**
+   * Where this widget's keyboard shortcuts apply: the widget itself unless set.
+   * <talkie-assistant> sets itself, so Esc also works from its launcher.
+   * @type {HTMLElement | null}
+   */
+  keyScope = null;
 
   static properties = {
     backend: { type: Object },
@@ -181,7 +194,7 @@ export class TalkieWidget extends ScopedLitElement {
     // the recording view stays an un-upgraded HTMLElement, collapses to zero
     // height, and the recording view shows no motion at all.
     return {
-      'lion-button': LionButton,
+      'talkie-button': TalkieButton,
       'talkie-transcript': TalkieTranscript,
       'talkie-waveform': TalkieWaveform,
     };
@@ -234,6 +247,9 @@ export class TalkieWidget extends ScopedLitElement {
                     0 0 64px -22px var(--_state);
         transition: box-shadow .4s, opacity .35s ease, transform .35s var(--_ease);
       }
+      /* Focused only as a fallback when a view has no control (#focusPrimary); a ring round
+         the whole panel would read as a stray selection. */
+      :host(:focus) { outline: none; }
       :host(:not([open])),
       :host([minimized]) {
         opacity: 0;
@@ -371,8 +387,8 @@ export class TalkieWidget extends ScopedLitElement {
       }
 
       /* ── Buttons ──
-         lion-button and button share one base; the classes after it only change colour and
-         size. Icon spacing is a margin, not a gap on the button: LionButton slots its children
+         talkie-button (a LionButton) and button share one base; the classes after it only
+         change colour and size. Icon spacing is a margin, not a gap on the button: LionButton slots its children
          into its own shadow flex box, which a gap on the host never reaches. */
       .btn {
         display: inline-flex;
@@ -477,7 +493,7 @@ export class TalkieWidget extends ScopedLitElement {
       .end-btn:hover {
         background: color-mix(in srgb, var(--_ink) 12%, transparent);
       }
-      lion-button:focus-visible,
+      talkie-button:focus-visible,
       button:focus-visible {
         outline: 2px solid var(--_ink);
         outline-offset: 3px;
@@ -728,6 +744,7 @@ export class TalkieWidget extends ScopedLitElement {
     this._onEndClick    = this._onEndClick.bind(this);
     this._onInterruptClick = this._onInterruptClick.bind(this);
     this._onKeydown     = this._onKeydown.bind(this);
+    this._onPageInteraction = this._onPageInteraction.bind(this);
 
     this.#sm.onChange(this._onSmChange);
     // Init from machine so state is correct before any transition fires
@@ -738,20 +755,33 @@ export class TalkieWidget extends ScopedLitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    // A non-modal dialog: the page around it stays usable, so no aria-modal. tabindex -1 lets
+    // the panel itself take focus when the current view has no control to focus.
+    if (!this.hasAttribute('role')) this.setAttribute('role', 'dialog');
+    if (!this.hasAttribute('tabindex')) this.setAttribute('tabindex', '-1');
     // Document-level, not host-level: once recording starts the button that had
     // focus is replaced, focus falls back to <body>, and a host listener would
-    // never see the key that is supposed to stop the recording. Every handler
-    // below is gated on `this.open`, so a closed widget swallows nothing.
+    // never see the key that is supposed to stop the recording. The panel is not
+    // modal, though, so #ownsKey leaves the rest of the page's keys alone, and
+    // a closed widget swallows nothing.
     document.addEventListener('keydown', this._onKeydown);
+    // Capture, so a host handler that stops propagation cannot hide a click from us.
+    document.addEventListener('pointerdown', this._onPageInteraction, true);
+    document.addEventListener('focusin', this._onPageInteraction, true);
   }
 
   disconnectedCallback() {
     super.disconnectedCallback();
     document.removeEventListener('keydown', this._onKeydown);
+    document.removeEventListener('pointerdown', this._onPageInteraction, true);
+    document.removeEventListener('focusin', this._onPageInteraction, true);
     this.#disposeAll();
   }
 
   willUpdate(changed) {
+    this.#focusWasInside = !!this.shadowRoot?.activeElement;
+    // The panel's accessible name. aria-labelledby cannot point into our own shadow root.
+    if (changed.has('heading')) this.setAttribute('aria-label', this.heading);
     if (changed.has('_sm') || changed.has('open') || changed.has('mode') || changed.has('backend')) {
       this._syncLabel();
       this._syncHint();
@@ -763,6 +793,17 @@ export class TalkieWidget extends ScopedLitElement {
       this._tx = this.#sm.transcript;
       this._rp = this.#sm.response;
     }
+    if (changed.has('open') || changed.has('minimized')) {
+      const shown = this.open && !this.minimized;
+      const was = (key) => (changed.has(key) ? changed.get(key) : this[key]);
+      const wasShown = !!was('open') && !was('minimized');
+      if (shown && !wasShown) this.#focusPrimary();
+      else if (!shown && wasShown) this.#giveFocusBack();
+    } else if (this.#focusWasInside && !this.shadowRoot?.activeElement && this.open && !this.minimized) {
+      // The focused control re-rendered away (Start → Stop & Send, Stop → Ask another).
+      // Without this, focus drops to <body> and a keyboard user loses their place.
+      this.#focusPrimary();
+    }
     if (changed.has('_shown')) {
       const resp = this.renderRoot.querySelector('.resp-area');
       if (resp) {
@@ -770,6 +811,46 @@ export class TalkieWidget extends ScopedLitElement {
         resp.classList.toggle('scrolled', resp.scrollTop > 0);
       }
     }
+  }
+
+  /**
+   * Focus the current view's main control (Start, Stop & Send, End conversation, Try again…),
+   * or the panel itself when the view has none (transcribing, thinking).
+   */
+  async #focusPrimary() {
+    const target = this.renderRoot?.querySelector?.('.view-wrapper [data-action], .view-wrapper #endBtn') ?? this;
+    // A talkie-button only sets its tabindex on its first render, which runs after ours.
+    if (target !== this) await target.updateComplete;
+    if (!this.open || this.minimized || !target.isConnected) return;
+    target.focus({ preventScroll: true });
+  }
+
+  /** The element that has focus, looking into open shadow roots. */
+  #deepActiveElement() {
+    let el = (this.ownerDocument ?? document).activeElement;
+    while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+    return el ?? null;
+  }
+
+  /** Remember the element to give focus back to when the panel hides again. */
+  #rememberFocus() {
+    const el = this.#deepActiveElement();
+    const doc = this.ownerDocument ?? document;
+    const inside = el === this || this.shadowRoot?.contains(el);
+    this.#returnFocus = !el || inside || el === doc.body ? null : el;
+  }
+
+  /**
+   * Put focus back where it was before the panel was shown (the launcher, or the page's own
+   * button), but only when it is still ours to move: in the panel, or dropped to <body>.
+   */
+  #giveFocusBack() {
+    const target = this.#returnFocus;
+    this.#returnFocus = null;
+    const doc = this.ownerDocument ?? document;
+    const active = doc.activeElement;
+    const ours = !!this.shadowRoot?.activeElement || active === this || !active || active === doc.body;
+    if (ours && target?.isConnected) target.focus({ preventScroll: true });
   }
 
   /** Fade the reply's top edge only while some of it is scrolled out of view. */
@@ -790,6 +871,10 @@ export class TalkieWidget extends ScopedLitElement {
       this.#cancelConversation('widget reopened');
     }
     if (this.#sm.state !== 'idle') this.#sm.transition('idle');
+    // Opening is an act on the assistant, whatever triggered it: until the visitor
+    // clicks or tabs elsewhere, a key pressed on <body> is meant for the panel.
+    this.#keysOwned = true;
+    this.#rememberFocus();
     this.open = true;
     this._emitEvent('talkie-open');
   }
@@ -812,6 +897,7 @@ export class TalkieWidget extends ScopedLitElement {
   /** Bring a minimized panel back. */
   restore() {
     if (!this.minimized) return;
+    this.#rememberFocus();
     this.minimized = false;
     this._emitEvent('talkie-restore');
   }
@@ -961,7 +1047,7 @@ export class TalkieWidget extends ScopedLitElement {
     if (origin && origin !== this) {
       // A button already turns Space into a click of its own, and a text field
       // needs the space character far more than we need the shortcut.
-      if (origin.closest?.('lion-button, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
+      if (origin.closest?.('talkie-button, button, [role="button"], input, textarea, select, [contenteditable=""], [contenteditable="true"]')) return;
     }
     e.preventDefault();
     if (this._conversational) {
@@ -1474,7 +1560,8 @@ export class TalkieWidget extends ScopedLitElement {
 
   _onKeydown(e) {
     // A minimized panel is out of the way: the page's own keys are the page's.
-    if (!this.open || this.minimized) return;
+    if (!this.open || this.minimized || e.defaultPrevented) return;
+    if (!this.#ownsKey(e)) return;
     if (e.key === 'Escape') {
       e.preventDefault();
       this.#cancelConversation('escaped');
@@ -1483,6 +1570,30 @@ export class TalkieWidget extends ScopedLitElement {
     if (e.key === ' ' || e.key === 'Spacebar') {
       this._onSpaceToggle(e);
     }
+  }
+
+  /** Track whether the visitor's last click or focus was in the assistant or on the page. */
+  _onPageInteraction(e) {
+    this.#keysOwned = this.#inKeyScope(e);
+  }
+
+  #inKeyScope(e) {
+    return e.composedPath?.().includes(this.keyScope ?? this) ?? false;
+  }
+
+  /**
+   * Whether a key is the widget's to act on. The floating panel sits over a page that stays
+   * usable, so Esc for the page's own menu or Space to scroll it must not end or start a
+   * conversation. A key is ours when it comes from inside the key scope, or from <body>
+   * (where focus lands when the focused button re-renders away) while the visitor's last
+   * click or focus was ours. Anything focused elsewhere on the page keeps its keys.
+   */
+  #ownsKey(e) {
+    if (this.#inKeyScope(e)) return true;
+    const origin = e.composedPath?.()[0];
+    const doc = this.ownerDocument ?? document;
+    const fromBody = !origin || origin === doc.body || origin === doc.documentElement || origin === doc;
+    return fromBody && this.#keysOwned;
   }
 
   /* ── Template ───────────────────────────────── */
@@ -1499,10 +1610,10 @@ export class TalkieWidget extends ScopedLitElement {
           ${s === 'speaking' ? html`<span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>` : ''}
         </div>
         <div class="bar-actions">
-          <lion-button class="icon-btn min-btn" @click=${this._onMinimizeClick}
-              aria-label="Minimize, keep talking" title="Minimize — the conversation keeps going">${iconMinimize()}</lion-button>
-          <lion-button class="icon-btn close-btn" @click=${this._onCloseClick}
-              aria-label="End and close" title="End and close">${iconClose()}</lion-button>
+          <talkie-button class="icon-btn min-btn" @click=${this._onMinimizeClick}
+              aria-label="Minimize, keep talking" title="Minimize — the conversation keeps going">${iconMinimize()}</talkie-button>
+          <talkie-button class="icon-btn close-btn" @click=${this._onCloseClick}
+              aria-label="End and close" title="End and close">${iconClose()}</talkie-button>
         </div>
       </div>
       <div class="view-wrapper">
@@ -1544,9 +1655,9 @@ export class TalkieWidget extends ScopedLitElement {
         <div class="orb" aria-hidden="true">${iconMic(26)}</div>
         <h2 class="big" aria-hidden="true">Have a&nbsp;question?</h2>
         <p class="sub">${sub}</p>
-        <lion-button class="btn btn-primary" id="startBtn" data-action="start" @click=${this._onStartActivate}>
+        <talkie-button class="btn btn-primary" id="startBtn" data-action="start" @click=${this._onStartActivate}>
           ${iconMic()} ${conversation ? 'Start\u00a0conversation' : 'Start\u00a0Recording'}
-        </lion-button>
+        </talkie-button>
       </div>`;
   }
 
@@ -1568,9 +1679,9 @@ export class TalkieWidget extends ScopedLitElement {
             ${this._partial ? html`<talkie-transcript .text=${this._partial}></talkie-transcript>` : ''}
             ${this._renderEndLink()}`
           : html`
-            <lion-button class="btn btn-stop" id="stopSendBtn" data-action="stop-send" @click=${this._onStopSendClick}>
+            <talkie-button class="btn btn-stop" id="stopSendBtn" data-action="stop-send" @click=${this._onStopSendClick}>
               <span class="sq"></span>Stop &amp; Send
-            </lion-button>
+            </talkie-button>
             <button type="button" class="link-btn" @click=${this._onCancelRecordingClick}>Discard</button>`}
       </div>`;
   }
@@ -1602,9 +1713,9 @@ export class TalkieWidget extends ScopedLitElement {
     // Cursor is visible while streaming; it fades once the generator finishes.
     const complete = this.#streamDone;
     const stop = (onClick) => html`
-      <lion-button class="btn btn-stop" id="stopBtn" data-action="stop" @click=${onClick}>
+      <talkie-button class="btn btn-stop" id="stopBtn" data-action="stop" @click=${onClick}>
         <span class="sq"></span>Stop
-      </lion-button>`;
+      </talkie-button>`;
 
     return html`
       <div class="view answer-layout">
@@ -1616,7 +1727,7 @@ export class TalkieWidget extends ScopedLitElement {
           ${this._conversational
             ? html`${stop(this._onInterruptClick)}${this._renderEndLink()}`
             : complete
-            ? html`<lion-button class="btn btn-secondary" id="askAnotherBtn" data-action="ask-another" @click=${this._onAskAnotherClick}>Ask another</lion-button>`
+            ? html`<talkie-button class="btn btn-secondary" id="askAnotherBtn" data-action="ask-another" @click=${this._onAskAnotherClick}>Ask another</talkie-button>`
             : stop(this._onStopClick)}
         </div>
       </div>`;
@@ -1629,8 +1740,8 @@ export class TalkieWidget extends ScopedLitElement {
         <div class="err-icon" aria-hidden="true">!</div>
         <h2 class="status-text">${msg.title}</h2>
         <p class="sub">${msg.sub}</p>
-        <lion-button class="btn btn-secondary" id="retryBtn" data-action="retry"
-            @click=${this._onRetryClick}>Try again</lion-button>
+        <talkie-button class="btn btn-secondary" id="retryBtn" data-action="retry"
+            @click=${this._onRetryClick}>Try again</talkie-button>
       </div>`;
   }
 
