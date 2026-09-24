@@ -16,6 +16,7 @@ import { ImportMeshAsync } from "@babylonjs/core/Loading/sceneLoader.js";
 import "@babylonjs/core/Meshes/instancedMesh.js"; // side effect: enables mesh.createInstance()
 import { createHouseKit } from "./houses.js";
 import { createPineTemplates } from "./pines.js";
+import { asset } from "./assets.js";
 import { pbrSurface } from "./mood.js";
 
 /** Small deterministic PRNG (mulberry32) so the neighbourhood doesn't change between loads. */
@@ -403,7 +404,7 @@ export function buildForest(scene, min, max, groundY, frontZ = 1, foliage = { tr
  * extract in models/props/) into the spots buildForest reserved. The file holds 23 placed copies
  * of two designs; each distinct design becomes one template (trunk + leaves merged, base at origin).
  */
-export async function addBroadleafTrees(scene, slots, groundY, url = "/models/props/broadleaf_trees.glb") {
+export async function addBroadleafTrees(scene, slots, groundY, url = asset("models/props/broadleaf_trees.glb")) {
   const res = await ImportMeshAsync(url, scene);
   const byDesign = new Map(); // source geometry ids → one tree node that uses them
   for (const node of res.transformNodes.concat(res.meshes)) {

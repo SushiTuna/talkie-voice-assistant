@@ -3,6 +3,7 @@
 // visible or the user clicks "Start tour". The tour renders inside #tour (never the whole page)
 // and captures mouse/keyboard only after the user clicks the canvas (Esc releases).
 import { ROOM_ANCHORS, DOLLHOUSE, ANCHOR_GROUPS } from "./anchors.js";
+import { asset, HOUSE_MODEL } from "./assets.js";
 
 const byId = (id) => document.getElementById(id);
 const tourEl = byId("tour");
@@ -272,12 +273,7 @@ function resizeEngine() {
 }
 
 async function findModelFile() {
-  try {
-    const files = await (await fetch("/api/models")).json();
-    return files[0] || null;
-  } catch {
-    return null;
-  }
+  return HOUSE_MODEL; // on R2 (assets.js); the server no longer has a models/ folder to list
 }
 
 /**
@@ -594,7 +590,7 @@ function splitForPicking(meshes, CHUNK = 64) {
 
 /** Download a self-contained .glb with a progress bar (6–94 %); resolves to its bytes. */
 async function fetchModel(file) {
-  const res = await fetch(`/models/${encodeURIComponent(file)}`);
+  const res = await fetch(asset(`models/${encodeURIComponent(file)}`));
   if (!res.ok) throw new Error(`HTTP ${res.status} fetching ${file}`);
   // Content-Length is the compressed size when the server gzips; it sends the real one alongside.
   const total = Number(res.headers.get("x-decoded-length") || (res.headers.get("content-encoding") ? 0 : res.headers.get("content-length")));
@@ -619,7 +615,7 @@ async function loadModel(file, bytes) {
     await B.ImportMeshAsync(bytes, scene, { pluginExtension: ".glb" });
   } else {
     await B.ImportMeshAsync(file, scene, {
-      rootUrl: "/models/",
+      rootUrl: asset("models/"),
       onProgress: (event) => {
         if (event.total && event.loaded) setProgress(6 + (event.loaded / event.total) * 88);
       },

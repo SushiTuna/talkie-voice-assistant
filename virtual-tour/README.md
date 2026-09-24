@@ -138,15 +138,41 @@ The page embeds the Talkie voice assistant from the sibling `talkie-sdk/` the do
 * Valid entries are appended as `{ id, createdAt, …fields }` to **`data/tour-requests.json`**
   (created on demand, written atomically via temp file + rename). `data/` is git-ignored.
 
+## Asset hosting (Cloudflare R2)
+
+Models, the sky, textures and photos are **not in the repo**. They're served from the R2 bucket
+`talkie-tour-assets` through the custom domain `https://assets.talkie-bird.online`. Every URL is
+built from `ASSET_BASE` in `assets.js`; `index.html` and `styles.css` spell the same base out in
+full. Keys mirror the old folders under a version prefix, for example
+`v1/models/props/garage_ferrari_sf90.glb` and `v1/assets/hero.jpg`.
+
+- **Upload** (`npm run upload-assets`, after `npx wrangler login`): puts every file in local
+  `models/` and `assets/` into the bucket with its Content-Type and a one-year `immutable`
+  Cache-Control. To change a file, restore the folders (from the backup or a rebuild), bump
+  `VERSION` in `tools/upload-assets.mjs` and `ASSET_BASE` in `assets.js` (and the full URLs in
+  `index.html` and `styles.css`) together, then upload. Old versions stay valid for cached pages.
+- **Edge cache and CORS** (two rules on the `talkie-bird.online` zone, both matching
+  `http.host eq "assets.talkie-bird.online"`):
+  - *Cache Rule*: every file is eligible for cache, including `.glb` and `.env`, which Cloudflare
+    doesn't cache by default. Edge and browser TTLs follow each object's Cache-Control.
+  - *Response header Transform Rule*: `Access-Control-Allow-Origin: *` is set on every response,
+    cached ones included. The 3D engine loads models and textures with CORS. R2's own per-origin
+    CORS headers (`tools/r2-cors.json`) aren't enough behind the cache: Cloudflare ignores
+    `Vary: Origin`, so whichever request filled the cache decided the headers for everyone, and
+    cached images went out with no CORS header at all.
+  - After changing either rule or the bucket's CORS, purge the `assets.talkie-bird.online`
+    hostname (**Caching → Configuration → Purge Cache**).
+- **Local dev** loads the same R2 files; `npm start` needs internet access for the tour.
+
 ## Swap the 3D model
 
-The tour auto-loads the first model file it finds directly in `models/` (subfolders such as
-`models/props/` and `models/source/` are ignored):
+The house is `HOUSE_MODEL` in `assets.js`, loaded from the bucket's `models/`. To use another
+model:
 
 1. Download a free interior model — e.g. from [Poly Pizza](https://poly.pizza/search/interior)
    (no login, CC licenses) or [Sketchfab](https://sketchfab.com) (login, “downloadable” filter).
-2. Drop the file into `virtual-tour/models/`.
-   - Supported: `.glb`, `.gltf` (+ sidecar `.bin`/textures in the same folder), `.obj` (+`.mtl`), `.fbx`.
+2. Upload it as a self-contained `.glb` (see *Asset hosting* above) and set `HOUSE_MODEL` to its
+   file name.
 3. Reload the page.
 
 The app auto-normalizes scale (files not in human scale are resized to ~14 m across) and
@@ -157,7 +183,8 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 - **Asset compression** (`npm run optimize`, needs `brew install webp`): rebuilds the served
   models and pine textures from the originals in `models/source/`, `models/props/source/` and
-  `assets/tex/source/`. GLBs are lossy but tuned per asset (`ASSETS` in
+  `assets/tex/source/`. The originals are **not in the repo** (kept in a separate backup), so only
+  the optimized outputs ship. To rebuild, copy them back into those folders first. GLBs are lossy but tuned per asset (`ASSETS` in
   `tools/optimize-models.mjs`): textures resized per slot and re-encoded as WebP (colour q85,
   normal maps near-lossless), quantized meshopt geometry, the cars simplified to ~55 % of their
   triangles, and unused tangents and textures dropped. The house keeps float positions, because
@@ -167,6 +194,12 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
   same run into `after`. The pine PNGs stay lossless WebP (`cwebp -exact`, pixel-checked). To
   optimize a new model, put it in a `source/` folder, add it to `ASSETS` and run the script
   (unoptimized models still load).
+- **Pre-baked sky** (`npm run bake-sky`, with the server running): turns the 5.4 MB HDRI
+  (restore it from the backup into `models/sky/source/` first) into Babylon `.env` cubes with prefiltered lighting and WebP faces:
+  227 KB at 512 px for the full build, and 55 KB at 128 px for LITE mode (the default). The page no longer converts or prefilters
+  the HDRI at load. RGBD encoding clips the sun disc at 255 in the reflections; the diffuse sky
+  light comes from spherical harmonics computed before that clip. Re-run the bake after changing
+  the HDRI.
 - **Bundling**: `server.mjs` bundles `page.js`/`main.js` + Babylon in memory with esbuild
   (`/dist/*`, rebuilt on file change), and Babylon stays a lazy chunk (`engine.js`). Without esbuild
   it falls back to the raw modules plus the import map.
@@ -194,7 +227,7 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 
 ## How it works
 
-- `server.mjs` — static server (esbuild bundle, compression, ETags) + `/api/models` listing + `/api/tour-requests` booking endpoint + `/talkie/*` voice-assistant embed bundle + `/voice/*` proxy to the voice server.
+- `server.mjs` — static server (esbuild bundle, compression, ETags) + `/api/models` listing (now always empty; the tests use it as a liveness check) + `/api/tour-requests` booking endpoint + `/talkie/*` voice-assistant embed bundle + `/voice/*` proxy to the voice server.
 - `main.js` — Babylon `FreeCamera` with gravity + ellipsoid collision (`checkCollisions` on all
   model meshes), pointer-lock mouse look, `ArcRotateCamera` dollhouse mode, anchor `goTo` API,
   lazy loading, fullscreen. Renders inside `#tour`, never the full viewport.
@@ -211,14 +244,16 @@ picks a spawn point with enough headroom via a floor/ceiling raycast grid. Re-de
 - `cars.js` — `addGarageCars()`: streams the Ferrari SF90 and Porsche 911 in after the tour is
   ready and parks them where the model's own cars were (shadow casters,
   invisible box colliders).
-- `models/props/` — scenery models (not auto-loaded as the house). `addBroadleafTrees()` in
+- `models/props/` (on R2) — scenery models. `addBroadleafTrees()` in
   `perimeter.js` streams `broadleaf_trees.glb` in after the tour is ready and mixes it into the
-  forest beyond ~20 m from the lot (conifers fill those spots if it fails to load).
+  forest beyond ~20 m from the lot (conifers fill those spots if it fails to load, and in LITE mode).
 - `anchors.js` / `listing.js` — data (viewpoints / copy).
 - `engine.js` — every Babylon module the tour uses, loaded as one lazy chunk; points Babylon's
   meshopt decoder at `vendor/meshopt_decoder.js` (generated by `npm run optimize`) instead of its CDN.
 - Import map in `index.html` resolves `@babylonjs/*` to the local npm packages (unbundled fallback).
-- `assets/` — hero + gallery stills captured from the model itself (see `.tmp/capture-assets.mjs`).
+- `assets/` (on R2) — hero + gallery stills captured from the model itself (see `.tmp/capture-assets.mjs`),
+  the ground and pine textures (`assets/tex/`), and the logo.
+- `assets.js` — `ASSET_BASE` (the R2 URL every asset is loaded from) and `HOUSE_MODEL`.
 
 ## Tests
 
@@ -234,7 +269,7 @@ console-error + horizontal-overflow checks).
 
 ## Attribution & license
 
-CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; credited anyway), in `assets/env/` and `assets/tex/`:
+CC0 assets from [Poly Haven](https://polyhaven.com) (no attribution required; credited anyway), in `models/sky/` and `assets/tex/`:
 
 - HDRI [“Kloofendal 48d Partly Cloudy (Pure Sky)”](https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky) — Greg Zaal, Jarod Guest
 - Textures [“Brick Pavement 02”](https://polyhaven.com/a/brick_pavement_02) and [“Asphalt 07”](https://polyhaven.com/a/asphalt_07) — Charlotte Baglioni

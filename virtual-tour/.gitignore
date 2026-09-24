@@ -6,3 +6,5 @@ data/
 tests/shots/
 tests/qa/*.png
 .playwright-cli/
+# Cloudflare API token for zone rules/purge (never commit)
+.cf-token

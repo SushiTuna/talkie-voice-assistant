@@ -15,13 +15,15 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial.js"
 import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial.js";
 import { Texture } from "@babylonjs/core/Materials/Textures/texture.js";
 import { DynamicTexture } from "@babylonjs/core/Materials/Textures/dynamicTexture.js";
-import { HDRCubeTexture } from "@babylonjs/core/Materials/Textures/hdrCubeTexture.js";
+import { CubeTexture } from "@babylonjs/core/Materials/Textures/cubeTexture.js";
 import { ColorCurves } from "@babylonjs/core/Materials/colorCurves.js";
 import { ImageProcessingConfiguration } from "@babylonjs/core/Materials/imageProcessingConfiguration.js";
 import { PointLight } from "@babylonjs/core/Lights/pointLight.js";
+import { asset } from "./assets.js";
 
-const ENV_URL = "/assets/env/kloofendal_48d_partly_cloudy_puresky_2k.hdr";
-const TEX = "/assets/tex/";
+// Prefiltered cube of the 2k Poly Haven HDRI, baked by tools/bake-sky.mjs at 512 and 128 px.
+const ENV_URL = (size) => asset(`models/sky/kloofendal_48d_partly_cloudy_puresky_${size}.env`);
+const TEX = asset("assets/tex/");
 export const FOG = "#b8c4cf";   // light valley haze; also the clear colour, so the far ground melts into the sky
 const FOG_DENSITY = 0.0032;     // exp2: ~97% visible at 50 m, ~88% at 110 m
 const SKY_LEVEL = 1.0;          // skybox brightness (the shared HDR's level)
@@ -100,13 +102,13 @@ export function setupAtmosphere(scene, { hemi, sun, fallbackSky, envSize = 512 }
   skyMat.disableLighting = true;
   skyMat.fogEnabled = false;
   skybox.material = skyMat;
-  const hdr = new HDRCubeTexture(ENV_URL, scene, envSize, false, true, false, true, () => {
+  const hdr = new CubeTexture(ENV_URL(envSize <= 128 ? 128 : 512), scene, null, false, null, () => {
     skyMat.reflectionTexture = hdr;
     skyMat.reflectionTexture.coordinatesMode = Texture.SKYBOX_MODE;
     skyMat.reflectionTexture.level = SKY_LEVEL;
     skybox.setEnabled(true);
     fallbackSky?.setEnabled(false);
-  }, (msg) => console.warn("HDR sky failed, keeping gradient sky:", msg));
+  }, (msg) => console.warn("HDR sky failed, keeping gradient sky:", msg), undefined, true); // prefiltered .env
   hdr.rotationY = HDR_ROTATION; // SUN_YAW was measured at this rotation; change both together
   scene.environmentTexture = hdr;
   scene.environmentIntensity = 1 / SKY_LEVEL; // the skybox dims the shared HDR (level); keep IBL at full strength
@@ -354,7 +356,7 @@ const HAZE_R = 700, HAZE_H = 130, HAZE_TOP = 85;       // between the mist ring 
  * each ring instead fades toward the fog colour by its own `haze`, and a gradient band melts the
  * bases into the horizon. Replaces the painted ridgeline ring once loaded; that stays up if this fails.
  */
-export async function addDistantMountains(scene, url = "/models/props/mountain_low_poly_for_distant_mountains.glb") {
+export async function addDistantMountains(scene, url = asset("models/props/mountain_low_poly_for_distant_mountains.glb")) {
   const res = await ImportMeshAsync(url, scene);
   const src = res.meshes.find((m) => m.getTotalVertices() > 0);
   const tpl = src.clone("peakTpl", null, true);
