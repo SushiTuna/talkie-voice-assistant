@@ -129,14 +129,14 @@ namespace collisions.
 That single line makes `<talkie-widget>` available in your markup. You still set the `backend`
 property imperatively or via framework bindings to wire up your ASR / LLM / TTS stack.
 
-### The scoped-elements polyfill is optional
+### No scoped-elements polyfill needed
 
-The components render `<lion-button>` and `<lion-icon>` through `ScopedElementsMixin` from
-`@open-wc/scoped-elements` v2. When the browser has no scoped custom-element registries, the mixin
-falls back to the global registry, which works on its own; the demo never loads the polyfill. The
-one case it cannot handle is a page that has **already registered a different `lion-button`**
-class — it then logs an error. Only then, load `@webcomponents/scoped-custom-element-registry`
-before anything else on the page. It is not a dependency of this package.
+The components render their buttons as `<talkie-button>`, a `LionButton` subclass, through
+`ScopedElementsMixin` from `@open-wc/scoped-elements` v2. When the browser has no scoped
+custom-element registries, the mixin defines scoped tags on the global registry instead
+(`ScopedElementsMixin.js`, `createRenderRoot`). Every scoped tag is `talkie-`-prefixed, so that
+fallback cannot collide with a host page that ships its own Lion and its own `lion-button`. The
+demo never loads `@webcomponents/scoped-custom-element-registry`, and it is not a dependency.
 
 ## Backend interface
 
@@ -488,6 +488,19 @@ holding a key is not something every input device can do.
 While an answer is playing, <kbd>Space</kbd>, <kbd>Esc</kbd>, **Stop** and **Ask another** all cut
 the audio short — every exit from the speaking state aborts the `speak()` signal, so the backend
 stops playback rather than talking over the next question.
+
+The panel is not modal, so these keys apply only when they are meant for it: pressed inside the
+assistant (panel or launcher), or on the page background while the visitor's last click or focus
+was in the assistant (or it has just opened). Keys pressed in a host page field, link or dialog,
+after a click elsewhere on the page, or already handled by the page (`defaultPrevented`) are
+left to the page.
+
+For screen readers and keyboard users, the panel is a non-modal `role="dialog"` named after its
+`heading`, and the launcher reports `aria-expanded`. Opening or restoring the panel moves focus to
+the current view's main control (Start, Stop & Send, End conversation, Try again), or to the panel
+itself when the view has none. When that control is replaced mid-conversation, focus moves to
+the next one instead of dropping to the page. Closing or minimizing gives focus back to whatever
+had it before (usually the launcher), unless the visitor has already moved it elsewhere.
 
 While recording, the widget shows a live `mm:ss` clock so a long answer never looks stalled.
 Discarding (or <kbd>Esc</kbd>) closes the microphone and the speech socket without sending the
