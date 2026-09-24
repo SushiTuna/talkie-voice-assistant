@@ -151,14 +151,28 @@ Register the elements you need and wire the backend yourself:
 
 Until the package is published, install it from a local checkout: `npm install ../talkie-sdk`.
 
-### The scoped-registry polyfill is optional
+### No scoped-registry polyfill needed
 
 The components use `ScopedElementsMixin` from `@open-wc/scoped-elements` (v2) to render their
-internal `<lion-button>` and `<lion-icon>`. When the browser has no scoped custom-element
-registries, the mixin falls back to the global registry, which works on its own. The one case it
-cannot handle is a host page that has **already registered a different `lion-button`** class; it
-then logs an error. Only in that case, load `@webcomponents/scoped-custom-element-registry` before
-anything else on the page. The `dist/talkie-embed.js` bundle does not include it.
+internal buttons as `<talkie-button>`, a `LionButton` subclass. When the browser has no scoped
+custom-element registries, the mixin defines scoped tags on the global registry instead. Every
+scoped tag is `talkie-`-prefixed, so a host page that already uses Lion (and has its own
+`lion-button`) is unaffected. The `dist/talkie-embed.js` bundle does not include
+`@webcomponents/scoped-custom-element-registry`, and a host page does not need to load it.
+
+### Keyboard shortcuts leave the host page alone
+
+Space and Esc only act on the panel when they are meant for it: pressed inside the assistant, or
+on the page background while the visitor's last click or focus was in the assistant. A key
+pressed in the page's own fields, links or dialogs, after a click elsewhere on the page, or
+already handled by the page (`event.preventDefault()`) is left to the page.
+
+### Focus and screen readers
+
+The panel is a non-modal `role="dialog"` with `aria-label` set from `heading`; the launcher has
+`aria-expanded`. Opening the panel moves focus into it, and closing or minimizing it returns focus
+to the element that had it before (the launcher, or the page's own button if the page called
+`open()`), unless the visitor has moved focus elsewhere on the page by then.
 
 ## Backend configuration
 

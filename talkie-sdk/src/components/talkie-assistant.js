@@ -209,6 +209,8 @@ export class TalkieAssistant extends HTMLElement {
     this.#widget = this.ownerDocument.createElement('talkie-widget');
     this.#widget.style.position = 'fixed';
     this.#widget.style.zIndex = Z_INDEX;
+    // Esc from the launcher still reaches the panel; keys elsewhere on the page stay the page's.
+    this.#widget.keyScope = this;
     const win = this.ownerDocument.defaultView;
     this.#sheetQuery = typeof win?.matchMedia === 'function' ? win.matchMedia(SHEET_QUERY) : null;
     this.#sheetQuery?.addEventListener?.('change', this._applyLayout);

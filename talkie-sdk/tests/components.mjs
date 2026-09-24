@@ -422,7 +422,7 @@ await (async function checkConversationMode() {
 
   // Esc ends it.
   w.open = true;
-  w._onKeydown({ key: 'Escape', preventDefault() {} });
+  w._onKeydown({ key: 'Escape', preventDefault() {}, composedPath: () => [w] });
   check('conversation: Esc ends the conversation', w.state === 'idle' && script.backend.signal.aborted);
 })();
 
@@ -555,6 +555,188 @@ await (async function checkPanelCopy() {
   check('copy: an explicit launcher label still wins', l.label === 'Ask me');
   l.label = null;
   check('copy: clearing the label goes back to following the heading', l.label === 'Travel Guide · Voice');
+})();
+
+// ── Embedding: the widget stays out of the host page's way ──────────────────
+
+await (async function checkScopedTagsLeaveHostLionAlone() {
+  // The shim has no scoped registries, so ScopedElementsMixin falls back to the global one, as
+  // a browser without them does. A host page that ships its own Lion has `lion-button` defined.
+  const HostButton = class extends HTMLElement {};
+  if (!customElements.get('lion-button')) customElements.define('lion-button', HostButton);
+  const WidgetCtor = customElements.get('talkie-widget');
+  const LauncherCtor = customElements.get('talkie-launcher');
+  const errors = [];
+  const error = console.error;
+  console.error = (...args) => errors.push(args.join(' '));
+  try {
+    new WidgetCtor().createRenderRoot();
+    new LauncherCtor().createRenderRoot();
+  } finally {
+    console.error = error;
+  }
+  check('embed: a host page\'s own lion-button keeps its class', customElements.get('lion-button') === HostButton);
+  check('embed: rendering reports no clash with the host\'s Lion', errors.length === 0, errors.join(' | '));
+  const tags = [...Object.keys(WidgetCtor.scopedElements), ...Object.keys(LauncherCtor.scopedElements)];
+  check('embed: every scoped tag is talkie-prefixed', tags.every((t) => t.startsWith('talkie-')), tags.join(', '));
+  check('embed: the buttons register as talkie-button', typeof customElements.get('talkie-button') === 'function');
+})();
+
+await (async function checkKeysStayInsideTheAssistant() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const w = new WidgetCtor();
+  const body = { localName: 'body' };
+  Object.defineProperty(w, 'ownerDocument', { value: { body, documentElement: { localName: 'html' } } });
+  const assistant = { localName: 'talkie-assistant' };
+  const launcher = { localName: 'talkie-launcher' };
+  w.keyScope = assistant;
+  let starts = 0;
+  w.startListening = () => { starts++; };
+
+  /** A keydown or pointer event from `path[0]`; `handled` records a preventDefault. */
+  const ev = (key, path, extra = {}) => ({
+    key, handled: false, defaultPrevented: false, ...extra,
+    composedPath: () => path,
+    preventDefault() { this.handled = true; },
+  });
+  const press = (key, path, extra) => { const e = ev(key, path, extra); w._onKeydown(e); return e.handled; };
+
+  w.show();
+  check('keys: right after opening, Space on <body> starts', press(' ', [body]) && starts === 1);
+  starts = 0;
+
+  const hostInput = { localName: 'input', closest: () => null };
+  check('keys: Esc from a host page field is left to the page', !press('Escape', [hostInput, body]) && w.open);
+  const hostLink = { localName: 'a', closest: () => null };
+  check('keys: Space on a host page link is left to the page', !press(' ', [hostLink, body]) && starts === 0);
+
+  w._onPageInteraction(ev(undefined, [{ localName: 'p' }, body]));
+  check('keys: after a click on the page, Space on <body> scrolls the page', !press(' ', [body]) && starts === 0);
+
+  w._onPageInteraction(ev(undefined, [launcher, assistant, body]));
+  check('keys: after a click in the assistant, Space on <body> is the widget\'s again', press(' ', [body]) && starts === 1);
+
+  check('keys: Esc a host handler already took is left alone',
+    !press('Escape', [w, assistant, body], { defaultPrevented: true }) && w.open);
+  check('keys: Esc from the launcher still closes the conversation', press('Escape', [launcher, assistant, body]));
+})();
+
+// ── Accessibility: dialog semantics and where focus goes ─────────────────────
+
+await (async function checkDialogSemantics() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const LauncherCtor = customElements.get('talkie-launcher');
+  const strings = (t) => (t?.values ?? []).flatMap((v) => (typeof v === 'string' ? [v] : strings(v)));
+
+  const w = new WidgetCtor();
+  w.enableUpdating = () => {}; // connect without rendering: the shim has no DOM to render into
+  w.connectedCallback();
+  check('a11y: the panel is a dialog', w.getAttribute('role') === 'dialog');
+  check('a11y: the panel is not modal (the page stays usable)', !w.hasAttribute('aria-modal'));
+  check('a11y: the panel can take focus but is not a tab stop', w.getAttribute('tabindex') === '-1');
+  w.disconnectedCallback();
+
+  w.heading = 'Travel Guide';
+  w.willUpdate(new Map([['heading', 'Product Expert']]));
+  check('a11y: the dialog is named after its heading', w.getAttribute('aria-label') === 'Travel Guide');
+
+  const l = new LauncherCtor();
+  check('a11y: the launcher says its panel is closed', strings(l.render()).includes('false') && !strings(l.render()).includes('true'));
+  l.open = true;
+  check('a11y: the launcher says its panel is open', strings(l.render()).includes('true'));
+})();
+
+await (async function checkFocusFollowsThePanel() {
+  const WidgetCtor = customElements.get('talkie-widget');
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+  let focused = null;
+  const focusable = (name) => ({ name, isConnected: true, updateComplete: Promise.resolve(), focus() { focused = name; } });
+
+  /** A widget wired to a fake document and shadow root, since the shim renders nothing. */
+  function setup() {
+    const w = new WidgetCtor();
+    const body = { localName: 'body' };
+    const doc = { body, documentElement: {}, activeElement: body };
+    const root = { activeElement: null, contains: () => false, querySelector: () => null };
+    Object.defineProperty(w, 'ownerDocument', { value: doc });
+    Object.defineProperty(w, 'shadowRoot', { value: root });
+    Object.defineProperty(w, 'isConnected', { value: true });
+    w.renderRoot = root;
+    w.focus = () => { focused = 'panel'; };
+    return { w, doc, root };
+  }
+
+  // Opening moves focus to the view's main control, and closing gives it back to the opener.
+  let { w, doc, root } = setup();
+  const opener = focusable('launcher');
+  doc.activeElement = opener;
+  root.querySelector = () => focusable('start');
+  w.show();
+  w.updated(new Map([['open', false]]));
+  await tick();
+  check('a11y: opening focuses the main control', focused === 'start', String(focused));
+
+  root.activeElement = { name: 'start' };
+  doc.activeElement = w;
+  w.hide('test');
+  w.updated(new Map([['open', true]]));
+  check('a11y: closing gives focus back to what opened the panel', focused === 'launcher', String(focused));
+
+  // A view with no control focuses the panel itself.
+  ({ w, doc, root } = setup());
+  focused = null;
+  w.show();
+  w.updated(new Map([['open', false]]));
+  await tick();
+  check('a11y: a view with no control focuses the panel', focused === 'panel', String(focused));
+
+  // The focused button re-renders away (Start → Stop & Send): focus moves to the new one.
+  ({ w, doc, root } = setup());
+  w.open = true;
+  root.activeElement = { name: 'start' };
+  w.willUpdate(new Map());
+  root.activeElement = null;
+  root.querySelector = () => focusable('stop-send');
+  focused = null;
+  w.updated(new Map([['_label', '']]));
+  await tick();
+  check('a11y: when the focused control re-renders away, focus stays in the panel', focused === 'stop-send', String(focused));
+
+  // Minimize and restore move focus the same way.
+  ({ w, doc, root } = setup());
+  w.show();
+  w.updated(new Map([['open', false]]));
+  await tick();
+  root.activeElement = { name: 'start' };
+  doc.activeElement = w;
+  w.minimize();
+  focused = null;
+  w.updated(new Map([['minimized', false]]));
+  check('a11y: minimizing with nothing to return to leaves focus alone', focused === null, String(focused));
+  const launcher = focusable('launcher');
+  doc.activeElement = launcher;
+  root.activeElement = null;
+  root.querySelector = () => focusable('end');
+  w.restore();
+  w.updated(new Map([['minimized', true]]));
+  await tick();
+  check('a11y: restoring focuses the main control again', focused === 'end', String(focused));
+  root.activeElement = { name: 'end' };
+  doc.activeElement = w;
+  w.minimize();
+  w.updated(new Map([['minimized', false]]));
+  check('a11y: minimizing gives focus back to the launcher', focused === 'launcher', String(focused));
+
+  // Focus the visitor moved elsewhere on the page is not pulled back on close.
+  ({ w, doc, root } = setup());
+  doc.activeElement = focusable('opener');
+  w.show();
+  const hostField = { name: 'host field' };
+  doc.activeElement = hostField;
+  focused = null;
+  w.hide('test');
+  w.updated(new Map([['open', true]]));
+  check('a11y: closing does not pull focus away from the page', focused === null, String(focused));
 })();
 
 console.log(`\n${passed}/${passed + failed} tests passed`);

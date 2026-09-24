@@ -233,7 +233,19 @@ spec; `MockBackend` has none, `HttpBackend` has `prewarm`, `VoiceAgentBackend` h
 Cancellation: Esc / Discard / close / Stop / Ask another all go through `#cancelConversation` or
 `_stopSpeaking`, which abort the per-turn `AbortController`s. Keyboard handling is a document-level
 `keydown` listener installed while connected; Space is ignored when it originates in a button,
-input or editable element.
+input or editable element. The panel is not modal, so `#ownsKey` only takes a key that comes from
+inside `keyScope` (the widget, or the `<talkie-assistant>` that sets itself), or from `<body>`
+while the visitor's last pointerdown/focusin was in scope (`#keysOwned`, also set by `show()`).
+Keys with `defaultPrevented` are ignored.
+
+Focus: the host is a non-modal `role="dialog"` (`tabindex="-1"`, `aria-label` = `heading`, set in
+`connectedCallback`/`willUpdate`). `updated()` calls `#focusPrimary` when the panel becomes shown
+(open, not minimized) and when the focused control re-rendered away; it focuses the first
+`.view-wrapper [data-action]` or `#endBtn`, else the host, after awaiting the button's
+`updateComplete` (a `talkie-button` sets its `tabindex` only on its first render).
+`show()`/`restore()` remember the deep active element; `#giveFocusBack` returns focus there on
+hide/minimize only if focus is still in the panel or on `<body>`. The launcher's button has
+`aria-haspopup="dialog"` and `aria-expanded` = its `open`.
 
 ### 5.3a Conversation mode (`mode="conversation"`)
 
@@ -398,8 +410,8 @@ Styles are in `static get styles()` of the component. Use the existing tokens:
 `--talkie-wave-container-width`, `--talkie-wave-static-height`. `TalkieWidget` reads each public
 token once, into a private `--_*` token on `:host` (`--_ink`, `--_paper`, `--_state`, …); style
 with those, and derive tints from the ink (`color-mix`) rather than hard-coding a colour, or a
-dark theme breaks. State colours live in `src/core/state-colors.js`. Spacing inside a `lion-button`
-must be a margin on the child, not a `gap` on the button (§11). Add a CSS guard to
+dark theme breaks. State colours live in `src/core/state-colors.js`. Spacing inside a `talkie-button`
+(a `LionButton`) must be a margin on the child, not a `gap` on the button (§11). Add a CSS guard to
 `tests/components.mjs` if the fix is easy to regress (see the existing `layout guard:` checks).
 Visual correctness itself can only be judged in a browser — say so in your report.
 
@@ -499,7 +511,7 @@ Do **not** ask about things you can determine from the code or by running the te
 
 ## 11. Traps (each one has cost real time here)
 
-1. **`lion-button` ignores `gap`.** It slots children into its own shadow `.button-content` flex box
+1. **`talkie-button` (`LionButton`) ignores `gap`.** It slots children into its own shadow `.button-content` flex box
    (`@lion/ui/components/button/src/LionButton.js`, `render()` and `.button-content`), which has no
    gap; a `gap` on the host spaces only that wrapper. Put `margin-right` on the icon.
 2. **`:host` padding is fragile** under an outer `* { padding: 0 }` reset — use `.view-wrapper`.
@@ -575,9 +587,9 @@ must cover the degraded path.
 | Expose a `mode` property (`hold`/`toggle`/`auto`); support hold-to-talk | `mode` is `push-to-talk` (start/stop, no hold) or `conversation` (hands-free, backend `converse()`) | Hold-to-talk caps utterance length and has no accessible keyboard equivalent; conversation added on request (README → *Interaction model*) |
 | State machine transitions are fixed | Three `→ listening` edges added (§5.1) | Conversation mode keeps the mic open between turns |
 | Ship one backend; do not write a vendor adapter | `HttpBackend` and `VoiceAgentBackend` ship | Added on purpose in later commits |
-| README must say consumers need the scoped-registry polyfill | Polyfill is optional | `@open-wc/scoped-elements` v2 falls back to the global registry (`ScopedElementsMixin.js`); only a conflicting pre-registered `lion-button` needs it |
+| README must say consumers need the scoped-registry polyfill | No polyfill needed | `@open-wc/scoped-elements` v2 falls back to the global registry (`ScopedElementsMixin.js`); every scoped tag is `talkie-`-prefixed (`talkie-button`, `src/components/talkie-button.js`), so a host page's own `lion-button` cannot clash |
 | No build/publish pipeline beyond the demo | `build.mjs` produces the embed bundle | Needed for plain-HTML embedding; npm publishing is still out of scope |
-| Components extend `LionButton` for controls | Controls are `lion-button` elements via `ScopedElementsMixin` | Same Lion base, composition instead of subclassing |
+| Components extend `LionButton` for controls | Controls are `talkie-button` elements (an empty `LionButton` subclass) via `ScopedElementsMixin` | Same Lion base, composition instead of subclassing; the subclass exists only to give the tag a `talkie-` name |
 | Every composing component uses `ScopedElementsMixin` | `<talkie-assistant>` does not | It has no template; it creates elements in light DOM and relies on global registration |
 
 Everything else in SPEC.md still applies, including its acceptance checks.
