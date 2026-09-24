@@ -1,0 +1,9 @@
+node_modules
+dist
+site/dist
+.tmp
+tests
+**/.DS_Store
+**/.env
+**/.env.*
+Containerfile

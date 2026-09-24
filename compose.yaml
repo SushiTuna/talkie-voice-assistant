@@ -1,13 +1,17 @@
-# talkie-bird.online in containers: the tour, the voice server and the Cloudflare Tunnel.
+# talkie-bird.online in containers: the tour, the SDK site, the voice server and the Cloudflare
+# Tunnel.
 #
 #   cp .env.example .env        # then fill it in
-#   podman compose up -d --build
+#   podman compose up -d --build --force-recreate
 #
-# Only cloudflared talks to the outside. Nothing is published except the tour on the host's own
-# loopback (for checks from the host), so the tunnel stays the only way in: TRUST_PROXY=cloudflare
-# relies on that.
+# Only cloudflared talks to the outside. Nothing is published except the tour and the SDK site on
+# the host's own loopback (for checks from the host), so the tunnel stays the only way in:
+# TRUST_PROXY=cloudflare relies on that. The tunnel's published applications:
+#   talkie-bird.online, www  → http://tour:8080
+#   sdk.talkie-bird.online   → http://sdk:8081
 #
 #   visitor ─▶ Cloudflare ═tunnel═▶ cloudflared ─▶ tour:8080 ─/voice/*─▶ voice:8000
+#                                               └▶ sdk:8081  ─/voice/*─┘
 
 services:
   tour:
@@ -40,6 +44,30 @@ services:
     depends_on:
       - voice
 
+  sdk:
+    # The SDK site with live voice: its pages reach the voice server through /voice (server.mjs).
+    build:
+      context: talkie-sdk
+      dockerfile: Containerfile
+    image: localhost/talkie-sdk-site
+    restart: unless-stopped
+    environment:
+      VOICE_API: http://voice:8000
+      TRUST_PROXY: cloudflare
+    ports:
+      - "127.0.0.1:8082:8081"
+    networks:
+      talkie:
+        ipv4_address: 10.89.40.30
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8081/site/').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      - voice
+
   voice:
     build:
       context: ${VOICE_SERVER_DIR:-../talkie-voice-server}
@@ -49,9 +77,15 @@ services:
     # ASSEMBLYAI_API_KEY, TALKIE_TICKET_SECRET, TURNSTILE_* … (DEPLOY.md step 12).
     env_file:
       - ${VOICE_SERVER_DIR:-../talkie-voice-server}/.env
+    volumes:
+      # Profiles saved from the persona console (TALKIE_PROFILE_ADMIN_TOKEN). The volume starts as
+      # a copy of the image's agents/ and then keeps its own: after a profile changes in the
+      # repo, `podman volume rm talkie-voice-assistant_voice-agents` (loses saved profiles).
+      - voice-agents:/app/agents
     environment:
-      # The tour's address above: uvicorn takes each visitor's address from its X-Forwarded-For.
-      FORWARDED_ALLOW_IPS: 10.89.40.10
+      # The tour's and the SDK site's addresses above: uvicorn takes each visitor's address from
+      # their X-Forwarded-For, and from nobody else's.
+      FORWARDED_ALLOW_IPS: 10.89.40.10,10.89.40.30
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
       interval: 30s
@@ -74,6 +108,7 @@ services:
       - talkie
     depends_on:
       - tour
+      - sdk
 
 networks:
   talkie:
@@ -83,3 +118,4 @@ networks:
 
 volumes:
   tour-data:
+  voice-agents:

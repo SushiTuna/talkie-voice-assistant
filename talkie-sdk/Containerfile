@@ -1,0 +1,25 @@
+# The Talkie SDK site (overview, playground, persona console, docs), the demo and the embed
+# bundle, served by server.mjs. Build from talkie-sdk/:
+#
+#   podman build -t talkie-sdk-site talkie-sdk
+#
+# The site talks to the voice server through server.mjs's /voice proxy (VOICE_API).
+FROM docker.io/library/node:26-slim
+
+WORKDIR /app
+
+# All dependencies: server.mjs runs on Hono and bundles the demo with esbuild at startup, and
+# the Docs page uses marked, all listed as devDependencies.
+COPY package.json package-lock.json ./
+RUN npm ci && npm cache clean --force
+
+COPY . .
+# The embed bundle (dist/) and the site's page bundles (site/dist/), both untracked in git.
+RUN node build.mjs && node build-site.mjs
+
+USER node
+ENV HOST=0.0.0.0 \
+    PORT=8081
+EXPOSE 8081
+# Health check: compose.yaml (Podman's default OCI image format drops HEALTHCHECK).
+CMD ["node", "server.mjs"]
